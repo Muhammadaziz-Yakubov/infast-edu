@@ -1,0 +1,43 @@
+# Ignore mobile app which is a separate repo
+mobile/
+
+# Ignore packages and builds
+node_modules/
+dist/
+dist-ssr/
+build/
+.expo/
+.next/
+out/
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Backend uploads and dynamic directories
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/dist/
+backend/node_modules/
+backend/test-output.txt
+
+# Admin specific ignores
+admin/node_modules/
+admin/dist/
+admin/dist-ssr/
+admin/.env
+
+# Editor files and OS metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*

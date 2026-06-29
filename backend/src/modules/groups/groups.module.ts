@@ -1,0 +1,23 @@
+import { Module, forwardRef } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { GroupsService } from './groups.service';
+import { GroupsController } from './groups.controller';
+import { Group, GroupSchema } from './schemas/group.schema';
+import { GroupLessonSchedule, GroupLessonScheduleSchema } from './schemas/group-lesson-schedule.schema';
+import { LmsModule } from '../lms/lms.module';
+import { StudentsModule } from '../students/students.module';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: Group.name, schema: GroupSchema },
+      { name: GroupLessonSchedule.name, schema: GroupLessonScheduleSchema },
+    ]),
+    LmsModule,
+    forwardRef(() => StudentsModule),
+  ],
+  controllers: [GroupsController],
+  providers: [GroupsService],
+  exports: [GroupsService, MongooseModule],
+})
+export class GroupsModule {}

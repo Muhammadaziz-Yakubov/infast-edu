@@ -48,4 +48,9 @@ export class CreateStudentDto {
   @IsString()
   @IsOptional()
   password?: string;
+
+  @ApiProperty({ example: '2026-07-20', required: false })
+  @IsString()
+  @IsOptional()
+  nextPaymentDate?: string;
 }

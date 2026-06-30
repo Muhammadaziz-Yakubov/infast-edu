@@ -86,8 +86,12 @@ export class AuthService {
     delete (userObj as any).password;
     delete (userObj as any).refreshToken;
 
+    // Fetch student profile with populated groupId (includes startLessonOrder) and courseId
+    const studentProfile = await this.studentsService.getStudentProfileForAuth(user._id.toString());
+
     return {
       user: userObj,
+      student: studentProfile,
       ...tokens,
     };
   }

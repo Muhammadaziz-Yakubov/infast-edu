@@ -104,6 +104,20 @@ export class StudentsService implements OnModuleInit {
     return profile.save();
   }
 
+  // Returns student profile with fully populated groupId (including startLessonOrder) for auth responses
+  async getStudentProfileForAuth(userId: string): Promise<any> {
+    const profile = await this.studentProfileModel
+      .findOne({ userId: new Types.ObjectId(userId) })
+      .populate('groupId')   // full group object with startLessonOrder
+      .populate('courseId')
+      .exec();
+
+    if (!profile) return null;
+    const pObj = profile.toObject();
+    return pObj;
+  }
+
+
   async findAll(): Promise<any[]> {
     const profiles = await this.studentProfileModel
       .find()
@@ -181,6 +195,19 @@ export class StudentsService implements OnModuleInit {
       paymentStatus: PaymentStatus.UNPAID,
     });
     const savedProfile = await profile.save();
+
+    // Create initial payment tracking if nextPaymentDate is specified
+    if (createStudentDto.nextPaymentDate) {
+      const nextPayDate = new Date(createStudentDto.nextPaymentDate);
+      const newPayment = new this.paymentModel({
+        studentId: savedUser._id,
+        amount: 0,
+        paymentDate: new Date(),
+        nextPaymentDate: nextPayDate,
+        status: PaymentStatus.PAID,
+      });
+      await newPayment.save();
+    }
 
     // ✅ Sync: add student to group.students[] roster
     if (groupId) {
@@ -269,6 +296,32 @@ export class StudentsService implements OnModuleInit {
         }
       }
     }
+    // Handle custom next payment date: create/update billing record
+    if (updateStudentDto.nextPaymentDate) {
+      const nextPayDate = new Date(updateStudentDto.nextPaymentDate);
+      const existingPayment = await this.paymentModel
+        .findOne({ studentId: new Types.ObjectId(userId) })
+        .sort({ paymentDate: -1 })
+        .exec();
+
+      if (existingPayment) {
+        // Update the latest payment record's nextPaymentDate
+        await this.paymentModel.findByIdAndUpdate(existingPayment._id, {
+          nextPaymentDate: nextPayDate,
+        }).exec();
+      } else {
+        // Create an initial payment tracking record
+        const newPayment = new this.paymentModel({
+          studentId: new Types.ObjectId(userId),
+          amount: 0,
+          paymentDate: new Date(),
+          nextPaymentDate: nextPayDate,
+          status: PaymentStatus.PAID,
+        });
+        await newPayment.save();
+      }
+    }
+
     if (updateStudentDto.xp !== undefined) {
       profileUpdates.xp = updateStudentDto.xp;
       // Recalculate level: 1 level per 1000 XP (level = floor(xp / 1000) + 1)

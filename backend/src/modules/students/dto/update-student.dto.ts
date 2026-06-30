@@ -82,4 +82,9 @@ export class UpdateStudentDto {
   @IsNumber()
   @IsOptional()
   level?: number;
+
+  @ApiProperty({ example: '2026-07-20', required: false })
+  @IsString()
+  @IsOptional()
+  nextPaymentDate?: string;
 }

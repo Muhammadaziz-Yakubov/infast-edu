@@ -53,6 +53,7 @@ export const Students: React.FC = () => {
   const [courseId, setCourseId] = useState('');
   const [groupId, setGroupId] = useState('');
   const [password, setPassword] = useState('');
+  const [nextPaymentDate, setNextPaymentDate] = useState('');
 
   // Generated Credentials output
   const [credentials, setCredentials] = useState<{ phone: string; pass: string } | null>(null);
@@ -92,6 +93,7 @@ export const Students: React.FC = () => {
         courseId: courseId || undefined,
         groupId: groupId || undefined,
         password: password || undefined,
+        nextPaymentDate: nextPaymentDate || undefined,
       });
 
       // Show credentials
@@ -112,6 +114,7 @@ export const Students: React.FC = () => {
       setCourseId('');
       setGroupId('');
       setPassword('');
+      setNextPaymentDate('');
     } catch (err: any) {
       alert(err.message || 'Xatolik yuz berdi');
     }
@@ -129,8 +132,10 @@ export const Students: React.FC = () => {
         email: email || undefined,
         courseId: courseId || undefined,
         groupId: groupId || undefined,
+        nextPaymentDate: nextPaymentDate || undefined,
       });
       setEditStudent(null);
+      setNextPaymentDate('');
       await loadData();
     } catch (err: any) {
       alert(err.message || 'Xatolik yuz berdi');
@@ -153,6 +158,7 @@ export const Students: React.FC = () => {
     setEmail(student.email || '');
     setCourseId(student.courseId || '');
     setGroupId(student.groupId || '');
+    setNextPaymentDate('');
   };
 
   const handleCopy = () => {
@@ -541,6 +547,19 @@ export const Students: React.FC = () => {
                       <option key={g._id} value={g._id}>{g.name}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Keyingi To'lov Sanasi (Ixtiyoriy)
+                  </label>
+                  <input
+                    type="date"
+                    value={nextPaymentDate}
+                    onChange={(e) => setNextPaymentDate(e.target.value)}
+                    className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="text-xs text-muted-foreground">Masalan: har oyning 20-sini to'lov kuni sifatida belgilash uchun</p>
                 </div>
               </div>
 

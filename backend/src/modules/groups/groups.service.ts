@@ -126,23 +126,47 @@ export class GroupsService {
     const group = await this.groupModel.findById(groupId).exec();
     if (!group) return [];
 
-    // Count actual lessons for this group's course
-    const modules = await this.moduleModel
-      .find({ courseId: group.courseId })
-      .sort({ order: 1 })
-      .exec();
+    // Find modules of this group (with fallback to course modules)
+    let modules = await this.moduleModel.find({ groupId: group._id }).sort({ order: 1 }).exec();
+    if (modules.length === 0 && group.courseId) {
+      modules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).sort({ order: 1 }).exec();
+    }
     const moduleIds = modules.map((m) => m._id);
-    const totalLessons = await this.lessonModel
-      .countDocuments({ moduleId: { $in: moduleIds } })
-      .exec();
+
+    const lessons = await this.lessonModel.find({ moduleId: { $in: moduleIds } }).exec();
+
+    // Sort lessons by module order, then lesson order
+    lessons.sort((a, b) => {
+      const modA = modules.find((m) => m._id.toString() === a.moduleId.toString());
+      const modB = modules.find((m) => m._id.toString() === b.moduleId.toString());
+      const modOrderA = modA ? modA.order : 0;
+      const modOrderB = modB ? modB.order : 0;
+      if (modOrderA !== modOrderB) {
+        return modOrderA - modOrderB;
+      }
+      return a.order - b.order;
+    });
+
+    const totalLessons = lessons.length;
 
     // Count existing schedule records
-    const scheduleCount = await this.scheduleModel
-      .countDocuments({ groupId: new Types.ObjectId(groupId) })
+    const scheduleRecords = await this.scheduleModel
+      .find({ groupId: new Types.ObjectId(groupId) })
       .exec();
 
-    // Auto-regenerate if schedule is stale (empty or missing lessons)
-    if (totalLessons > 0 && scheduleCount < totalLessons) {
+    // Auto-regenerate if schedule count or ordering is stale
+    let needsRegen = scheduleRecords.length !== totalLessons;
+    if (!needsRegen) {
+      const sortedRecords = [...scheduleRecords].sort((a, b) => a.order - b.order);
+      for (let i = 0; i < totalLessons; i++) {
+        if (sortedRecords[i]?.lessonId?.toString() !== lessons[i]._id.toString()) {
+          needsRegen = true;
+          break;
+        }
+      }
+    }
+
+    if (needsRegen && totalLessons > 0) {
       await this.generateLessonSchedule(groupId);
     }
 
@@ -259,8 +283,11 @@ export class GroupsService {
     const group = await this.groupModel.findById(groupId);
     if (!group) return;
 
-    // 1. Fetch modules and lessons
-    const modules = await this.moduleModel.find({ courseId: group.courseId }).sort({ order: 1 }).exec();
+    // 1. Fetch modules and lessons (handling custom group modules)
+    let modules = await this.moduleModel.find({ groupId: group._id }).sort({ order: 1 }).exec();
+    if (modules.length === 0 && group.courseId) {
+      modules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).sort({ order: 1 }).exec();
+    }
     const moduleIds = modules.map((m) => m._id);
 
     const lessons = await this.lessonModel.find({ moduleId: { $in: moduleIds } }).exec();

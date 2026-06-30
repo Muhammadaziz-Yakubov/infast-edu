@@ -35,3 +35,13 @@ export async function updateGroup(groupId: string, dto: any): Promise<any> {
   return res.data.data;
 }
 
+export async function getGroupModules(groupId: string): Promise<any[]> {
+  const res = await apiClient.get(`/lms/groups/${groupId}/modules`);
+  return res.data.data;
+}
+
+export async function cloneCourseLmsToGroup(groupId: string): Promise<any> {
+  const res = await apiClient.post(`/lms/groups/${groupId}/clone`);
+  return res.data.data;
+}
+

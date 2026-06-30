@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getCourses, createModule, createLesson, updateCourseModules, importCourse, updateLesson } from '../api/courses';
-import { getGroups, updateGroup } from '../api/groups';
+import { getGroups, updateGroup, getGroupModules, cloneCourseLmsToGroup } from '../api/groups';
 import type { Course } from '../utils/mockDb';
 import {
   Layers,
@@ -21,6 +21,13 @@ export const LmsBuilder: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+
+  // Group LMS Builder state
+  const [builderMode, setBuilderMode] = useState<'COURSE' | 'GROUP'>('COURSE');
+  const [allGroupsList, setAllGroupsList] = useState<any[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [groupModules, setGroupModules] = useState<any[]>([]);
+  const [isCustomGroupLms, setIsCustomGroupLms] = useState(false);
   
   // Group lock & start lesson state
   const [courseGroups, setCourseGroups] = useState<any[]>([]);
@@ -66,25 +73,60 @@ export const LmsBuilder: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await getCourses();
-      if (!Array.isArray(data)) {
-        console.error('getCourses unexpected response:', data);
-        return;
+      const [coursesData, groupsData] = await Promise.all([
+        getCourses(),
+        getGroups(),
+      ]);
+
+      if (Array.isArray(coursesData)) {
+        setCourses(coursesData);
+        if (coursesData.length > 0) {
+          setSelectedCourse(prev => {
+            const refreshed = coursesData.find(c => c._id === prev?._id);
+            return refreshed || coursesData[0];
+          });
+        }
       }
-      setCourses(data);
-      if (data.length > 0) {
-        setSelectedCourse(prev => {
-          const refreshed = data.find(c => c._id === prev?._id);
-          return refreshed || data[0];
-        });
+
+      if (Array.isArray(groupsData)) {
+        setAllGroupsList(groupsData);
       }
     } catch (e: any) {
       console.error('loadData error:', e);
-      alert(`Kurslarni yuklashda xatolik: ${e?.response?.data?.message || e?.message || 'Noma\'lum xato'}`);
+      alert(`Ma'lumotlarni yuklashda xatolik: ${e?.response?.data?.message || e?.message || 'Noma\'lum xato'}`);
     } finally {
       setLoading(false);
     }
   };
+
+  const loadGroupModules = async (groupId: string) => {
+    if (!groupId) return;
+    setLoading(true);
+    try {
+      const data = await getGroupModules(groupId);
+      setGroupModules(data);
+      const hasCustom = data.some(m => m.groupId);
+      setIsCustomGroupLms(hasCustom);
+    } catch (e: any) {
+      console.error('loadGroupModules error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshBuilderData = async () => {
+    if (builderMode === 'COURSE') {
+      await loadData();
+    } else if (selectedGroupId) {
+      await loadGroupModules(selectedGroupId);
+    }
+  };
+
+  useEffect(() => {
+    if (builderMode === 'GROUP' && selectedGroupId) {
+      loadGroupModules(selectedGroupId);
+    }
+  }, [selectedGroupId, builderMode]);
 
   const loadGroupsForCourse = async (courseId: string) => {
     setLoadingGroups(true);
@@ -178,14 +220,18 @@ export const LmsBuilder: React.FC = () => {
   };
 
   const handleAddModule = async () => {
-    if (!selectedCourse || !moduleTitle) return;
+    if (!moduleTitle) return;
+    if (builderMode === 'COURSE' && !selectedCourse) return;
+    if (builderMode === 'GROUP' && !selectedGroupId) return;
+
     try {
       await createModule({
-        courseId: selectedCourse._id,
+        courseId: builderMode === 'COURSE' ? selectedCourse?._id : undefined,
+        groupId: builderMode === 'GROUP' ? selectedGroupId : undefined,
         title: moduleTitle,
       });
       setModuleTitle('');
-      await loadData();
+      await refreshBuilderData();
     } catch (err: any) {
       alert(err.message);
     }
@@ -221,7 +267,7 @@ export const LmsBuilder: React.FC = () => {
       setPracticeCoins(10);
       setQuizzes([]);
       setQuizRound(1);
-      await loadData();
+      await refreshBuilderData();
       
       // Select the newly created lesson
       setActiveLesson(newLesson);
@@ -275,7 +321,7 @@ export const LmsBuilder: React.FC = () => {
       });
 
       setIsEditing(false);
-      await loadData();
+      await refreshBuilderData();
       
       // Update the active lesson to reflect the edits
       setActiveLesson(updatedLesson);
@@ -302,6 +348,10 @@ export const LmsBuilder: React.FC = () => {
     setQuizOptions(['', '', '', '']);
     setQuizCorrectIndex(0);
   };
+
+  const activeModules = builderMode === 'COURSE' 
+    ? (selectedCourse?.modules || []) 
+    : groupModules;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -330,25 +380,65 @@ export const LmsBuilder: React.FC = () => {
         </div>
       </div>
 
-      {/* Select Course dropdown */}
-      <div className="flex items-center gap-4 bg-card border p-4 rounded-xl shadow-sm">
-        <BookOpen className="w-5 h-5 text-primary shrink-0" />
-        <span className="font-semibold text-sm">Kurs:</span>
-        <select
-          value={selectedCourse?._id || ''}
-          onChange={(e) => {
-            const course = courses.find((c) => c._id === e.target.value);
-            setSelectedCourse(course || null);
-            setActiveModuleId(null);
-            setActiveLesson(null);
-            setVisualizeGroupId('none');
-          }}
-          className="text-sm rounded-lg border bg-background px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none"
-        >
-          {courses.map((c) => (
-            <option key={c._id} value={c._id}>{c.title}</option>
-          ))}
-        </select>
+      {/* Select Course or Group dropdown */}
+      <div className="flex flex-wrap items-center gap-6 bg-card border p-4 rounded-xl shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sm text-muted-foreground">Tahrirlash turi:</span>
+          <select
+            value={builderMode}
+            onChange={(e) => {
+              const val = e.target.value as 'COURSE' | 'GROUP';
+              setBuilderMode(val);
+              setActiveModuleId(null);
+              setActiveLesson(null);
+            }}
+            className="text-sm rounded-lg border bg-background px-2.5 py-1.5 focus:ring-1 focus:ring-primary outline-none font-bold"
+          >
+            <option value="COURSE">Kurs (Shablon)</option>
+            <option value="GROUP">Guruh (Individual)</option>
+          </select>
+        </div>
+
+        {builderMode === 'COURSE' ? (
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-primary shrink-0" />
+            <span className="font-semibold text-sm">Kurs:</span>
+            <select
+              value={selectedCourse?._id || ''}
+              onChange={(e) => {
+                const course = courses.find((c) => c._id === e.target.value);
+                setSelectedCourse(course || null);
+                setActiveModuleId(null);
+                setActiveLesson(null);
+                setVisualizeGroupId('none');
+              }}
+              className="text-sm rounded-lg border bg-background px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none"
+            >
+              {courses.map((c) => (
+                <option key={c._id} value={c._id}>{c.title}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Layers className="w-5 h-5 text-primary shrink-0" />
+            <span className="font-semibold text-sm">Guruh:</span>
+            <select
+              value={selectedGroupId}
+              onChange={(e) => {
+                setSelectedGroupId(e.target.value);
+                setActiveModuleId(null);
+                setActiveLesson(null);
+              }}
+              className="text-sm rounded-lg border bg-background px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none"
+            >
+              <option value="">Guruhni tanlang...</option>
+              {allGroupsList.map((g) => (
+                <option key={g._id} value={g._id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Group Start Lesson Configurator & Visualizer */}
@@ -419,15 +509,47 @@ export const LmsBuilder: React.FC = () => {
           <div className="flex items-center justify-between border-b pb-3">
             <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
               <Layers className="w-4 h-4 text-primary" />
-              Kurs modullari
+              {builderMode === 'COURSE' ? 'Kurs modullari' : 'Guruh modullari (Mavzular)'}
             </h3>
           </div>
 
-          {selectedCourse?.modules.length === 0 ? (
+          {builderMode === 'GROUP' && selectedGroupId && !isCustomGroupLms && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs space-y-2">
+              <p className="font-semibold text-amber-600">
+                Ushbu guruh hozirda umumiy kurs shablonidan foydalanmoqda.
+              </p>
+              <p className="text-muted-foreground text-[10px]">
+                Guruh uchun alohida, mustaqil darslik va amaliy topshiriqlarni sozlashni xohlaysizmi?
+              </p>
+              <button
+                onClick={async () => {
+                  const confirmClone = window.confirm(
+                    "Ishonchingiz komilmi? Bu amal guruh uchun kurs shablonidan nusxa oladi va individual tahrirlash imkonini beradi."
+                  );
+                  if (!confirmClone) return;
+                  setLoading(true);
+                  try {
+                    await cloneCourseLmsToGroup(selectedGroupId);
+                    alert("Kurs shabloni guruhga muvaffaqiyatli nusxalandi!");
+                    await loadGroupModules(selectedGroupId);
+                  } catch (e: any) {
+                    alert("Xatolik: " + (e.response?.data?.message || e.message));
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className="w-full bg-amber-500 text-white font-bold py-1.5 px-3 rounded hover:bg-amber-600 transition-all text-center"
+              >
+                Guruh uchun alohida yaratish
+              </button>
+            </div>
+          )}
+
+          {activeModules.length === 0 ? (
             <p className="text-xs text-muted-foreground py-6 text-center">Modullar mavjud emas.</p>
           ) : (
             <div className="space-y-4">
-              {selectedCourse?.modules.map((mod) => (
+              {activeModules.map((mod) => (
                 <div key={mod._id} className="space-y-2">
                   <div
                     onClick={() => setActiveModuleId(mod._id)}
@@ -436,8 +558,8 @@ export const LmsBuilder: React.FC = () => {
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={async (e) => {
                       e.preventDefault();
-                      if (!draggedModuleId || draggedModuleId === mod._id || !selectedCourse) return;
-                      const modules = [...selectedCourse.modules];
+                      if (!draggedModuleId || draggedModuleId === mod._id) return;
+                      const modules = [...activeModules];
                       const dragIdx = modules.findIndex((m) => m._id === draggedModuleId);
                       const hoverIdx = modules.findIndex((m) => m._id === mod._id);
                       if (dragIdx !== -1 && hoverIdx !== -1) {
@@ -446,8 +568,10 @@ export const LmsBuilder: React.FC = () => {
                         modules.forEach((m, idx) => {
                           m.order = idx + 1;
                         });
-                        await updateCourseModules(selectedCourse._id, modules);
-                        await loadData();
+                        const targetId = builderMode === 'COURSE' ? selectedCourse?._id : selectedGroupId;
+                        if (!targetId) return;
+                        await updateCourseModules(targetId, modules);
+                        await refreshBuilderData();
                       }
                       setDraggedModuleId(null);
                     }}
@@ -498,8 +622,8 @@ export const LmsBuilder: React.FC = () => {
                           onDrop={async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (!draggedLessonId || draggedLessonId === les._id || !selectedCourse || !activeModuleId) return;
-                            const modules = [...selectedCourse.modules];
+                            if (!draggedLessonId || draggedLessonId === les._id || !activeModuleId) return;
+                            const modules = [...activeModules];
                             const mIdx = modules.findIndex((m) => m._id === activeModuleId);
                             if (mIdx === -1) return;
                             const lessons = [...modules[mIdx].lessons];
@@ -512,8 +636,10 @@ export const LmsBuilder: React.FC = () => {
                                 l.order = idx + 1;
                               });
                               modules[mIdx].lessons = lessons;
-                              await updateCourseModules(selectedCourse._id, modules);
-                              await loadData();
+                              const targetId = builderMode === 'COURSE' ? selectedCourse?._id : selectedGroupId;
+                              if (!targetId) return;
+                              await updateCourseModules(targetId, modules);
+                              await refreshBuilderData();
                             }
                             setDraggedLessonId(null);
                           }}

@@ -3,7 +3,7 @@ import { getCourses, createModule, createLesson, updateCourseModules, importCour
 import type { Course } from '../utils/mockDb';
 import {
   Layers,
-  MonitorPlay,
+  Code,
   Plus,
   BookOpen,
   HelpCircle,
@@ -12,23 +12,6 @@ import {
   GripVertical,
   Upload,
 } from 'lucide-react';
-
-// Convert any YouTube URL format to embed URL
-const toEmbedUrl = (url: string): string => {
-  if (!url) return url;
-  // Already embed format
-  if (url.includes('youtube.com/embed/')) return url;
-  // youtube.com/watch?v=ID
-  const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-  if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`;
-  // youtu.be/ID
-  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-  if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
-  // youtube.com/shorts/ID
-  const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
-  if (shortsMatch) return `https://www.youtube.com/embed/${shortsMatch[1]}`;
-  return url;
-};
 
 export const LmsBuilder: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -46,9 +29,16 @@ export const LmsBuilder: React.FC = () => {
   // Creation forms states
   const [moduleTitle, setModuleTitle] = useState('');
   const [lessonTitle, setLessonTitle] = useState('');
-  const [lessonVideo, setLessonVideo] = useState('https://www.youtube.com/embed/W6NZfCO5SIk');
-  const [lessonContent, setLessonContent] = useState('');
   const [lessonDesc, setLessonDesc] = useState('');
+
+  // Practice task creator state
+  const [practiceTitle, setPracticeTitle] = useState('');
+  const [practiceDesc, setPracticeDesc] = useState('');
+  const [practiceLang, setPracticeLang] = useState('html');
+  const [practiceStarter, setPracticeStarter] = useState('');
+  const [practiceRules, setPracticeRules] = useState('');
+  const [practiceXp, setPracticeXp] = useState(50);
+  const [practiceCoins, setPracticeCoins] = useState(10);
 
   // Quiz creator state
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -65,12 +55,20 @@ export const LmsBuilder: React.FC = () => {
     setLoading(true);
     try {
       const data = await getCourses();
+      if (!Array.isArray(data)) {
+        console.error('getCourses unexpected response:', data);
+        return;
+      }
       setCourses(data);
       if (data.length > 0) {
-        setSelectedCourse(data[0]);
+        setSelectedCourse(prev => {
+          const refreshed = data.find(c => c._id === prev?._id);
+          return refreshed || data[0];
+        });
       }
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('loadData error:', e);
+      alert(`Kurslarni yuklashda xatolik: ${e?.response?.data?.message || e?.message || 'Noma\'lum xato'}`);
     } finally {
       setLoading(false);
     }
@@ -85,8 +83,8 @@ export const LmsBuilder: React.FC = () => {
       try {
         const json = JSON.parse(event.target?.result as string);
         
-        if (!json.title || !json.description || !json.duration || !json.level) {
-          alert("Xato JSON formati: Kursda 'title', 'description', 'duration' va 'level' bo'lishi shart.");
+        if (!json.title || !json.description) {
+          alert("Xato JSON formati: Kursda 'title' va 'description' bo'lishi shart.");
           return;
         }
 
@@ -140,13 +138,27 @@ export const LmsBuilder: React.FC = () => {
         moduleId: activeModuleId,
         title: lessonTitle,
         description: lessonDesc,
-        videoUrl: toEmbedUrl(lessonVideo),
-        textContent: lessonContent,
+        practice: practiceTitle ? {
+          title: practiceTitle,
+          description: practiceDesc,
+          language: practiceLang,
+          starterCode: practiceStarter,
+          validationType: 'contains',
+          validationRules: practiceRules.split(',').map(r => r.trim()).filter(Boolean),
+          xpReward: Number(practiceXp),
+          coinReward: Number(practiceCoins)
+        } : undefined,
         quiz: quizzes,
       });
       setLessonTitle('');
       setLessonDesc('');
-      setLessonContent('');
+      setPracticeTitle('');
+      setPracticeDesc('');
+      setPracticeLang('html');
+      setPracticeStarter('');
+      setPracticeRules('');
+      setPracticeXp(50);
+      setPracticeCoins(10);
       setQuizzes([]);
       setQuizRound(1);
       await loadData();
@@ -168,7 +180,6 @@ export const LmsBuilder: React.FC = () => {
       options: [...quizOptions],
       correctAnswerIndex: quizCorrectIndex,
       round: quizRound,
-      score: 10,
     };
     setQuizzes([...quizzes, newQuiz]);
     
@@ -185,7 +196,7 @@ export const LmsBuilder: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight mb-1">LMS Builder</h1>
-          <p className="text-muted-foreground">Kurs mavzulari, video darslar, uy vazifalari va quiz testlarini tuzish ish stoli.</p>
+          <p className="text-muted-foreground">Kurs mavzulari, amaliy topshiriqlar va quiz testlarini tuzish ish stoli.</p>
         </div>
         <div className="flex items-center gap-3">
           <input
@@ -328,7 +339,7 @@ export const LmsBuilder: React.FC = () => {
                           }`}
                         >
                           <GripVertical className="w-3 h-3 text-muted-foreground/60 shrink-0 cursor-grab" />
-                          <MonitorPlay className="w-3.5 h-3.5 shrink-0" />
+                          <Code className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                           <span className="truncate">{les.title}</span>
                         </div>
                       );
@@ -358,7 +369,7 @@ export const LmsBuilder: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Side: Notion Workspace Panel */}
+        {/* Right Side: Workspace Panel */}
         <div className="lg:col-span-8 bg-card border rounded-xl shadow-sm overflow-hidden flex flex-col">
           {activeLesson ? (
             <div className="p-6 flex-1 overflow-y-auto space-y-6 max-h-[700px]">
@@ -367,43 +378,118 @@ export const LmsBuilder: React.FC = () => {
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-bold">Yangi Dars Qo'shish</h3>
-                    <p className="text-xs text-muted-foreground">Tanlangan modul uchun yangi darslik va savollar yarating.</p>
+                    <p className="text-xs text-muted-foreground">Tanlangan modul uchun yangi amaliy darslik va savollar yarating.</p>
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-foreground">Dars nomi</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="E.g. Variables & Data Types"
-                        value={lessonTitle}
-                        onChange={(e) => setLessonTitle(e.target.value)}
-                        className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Dars nomi</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="E.g. HTML Kirish"
+                          value={lessonTitle}
+                          onChange={(e) => setLessonTitle(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Dars tavsifi</label>
+                        <input
+                          type="text"
+                          placeholder="Dars haqida qisqacha ma'lumot..."
+                          value={lessonDesc}
+                          onChange={(e) => setLessonDesc(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-foreground">Video darslik (YouTube URL)</label>
-                      <input
-                        type="text"
-                        placeholder="E.g. https://www.youtube.com/watch?v=W6NZfCO5SIk"
-                        value={lessonVideo}
-                        onChange={(e) => setLessonVideo(e.target.value)}
-                        className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
-                      />
-                      <p className="text-xs text-muted-foreground">watch?v=, youtu.be/ yoki embed/ – barchasi qabul qilinadi</p>
-                    </div>
+                    {/* Practice Task Fields */}
+                    <div className="border rounded-xl p-4 space-y-4 bg-secondary/10">
+                      <h4 className="font-bold text-xs flex items-center gap-1.5 text-primary uppercase tracking-wider">
+                        <Code className="w-4 h-4" />
+                        💻 Amaliyot Topshirig'i (Practice Task)
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">Topshiriq nomi</label>
+                          <input
+                            type="text"
+                            placeholder="E.g. H1 element yarating"
+                            value={practiceTitle}
+                            onChange={(e) => setPracticeTitle(e.target.value)}
+                            className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">Dasturlash tili</label>
+                          <select
+                            value={practiceLang}
+                            onChange={(e) => setPracticeLang(e.target.value)}
+                            className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                          >
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="javascript">JavaScript</option>
+                          </select>
+                        </div>
+                      </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-foreground">Matnli dars mazmuni</label>
-                      <textarea
-                        rows={4}
-                        placeholder="Dars matnini yozing..."
-                        value={lessonContent}
-                        onChange={(e) => setLessonContent(e.target.value)}
-                        className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary font-mono resize-none"
-                      />
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-muted-foreground">Topshiriq tavsifi (Yo'riqnoma)</label>
+                        <textarea
+                          rows={2}
+                          placeholder="Topshiriq shartlarini yozing..."
+                          value={practiceDesc}
+                          onChange={(e) => setPracticeDesc(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-xs bg-background outline-none resize-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-muted-foreground">Boshlang'ich kod (Starter Code)</label>
+                        <textarea
+                          rows={2}
+                          placeholder="Talaba muharrirni ochganda chiqadigan kod..."
+                          value={practiceStarter}
+                          onChange={(e) => setPracticeStarter(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-xs bg-background outline-none font-mono resize-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-muted-foreground">Validation qoidalari (Tekshirish so'zlari, vergul bilan ajrating)</label>
+                        <input
+                          type="text"
+                          placeholder="E.g. <h1>, </h1>, Salom"
+                          value={practiceRules}
+                          onChange={(e) => setPracticeRules(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">XP Mukofot</label>
+                          <input
+                            type="number"
+                            value={practiceXp}
+                            onChange={(e) => setPracticeXp(Number(e.target.value))}
+                            className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">Coin Mukofot</label>
+                          <input
+                            type="number"
+                            value={practiceCoins}
+                            onChange={(e) => setPracticeCoins(Number(e.target.value))}
+                            className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Quiz editor within creation form */}
@@ -419,7 +505,7 @@ export const LmsBuilder: React.FC = () => {
                             <div key={idx} className="flex justify-between items-center bg-card p-2 border rounded-lg text-xs">
                               <div>
                                 <span className="font-semibold block">{idx + 1}. {q.question}</span>
-                                <span className="text-muted-foreground">Raund: {q.round || 1} | To'g'ri variant: A{q.correctAnswerIndex + 1}</span>
+                                <span className="text-muted-foreground">Raund: {q.round || 1} | Variant: {q.options[q.correctAnswerIndex]}</span>
                               </div>
                               <button
                                 onClick={() => setQuizzes(quizzes.filter((_, i) => i !== idx))}
@@ -515,26 +601,47 @@ export const LmsBuilder: React.FC = () => {
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-xl font-bold">{activeLesson.title}</h3>
-                    <p className="text-xs text-muted-foreground">Tartib raqami: #{activeLesson.order}</p>
+                    <p className="text-xs text-muted-foreground">{activeLesson.description || 'Tavsif kiritilmagan'}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Tartib raqami: #{activeLesson.order}</p>
                   </div>
 
-                  {activeLesson.videoUrl && (
-                    <div className="aspect-[16/9] w-full rounded-xl overflow-hidden bg-secondary border">
-                      <iframe
-                        src={activeLesson.videoUrl}
-                        title="Video tutorial"
-                        className="w-full h-full border-0"
-                        allowFullScreen
-                      />
-                    </div>
-                  )}
+                  {activeLesson.practice && (
+                    <div className="space-y-4 border-t pt-4">
+                      <span className="text-xs text-muted-foreground font-semibold uppercase block flex items-center gap-1">
+                        <Code className="w-4 h-4 text-primary" />
+                        Amaliyot Topshirig'i (Practice Task)
+                      </span>
+                      <div className="p-4 border rounded-xl bg-secondary/15 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-sm text-foreground">{activeLesson.practice.title}</span>
+                          <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold">
+                            {activeLesson.practice.language?.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{activeLesson.practice.description}</p>
+                        
+                        {activeLesson.practice.starterCode && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-muted-foreground font-semibold">Starter Code:</span>
+                            <pre className="p-2.5 bg-background rounded border text-xs font-mono">
+                              {activeLesson.practice.starterCode}
+                            </pre>
+                          </div>
+                        )}
 
-                  {activeLesson.textContent && (
-                    <div className="space-y-2 border-t pt-4">
-                      <span className="text-xs text-muted-foreground font-semibold uppercase block">Dars matni</span>
-                      <pre className="p-4 bg-secondary/35 rounded-xl border text-sm font-mono whitespace-pre-wrap leading-relaxed">
-                        {activeLesson.textContent}
-                      </pre>
+                        <div className="flex flex-wrap gap-4 text-xs pt-2 border-t mt-2">
+                          <div>
+                            <span className="text-muted-foreground">Validation Rules: </span>
+                            <span className="font-semibold text-foreground">
+                              {activeLesson.practice.validationRules?.join(', ') || 'yo\'q'}
+                            </span>
+                          </div>
+                          <div className="ml-auto flex gap-3">
+                            <span className="text-primary font-bold">+{activeLesson.practice.xpReward || 50} XP</span>
+                            <span className="text-amber-500 font-bold">+{activeLesson.practice.coinReward || 10} Coins</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 

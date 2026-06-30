@@ -139,7 +139,7 @@ export class StudentsService implements OnModuleInit {
 
 
   async createStudent(createStudentDto: CreateStudentDto): Promise<any> {
-    const { email, studentPhone, parentPhone, dateOfBirth, fullName, avatar, groupId, courseId } = createStudentDto;
+    const { email, studentPhone, parentPhone, dateOfBirth, fullName, avatar, groupId, courseId, password } = createStudentDto;
 
     // Check existing by studentPhone or email
     const queryOr: any[] = [{ phone: studentPhone }, { studentPhone }];
@@ -151,8 +151,8 @@ export class StudentsService implements OnModuleInit {
       throw new ConflictException('Email or student phone already registered');
     }
 
-    // Generate default password: DDMMYYYY format from DD.MM.YYYY
-    const defaultPassword = dateOfBirth.replace(/\./g, '');
+    // Use custom password if provided, otherwise generate default password: DDMMYYYY format from DD.MM.YYYY
+    const defaultPassword = password || dateOfBirth.replace(/\./g, '');
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
     const user = new this.userModel({

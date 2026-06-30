@@ -43,4 +43,9 @@ export class CreateStudentDto {
   @IsString()
   @IsOptional()
   courseId?: string;
+
+  @ApiProperty({ example: 'myCustomPassword123!', required: false })
+  @IsString()
+  @IsOptional()
+  password?: string;
 }

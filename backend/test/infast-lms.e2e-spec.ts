@@ -123,6 +123,36 @@ describe('InFast Academy OS Backend (e2e)', () => {
       expect(res.body.success).toBe(false);
     });
 
+    it('should create a student profile successfully with a custom password', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/students')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          fullName: 'Custom Password Student',
+          studentPhone: '+998909876543',
+          parentPhone: '+998909876544',
+          dateOfBirth: '12.12.2012',
+          email: 'custompass@infast.uz',
+          password: 'SecretCustomPassword123!',
+        })
+        .expect(201);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.generatedPassword).toBe('SecretCustomPassword123!');
+
+      // Login with the custom password
+      const loginRes = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({
+          identifier: '+998909876543',
+          password: 'SecretCustomPassword123!',
+        })
+        .expect(201);
+
+      expect(loginRes.body.success).toBe(true);
+      expect(loginRes.body.data.accessToken).toBeDefined();
+    });
+
     it('should login student using phone and birthdate-based default password', async () => {
       const res = await request(app.getHttpServer())
         .post('/auth/login')

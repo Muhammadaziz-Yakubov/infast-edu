@@ -1,15 +1,26 @@
-import { Controller, Get, Post, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, UseGuards, Body } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/roles.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
+
+  @Post('broadcast')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Broadcast a notification to all students (Admin only)' })
+  @ApiResponse({ status: 201, description: 'Notification broadcasted successfully.' })
+  broadcast(@Body() body: { title: string; message: string }) {
+    return this.notificationsService.broadcast(body.title, body.message);
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all notifications for current user' })

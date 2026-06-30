@@ -31,6 +31,14 @@ export class StudentsController {
     return this.studentsService.getProfile(user.userId);
   }
 
+  @Patch('me/avatar')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Update student avatar (Student only)' })
+  @ApiResponse({ status: 200, description: 'Avatar updated successfully.' })
+  updateOwnAvatar(@CurrentUser() user: any, @Body() body: { avatar: string }) {
+    return this.studentsService.updateOwnAvatar(user.userId, body.avatar);
+  }
+
   @Get()
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all students profiles (Admin only)' })

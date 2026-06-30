@@ -456,6 +456,7 @@ export class StudentsService implements OnModuleInit {
       profileObj.fullName = user.fullName;
       profileObj.email = user.email || '';
       profileObj.status = user.status;
+      profileObj.avatar = user.avatar || '';
       profileObj.studentPhone = profileObj.studentPhone || user.studentPhone || user.phone || '';
     }
 
@@ -499,5 +500,17 @@ export class StudentsService implements OnModuleInit {
     }
     profile.homeworkProgress = progress;
     return profile.save();
+  }
+
+  async updateOwnAvatar(userId: string, avatarUrl: string): Promise<any> {
+    const user = await this.userModel.findByIdAndUpdate(
+      userId,
+      { avatar: avatarUrl },
+      { new: true }
+    ).exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return { success: true, avatar: user.avatar };
   }
 }

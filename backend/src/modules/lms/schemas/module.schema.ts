@@ -17,10 +17,14 @@ export class CourseModule extends Document {
   @Prop({ required: true })
   order: number;
 
-  @Prop({ type: Types.ObjectId, ref: 'Course', required: true })
-  courseId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Course', required: false })
+  courseId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Group', required: false })
+  groupId?: Types.ObjectId;
 }
 
 export type CourseModuleDocument = CourseModule & Document;
 export const CourseModuleSchema = SchemaFactory.createForClass(CourseModule);
 CourseModuleSchema.index({ courseId: 1, order: 1 });
+CourseModuleSchema.index({ groupId: 1, order: 1 });

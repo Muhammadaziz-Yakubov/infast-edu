@@ -6,6 +6,7 @@ import { Lesson, LessonDocument } from './schemas/lesson.schema';
 import { LessonProgress, LessonProgressDocument } from './schemas/lesson-progress.schema';
 import { Story, StoryDocument } from './schemas/story.schema';
 import { PracticeTask, PracticeTaskDocument } from './schemas/practice-task.schema';
+import { Group, GroupDocument } from '../groups/schemas/group.schema';
 import { StudentsService } from '../students/students.service';
 
 @Injectable()
@@ -21,6 +22,8 @@ export class LmsService implements OnModuleInit {
     private readonly storyModel: Model<StoryDocument>,
     @InjectModel(PracticeTask.name)
     private readonly practiceModel: Model<PracticeTaskDocument>,
+    @InjectModel(Group.name)
+    private readonly groupModel: Model<GroupDocument>,
     @Inject(forwardRef(() => StudentsService))
     private readonly studentsService: StudentsService
   ) { }
@@ -54,20 +57,28 @@ export class LmsService implements OnModuleInit {
   // Modules CRUD
   async createModule(dto: any): Promise<CourseModuleDocument> {
     let order = dto.order;
+    const filter: any = {};
+    if (dto.groupId) {
+      filter.groupId = new Types.ObjectId(dto.groupId);
+    } else if (dto.courseId) {
+      filter.courseId = new Types.ObjectId(dto.courseId);
+    }
+
     if (order === undefined || order === null) {
-      const count = await this.moduleModel.countDocuments({ courseId: new Types.ObjectId(dto.courseId) }).exec();
+      const count = await this.moduleModel.countDocuments(filter).exec();
       order = count + 1;
     }
     const newModule = new this.moduleModel({
       ...dto,
       order,
-      courseId: new Types.ObjectId(dto.courseId),
+      courseId: dto.courseId ? new Types.ObjectId(dto.courseId) : undefined,
+      groupId: dto.groupId ? new Types.ObjectId(dto.groupId) : undefined,
     });
     return newModule.save();
   }
 
   async findModulesByCourse(courseId: string): Promise<any[]> {
-    const modules = await this.moduleModel.find({ courseId: new Types.ObjectId(courseId) }).sort({ order: 1 }).exec();
+    const modules = await this.moduleModel.find({ courseId: new Types.ObjectId(courseId), groupId: { $exists: false } }).sort({ order: 1 }).exec();
     const result = [];
     for (const mod of modules) {
       const lessons = await this.lessonModel.find({ moduleId: mod._id }).sort({ order: 1 }).exec();
@@ -77,6 +88,75 @@ export class LmsService implements OnModuleInit {
       });
     }
     return result;
+  }
+
+  async findModulesByGroup(groupId: string): Promise<any[]> {
+    const group = await this.groupModel.findById(groupId).exec();
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    // Try finding modules specifically created for this group
+    let modules = await this.moduleModel.find({ groupId: new Types.ObjectId(groupId) }).sort({ order: 1 }).exec();
+
+    // If no custom modules for this group, fallback to course modules
+    if (modules.length === 0 && group.courseId) {
+      modules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).sort({ order: 1 }).exec();
+    }
+
+    const result = [];
+    for (const mod of modules) {
+      const lessons = await this.lessonModel.find({ moduleId: mod._id }).sort({ order: 1 }).exec();
+      result.push({
+        ...mod.toObject(),
+        lessons,
+      });
+    }
+    return result;
+  }
+
+  async cloneCourseLmsToGroup(groupId: string): Promise<any> {
+    const group = await this.groupModel.findById(groupId).exec();
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    // Clear any existing custom group modules first
+    const existingGroupModules = await this.moduleModel.find({ groupId: new Types.ObjectId(groupId) }).exec();
+    const existingGroupModuleIds = existingGroupModules.map(m => m._id);
+    await this.moduleModel.deleteMany({ groupId: new Types.ObjectId(groupId) }).exec();
+    await this.lessonModel.deleteMany({ moduleId: { $in: existingGroupModuleIds } }).exec();
+
+    // Fetch original course modules & lessons
+    const courseModules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).exec();
+
+    for (const cMod of courseModules) {
+      // 1. Clone module
+      const newMod = new this.moduleModel({
+        title: cMod.title,
+        order: cMod.order,
+        groupId: new Types.ObjectId(groupId),
+      });
+      const savedMod = await newMod.save();
+
+      // 2. Clone lessons
+      const lessons = await this.lessonModel.find({ moduleId: cMod._id }).exec();
+      for (const les of lessons) {
+        const lesObj = les.toObject() as any;
+        const newLes = new this.lessonModel({
+          moduleId: savedMod._id,
+          title: lesObj.title,
+          description: lesObj.description,
+          videoUrl: lesObj.videoUrl,
+          content: lesObj.content,
+          order: lesObj.order,
+          quiz: lesObj.quiz,
+          practice: lesObj.practice,
+        });
+        await newLes.save();
+      }
+    }
+    return { success: true };
   }
 
   async updateModule(id: string, dto: any): Promise<CourseModuleDocument> {
@@ -289,7 +369,8 @@ export class LmsService implements OnModuleInit {
     }
 
     // Gate: test is only accessible after practice is completed
-    if (!progress.practiceCompleted) {
+    const hasPractice = !!lesson.practice;
+    if (hasPractice && !progress.practiceCompleted) {
       throw new BadRequestException('Avval amaliyot topshirig\'ini bajaring');
     }
 
@@ -353,7 +434,8 @@ export class LmsService implements OnModuleInit {
     }
 
     // Lesson fully completed only when BOTH practice AND test are done
-    const isFullyCompleted = progress.practiceCompleted && progress.testCompleted;
+    const isPracticeDone = !hasPractice || progress.practiceCompleted;
+    const isFullyCompleted = isPracticeDone && progress.testCompleted;
     if (isFullyCompleted && !progress.completed) {
       progress.completed = true;
       progress.completionDate = new Date();
@@ -404,8 +486,14 @@ export class LmsService implements OnModuleInit {
   }
 
   async getCourseProgress(studentId: string, courseId: string): Promise<any> {
-    // 1. Get all modules for course
-    const modules = await this.findModulesByCourse(courseId);
+    // 1. Get student profile to determine their group
+    const profile = await this.studentsService.getStudentProfileForAuth(studentId);
+    let modules = [];
+    if (profile && profile.groupId) {
+      modules = await this.findModulesByGroup(profile.groupId._id.toString());
+    } else {
+      modules = await this.findModulesByCourse(courseId);
+    }
     const moduleIds = modules.map((m) => m._id);
 
     // 2. Get all lessons in these modules

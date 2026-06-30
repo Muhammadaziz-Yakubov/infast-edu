@@ -30,6 +30,12 @@ export class LmsController {
     return this.lmsService.findModulesByCourse(courseId);
   }
 
+  @Get('groups/:groupId/modules')
+  @ApiOperation({ summary: 'Get all modules in a group (fallback to course modules)' })
+  findModulesByGroup(@Param('groupId') groupId: string) {
+    return this.lmsService.findModulesByGroup(groupId);
+  }
+
   @Patch('modules/:id')
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update module details (Admin only)' })
@@ -123,6 +129,13 @@ export class LmsController {
   @ApiOperation({ summary: 'Get gradebook table data for classmate student profiles inside a group' })
   getGroupGrades(@Param('groupId') groupId: string) {
     return this.lmsService.getGroupGrades(groupId);
+  }
+
+  @Post('groups/:groupId/clone')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Clone course syllabus structure to custom group modules and lessons (Admin only)' })
+  cloneCourseLmsToGroup(@Param('groupId') groupId: string) {
+    return this.lmsService.cloneCourseLmsToGroup(groupId);
   }
 
   // ── Stories Controller ──

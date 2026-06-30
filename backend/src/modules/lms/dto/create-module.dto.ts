@@ -12,8 +12,13 @@ export class CreateModuleDto {
   @IsOptional()
   order?: number;
 
-  @ApiProperty({ example: '65f1a2b3c4d5e6f7a8b9c0d2' })
+  @ApiProperty({ example: '65f1a2b3c4d5e6f7a8b9c0d2', required: false })
   @IsString()
-  @IsNotEmpty()
-  courseId: string;
+  @IsOptional()
+  courseId?: string;
+
+  @ApiProperty({ example: '65f1a2b3c4d5e6f7a8b9c0d3', required: false })
+  @IsString()
+  @IsOptional()
+  groupId?: string;
 }

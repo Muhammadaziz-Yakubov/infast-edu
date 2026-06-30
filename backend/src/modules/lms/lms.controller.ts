@@ -84,6 +84,13 @@ export class LmsController {
     return this.lmsService.removeLesson(id);
   }
 
+  @Post('lessons/:id/duplicate')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Duplicate lesson to a target module (Admin only)' })
+  duplicateLesson(@Param('id') id: string, @Body('targetModuleId') targetModuleId: string) {
+    return this.lmsService.duplicateLesson(id, targetModuleId);
+  }
+
   // Student Progress & Completion
   @Post('lessons/:id/validate-practice')
   @Roles(Role.STUDENT)

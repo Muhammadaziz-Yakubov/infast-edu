@@ -213,6 +213,67 @@ export class LmsService implements OnModuleInit {
     return this.findOneLesson(savedLesson._id.toString());
   }
 
+  async duplicateLesson(lessonId: string, targetModuleId: string): Promise<any> {
+    const lesson = await this.lessonModel.findById(lessonId).exec();
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    const targetModule = await this.moduleModel.findById(targetModuleId).exec();
+    if (!targetModule) {
+      throw new NotFoundException('Target module not found');
+    }
+
+    // Find next order
+    const maxOrderLesson = await this.lessonModel
+      .findOne({ moduleId: targetModule._id })
+      .sort({ order: -1 })
+      .exec();
+    const nextOrder = maxOrderLesson ? maxOrderLesson.order + 1 : 1;
+
+    // Duplicate lesson fields
+    const lesObj = lesson.toObject() as any;
+    
+    // Copy practice configuration if any exists
+    let practiceData = lesObj.practice;
+    try {
+      const practice = await this.practiceModel.findOne({ lessonId: lesson._id }).exec();
+      if (practice) {
+        practiceData = practice.toObject();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    const duplicatedLesson = new this.lessonModel({
+      moduleId: targetModule._id,
+      title: lesObj.title,
+      description: lesObj.description,
+      videoUrl: lesObj.videoUrl,
+      content: lesObj.content,
+      order: nextOrder,
+      quiz: lesObj.quiz,
+    });
+    const savedLesson = await duplicatedLesson.save();
+
+    if (practiceData) {
+      const duplicatedPractice = new this.practiceModel({
+        lessonId: savedLesson._id,
+        title: practiceData.title || 'Amaliy topshiriq',
+        description: practiceData.description || '',
+        language: practiceData.language || 'html',
+        starterCode: practiceData.starterCode || '',
+        validationType: practiceData.validationType || 'contains',
+        validationRules: practiceData.validationRules || [],
+        xpReward: practiceData.xpReward ?? 50,
+        coinReward: practiceData.coinReward ?? 10,
+      });
+      await duplicatedPractice.save();
+    }
+
+    return this.findOneLesson(savedLesson._id.toString());
+  }
+
   async findLessonsByModule(moduleId: string): Promise<any[]> {
     const lessons = await this.lessonModel.find({ moduleId: new Types.ObjectId(moduleId) }).sort({ order: 1 }).exec();
     return Promise.all(

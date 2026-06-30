@@ -24,3 +24,9 @@ export async function getOverdueStudents(): Promise<any[]> {
   const res = await apiClient.get('/payments/overdue');
   return res.data.data;
 }
+
+export async function checkPaymentStatuses(): Promise<any> {
+  const res = await apiClient.post('/payments/check-statuses');
+  return res.data;
+}
+

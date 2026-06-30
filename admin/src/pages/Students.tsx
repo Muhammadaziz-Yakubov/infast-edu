@@ -8,6 +8,7 @@ import {
 } from '../api/students';
 import { getCourses } from '../api/courses';
 import { getGroups } from '../api/groups';
+import { checkPaymentStatuses } from '../api/payments';
 import type { Student, Course, Group } from '../utils/mockDb';
 import {
   Plus,
@@ -25,6 +26,8 @@ import {
   CircleDollarSign,
   X,
   CheckCircle2,
+  ShieldCheck,
+  RefreshCw,
 } from 'lucide-react';
 
 export const Students: React.FC = () => {
@@ -33,6 +36,8 @@ export const Students: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkingPayments, setCheckingPayments] = useState(false);
+  const [checkSuccess, setCheckSuccess] = useState(false);
 
   // Search & Filter state
   const [search, setSearch] = useState('');
@@ -78,6 +83,23 @@ export const Students: React.FC = () => {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCheckPayments = async () => {
+    setCheckingPayments(true);
+    setCheckSuccess(false);
+    try {
+      await checkPaymentStatuses();
+      setCheckSuccess(true);
+      // Reload student list to reflect updated statuses
+      await loadData();
+      setTimeout(() => setCheckSuccess(false), 3000);
+    } catch (e) {
+      console.error(e);
+      alert("To'lovlarni tekshirishda xatolik yuz berdi.");
+    } finally {
+      setCheckingPayments(false);
     }
   };
 
@@ -198,16 +220,39 @@ export const Students: React.FC = () => {
           <h1 className="text-3xl font-bold tracking-tight mb-1">Talabalar CRM</h1>
           <p className="text-muted-foreground">O'quvchilar ro'yxati, to'lov va davomat statistikalari boshqaruvi.</p>
         </div>
-        <button
-          onClick={() => {
-            setCredentials(null);
-            setCreateOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Yangi Talaba Qo'shish
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Check Payments button */}
+          <button
+            onClick={handleCheckPayments}
+            disabled={checkingPayments}
+            title="Barcha o'quvchilar to'lov statusini hozir tekshirish"
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border transition-all shadow-sm ${
+              checkSuccess
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
+                : 'bg-card border-border text-foreground hover:bg-secondary'
+            } disabled:opacity-60 disabled:cursor-not-allowed`}
+          >
+            {checkingPayments ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : checkSuccess ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            ) : (
+              <ShieldCheck className="w-4 h-4" />
+            )}
+            {checkingPayments ? 'Tekshirilmoqda...' : checkSuccess ? 'Yangilandi!' : "To'lovlarni tekshirish"}
+          </button>
+
+          <button
+            onClick={() => {
+              setCredentials(null);
+              setCreateOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Yangi Talaba Qo'shish
+          </button>
+        </div>
       </div>
 
       {/* Filters Bar */}

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { LmsService } from './lms.service';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
@@ -134,8 +134,8 @@ export class LmsController {
   @Post('groups/:groupId/clone')
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Clone course syllabus structure to custom group modules and lessons (Admin only)' })
-  cloneCourseLmsToGroup(@Param('groupId') groupId: string) {
-    return this.lmsService.cloneCourseLmsToGroup(groupId);
+  cloneCourseLmsToGroup(@Param('groupId') groupId: string, @Query('sourceGroupId') sourceGroupId?: string) {
+    return this.lmsService.cloneCourseLmsToGroup(groupId, sourceGroupId);
   }
 
   // ── Stories Controller ──

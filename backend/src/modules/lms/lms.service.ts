@@ -115,7 +115,7 @@ export class LmsService implements OnModuleInit {
     return result;
   }
 
-  async cloneCourseLmsToGroup(groupId: string): Promise<any> {
+  async cloneCourseLmsToGroup(groupId: string, sourceGroupId?: string): Promise<any> {
     const group = await this.groupModel.findById(groupId).exec();
     if (!group) {
       throw new NotFoundException('Group not found');
@@ -127,10 +127,15 @@ export class LmsService implements OnModuleInit {
     await this.moduleModel.deleteMany({ groupId: new Types.ObjectId(groupId) }).exec();
     await this.lessonModel.deleteMany({ moduleId: { $in: existingGroupModuleIds } }).exec();
 
-    // Fetch original course modules & lessons
-    const courseModules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).exec();
+    // Fetch source modules
+    let sourceModules = [];
+    if (sourceGroupId) {
+      sourceModules = await this.moduleModel.find({ groupId: new Types.ObjectId(sourceGroupId) }).exec();
+    } else {
+      sourceModules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).exec();
+    }
 
-    for (const cMod of courseModules) {
+    for (const cMod of sourceModules) {
       // 1. Clone module
       const newMod = new this.moduleModel({
         title: cMod.title,

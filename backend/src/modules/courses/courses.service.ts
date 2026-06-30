@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Course, CourseDocument } from './schemas/course.schema';
@@ -130,6 +130,92 @@ export class CoursesService {
           }).exec();
         }
       }
+    }
+  }
+
+  async importCourse(importData: any): Promise<CourseDocument> {
+    if (!importData || typeof importData !== 'object') {
+      throw new BadRequestException('JSON ma\'lumotlar xato formatda');
+    }
+
+    const { title, description, price, duration, level, status, thumbnail, modules } = importData;
+    
+    if (!title || !description || !duration || !level) {
+      throw new BadRequestException('Kursning majburiy maydonlari to\'ldirilmagan: title, description, duration, level');
+    }
+
+    let totalLessons = 0;
+    if (modules && Array.isArray(modules)) {
+      for (const mod of modules) {
+        if (mod.lessons && Array.isArray(mod.lessons)) {
+          totalLessons += mod.lessons.length;
+        }
+      }
+    }
+
+    try {
+      // Create course
+      const newCourse = new this.courseModel({
+        title,
+        description,
+        price: price ?? 0,
+        duration,
+        level,
+        status: status || 'DRAFT',
+        thumbnail: thumbnail || '',
+        totalLessons,
+      });
+      const savedCourse = await newCourse.save();
+
+      // Create modules and lessons
+      if (modules && Array.isArray(modules)) {
+        for (let mIdx = 0; mIdx < modules.length; mIdx++) {
+          const modData = modules[mIdx];
+          if (!modData.title) {
+            throw new BadRequestException(`Modul #${mIdx + 1} uchun nom kiritilmagan`);
+          }
+
+          const newModule = new this.moduleModel({
+            title: modData.title,
+            order: mIdx + 1,
+            courseId: savedCourse._id,
+          });
+          const savedModule = await newModule.save();
+
+          if (modData.lessons && Array.isArray(modData.lessons)) {
+            for (let lIdx = 0; lIdx < modData.lessons.length; lIdx++) {
+              const lesData = modData.lessons[lIdx];
+              if (!lesData.title) {
+                throw new BadRequestException(`Modul "${modData.title}" ichidagi dars #${lIdx + 1} uchun nom kiritilmagan`);
+              }
+
+              const formattedQuizzes = (lesData.quiz || []).map((q: any) => ({
+                question: q.question,
+                options: q.options || [],
+                correctAnswerIndex: q.correctAnswerIndex ?? 0,
+                round: q.round || 1,
+              }));
+
+              const newLesson = new this.lessonModel({
+                title: lesData.title,
+                description: lesData.description || '',
+                videoUrl: lesData.videoUrl || '',
+                order: lIdx + 1,
+                moduleId: savedModule._id,
+                textContent: lesData.textContent || '',
+                practiceTasks: lesData.practiceTasks || [],
+                quiz: formattedQuizzes,
+              });
+              await newLesson.save();
+            }
+          }
+        }
+      }
+
+      return this.findOne(savedCourse._id.toString());
+    } catch (err: any) {
+      if (err instanceof BadRequestException) throw err;
+      throw new BadRequestException(`Import qilishda xatolik yuz berdi: ${err.message}`);
     }
   }
 }

@@ -63,4 +63,12 @@ export class CoursesController {
   updateModules(@Param('id') id: string, @Body() body: { modules: any[] }) {
     return this.coursesService.updateCourseModules(id, body.modules);
   }
+
+  @Post('import')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Import course structure with modules and lessons from JSON' })
+  @ApiResponse({ status: 201, description: 'Course imported successfully.' })
+  importCourse(@Body() importData: any) {
+    return this.coursesService.importCourse(importData);
+  }
 }

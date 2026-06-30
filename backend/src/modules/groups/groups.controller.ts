@@ -72,4 +72,12 @@ export class GroupsController {
   getSchedule(@Param('id') id: string) {
     return this.groupsService.getGroupSchedule(id);
   }
+
+  @Get(':id/progress')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get overall progress of all students in a group (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Detailed student progress list.' })
+  getProgress(@Param('id') id: string) {
+    return this.groupsService.getGroupProgress(id);
+  }
 }

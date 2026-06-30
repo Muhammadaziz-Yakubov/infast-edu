@@ -39,6 +39,9 @@ export class Group extends Document {
 
   @Prop({ required: true })
   endDate: Date;
+
+  @Prop({ default: 1, min: 1 })
+  startLessonOrder: number; // Guruh uchun qaysi dars tartib raqamidan boshlanishi (oldingilari lock)
 }
 
 export type GroupDocument = Group & Document;

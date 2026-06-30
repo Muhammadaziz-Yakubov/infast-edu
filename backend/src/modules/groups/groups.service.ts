@@ -166,6 +166,94 @@ export class GroupsService {
     });
   }
 
+  async getGroupProgress(groupId: string): Promise<any> {
+    const group = await this.groupModel.findById(groupId).populate('courseId').exec();
+    if (!group) throw new NotFoundException('Group not found');
+
+    const courseId = (group.courseId as any)?._id || group.courseId;
+
+    // 1. All modules + lessons for the group's course
+    const modules = await this.moduleModel
+      .find({ courseId: new Types.ObjectId(courseId.toString()) })
+      .sort({ order: 1 })
+      .exec();
+    const moduleIds = modules.map((m) => m._id);
+
+    const lessons = await this.lessonModel
+      .find({ moduleId: { $in: moduleIds } })
+      .sort({ order: 1 })
+      .exec();
+
+    // Sort lessons globally by module.order then lesson.order
+    lessons.sort((a, b) => {
+      const modA = modules.find((m) => m._id.toString() === a.moduleId.toString());
+      const modB = modules.find((m) => m._id.toString() === b.moduleId.toString());
+      return (modA?.order ?? 0) - (modB?.order ?? 0) || a.order - b.order;
+    });
+
+    // 2. Student profiles in this group
+    const StudentProfileModel = this.groupModel.db.model('StudentProfile');
+    const studentProfiles = await StudentProfileModel
+      .find({ groupId: new Types.ObjectId(groupId) })
+      .populate('userId', 'fullName avatar')
+      .exec();
+
+    const studentIds = studentProfiles.map((s: any) => s._id);
+
+    // 3. All lesson progress for these students
+    const LessonProgressModel = this.groupModel.db.model('LessonProgress');
+    const progressList = await LessonProgressModel.find({
+      studentId: { $in: studentIds },
+    }).exec();
+
+    // 4. Build per-lesson quiz question details (for error analysis)
+    const lessonMap = lessons.map((les: any) => ({
+      _id: les._id.toString(),
+      title: les.title,
+      order: les.order,
+      quiz: les.quiz || [],
+      moduleId: les.moduleId.toString(),
+    }));
+
+    // 5. Build per-student progress map
+    const students = studentProfiles.map((sp: any) => {
+      const spObj = sp.toObject();
+      const userId = spObj.userId;
+      const spId = spObj._id.toString();
+
+      const studentProgress = progressList
+        .filter((p: any) => p.studentId.toString() === spId)
+        .map((p: any) => ({
+          lessonId: p.lessonId.toString(),
+          completed: p.completed,
+          practiceCompleted: p.practiceCompleted,
+          testCompleted: p.testCompleted,
+          score: p.score,
+          quizAnswers: p.quizAnswers || [],
+        }));
+
+      return {
+        _id: spId,
+        userId: userId?._id || userId,
+        fullName: userId?.fullName || 'Noma\'lum',
+        avatar: userId?.avatar || null,
+        progress: studentProgress,
+      };
+    });
+
+    return {
+      group: {
+        _id: group._id,
+        name: group.name,
+        startLessonOrder: (group as any).startLessonOrder ?? 1,
+        courseId: courseId,
+        courseName: (group.courseId as any)?.name || '',
+      },
+      lessons: lessonMap,
+      students,
+    };
+  }
+
   // Automatic Lesson Date Calculator
   async generateLessonSchedule(groupId: string): Promise<void> {
     const group = await this.groupModel.findById(groupId);

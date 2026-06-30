@@ -4,6 +4,7 @@ import { HomeworkService } from './homework.service';
 import { HomeworkController } from './homework.controller';
 import { Homework, HomeworkSchema } from './schemas/homework.schema';
 import { HomeworkSubmission, HomeworkSubmissionSchema } from './schemas/homework-submission.schema';
+import { LessonProgress, LessonProgressSchema } from '../lms/schemas/lesson-progress.schema';
 import { StudentsModule } from '../students/students.module';
 
 @Module({
@@ -11,6 +12,7 @@ import { StudentsModule } from '../students/students.module';
     MongooseModule.forFeature([
       { name: Homework.name, schema: HomeworkSchema },
       { name: HomeworkSubmission.name, schema: HomeworkSubmissionSchema },
+      { name: LessonProgress.name, schema: LessonProgressSchema },
     ]),
     StudentsModule,
   ],
@@ -19,3 +21,4 @@ import { StudentsModule } from '../students/students.module';
   exports: [HomeworkService, MongooseModule],
 })
 export class HomeworkModule {}
+

@@ -16,6 +16,33 @@ export class QuizQuestion {
   round: number;
 }
 
+@Schema({ _id: false })
+export class LessonPractice {
+  @Prop({ required: true })
+  title: string;
+
+  @Prop({ required: true })
+  description: string;
+
+  @Prop({ default: 'html' })
+  language: string;
+
+  @Prop({ default: '' })
+  starterCode: string;
+
+  @Prop({ default: 'contains' })
+  validationType: string;
+
+  @Prop({ type: [String], default: [] })
+  validationRules: string[];
+
+  @Prop({ default: 100 })
+  xpReward: number;
+
+  @Prop({ default: 20 })
+  coinReward: number;
+}
+
 @Schema({
   timestamps: true,
   toJSON: {
@@ -32,23 +59,17 @@ export class Lesson extends Document {
   @Prop()
   description?: string;
 
-  @Prop({ default: '' })
-  videoUrl?: string; // YouTube embed link
-
   @Prop({ required: true })
   order: number;
 
   @Prop({ type: Types.ObjectId, ref: 'CourseModule', required: true })
   moduleId: Types.ObjectId;
 
-  @Prop()
-  textContent?: string;
-
-  @Prop({ type: [String], default: [] })
-  practiceTasks?: string[];
-
   @Prop({ type: [QuizQuestion], default: [] })
   quiz?: QuizQuestion[];
+
+  @Prop({ default: 80 })
+  passingScore?: number;
 }
 
 export type LessonDocument = Lesson & Document;

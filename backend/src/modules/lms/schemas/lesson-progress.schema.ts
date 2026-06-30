@@ -20,6 +20,12 @@ export class LessonProgress extends Document {
   @Prop({ required: true, default: false })
   completed: boolean;
 
+  @Prop({ required: true, default: false })
+  practiceCompleted: boolean; // Practice (homework task) step done
+
+  @Prop({ required: true, default: false })
+  testCompleted: boolean; // Quiz/test step done (score >= 80%)
+
   @Prop({ min: 0, max: 100, default: 0 })
   score: number; // Score achieved on quizzes if any (0-100)
 

@@ -6,6 +6,7 @@ import { CourseModule, CourseModuleSchema } from './schemas/module.schema';
 import { Lesson, LessonSchema } from './schemas/lesson.schema';
 import { LessonProgress, LessonProgressSchema } from './schemas/lesson-progress.schema';
 import { Story, StorySchema } from './schemas/story.schema';
+import { PracticeTask, PracticeTaskSchema } from './schemas/practice-task.schema';
 import { StudentsModule } from '../students/students.module';
 
 @Module({
@@ -15,6 +16,7 @@ import { StudentsModule } from '../students/students.module';
       { name: Lesson.name, schema: LessonSchema },
       { name: LessonProgress.name, schema: LessonProgressSchema },
       { name: Story.name, schema: StorySchema },
+      { name: PracticeTask.name, schema: PracticeTaskSchema },
     ]),
     forwardRef(() => StudentsModule),
   ],

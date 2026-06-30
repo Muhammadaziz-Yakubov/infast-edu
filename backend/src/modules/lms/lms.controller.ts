@@ -79,6 +79,18 @@ export class LmsController {
   }
 
   // Student Progress & Completion
+  @Post('lessons/:id/validate-practice')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Validate coding practice and mark complete (Student only)' })
+  @ApiResponse({ status: 200, description: 'Practice validation result.' })
+  validatePractice(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body('code') code: string,
+  ) {
+    return this.lmsService.validatePractice(user.userId, id, code || '');
+  }
+
   @Post('lessons/:id/complete')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Submit quiz answers and complete lesson (Student only)' })

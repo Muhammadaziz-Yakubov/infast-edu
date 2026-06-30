@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Homework, HomeworkDocument } from './schemas/homework.schema';
 import { HomeworkSubmission, HomeworkSubmissionDocument } from './schemas/homework-submission.schema';
+import { LessonProgress, LessonProgressDocument } from '../lms/schemas/lesson-progress.schema';
 import { StudentsService } from '../students/students.service';
 import { CreateHomeworkDto } from './dto/create-homework.dto';
 import { SubmitHomeworkDto } from './dto/submit-homework.dto';
@@ -14,6 +15,8 @@ export class HomeworkService {
     private readonly homeworkModel: Model<HomeworkDocument>,
     @InjectModel(HomeworkSubmission.name)
     private readonly submissionModel: Model<HomeworkSubmissionDocument>,
+    @InjectModel(LessonProgress.name)
+    private readonly progressModel: Model<LessonProgressDocument>,
     private readonly studentsService: StudentsService
   ) {}
 
@@ -87,6 +90,16 @@ export class HomeworkService {
     });
     await submission.save();
 
+    // ── Mark practice step as completed on lesson progress ──
+    await this.progressModel.findOneAndUpdate(
+      {
+        studentId: new Types.ObjectId(studentId),
+        lessonId: homework.lessonId,
+      },
+      { $set: { practiceCompleted: true } },
+      { upsert: true, new: true }
+    ).exec();
+
     // Award rewards to student profile
     if (xpAwarded > 0 || coinAwarded > 0) {
       await this.studentsService.addXpAndCoins(studentId, xpAwarded, coinAwarded);
@@ -100,6 +113,7 @@ export class HomeworkService {
       score,
       xpAwarded,
       coinAwarded,
+      practiceCompleted: true,
     };
   }
 

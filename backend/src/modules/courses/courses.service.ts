@@ -6,13 +6,15 @@ import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { CourseModule, CourseModuleDocument } from '../lms/schemas/module.schema';
 import { Lesson, LessonDocument } from '../lms/schemas/lesson.schema';
+import { PracticeTask, PracticeTaskDocument } from '../lms/schemas/practice-task.schema';
 
 @Injectable()
 export class CoursesService {
   constructor(
     @InjectModel(Course.name) private readonly courseModel: Model<CourseDocument>,
     @InjectModel(CourseModule.name) private readonly moduleModel: Model<CourseModuleDocument>,
-    @InjectModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>
+    @InjectModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>,
+    @InjectModel(PracticeTask.name) private readonly practiceModel: Model<PracticeTaskDocument>
   ) {}
 
   async create(createCourseDto: CreateCourseDto): Promise<CourseDocument> {
@@ -24,39 +26,50 @@ export class CoursesService {
   }
 
   async findAll(): Promise<any[]> {
-    const courses = await this.courseModel.find().exec();
-    
-    return Promise.all(
-      courses.map(async (course) => {
-        const courseObj = course.toObject();
-        
-        // Find modules of this course
-        const modules = await this.moduleModel
-          .find({ courseId: course._id })
-          .sort({ order: 1 })
-          .exec();
+    try {
+      const courses = await this.courseModel.find().exec();
+      
+      return Promise.all(
+        courses.map(async (course) => {
+          const courseObj = course.toObject();
           
-        // Find lessons for each module
-        const modulesWithLessons = await Promise.all(
-          modules.map(async (mod) => {
-            const modObj = mod.toObject();
-            const lessons = await this.lessonModel
-              .find({ moduleId: mod._id })
-              .sort({ order: 1 })
-              .exec();
-            return {
-              ...modObj,
-              lessons,
-            };
-          })
-        );
-        
-        return {
-          ...courseObj,
-          modules: modulesWithLessons,
-        };
-      })
-    );
+          // Find modules of this course
+          const modules = await this.moduleModel
+            .find({ courseId: course._id })
+            .sort({ order: 1 })
+            .exec();
+            
+          // Find lessons for each module
+          const modulesWithLessons = await Promise.all(
+            modules.map(async (mod) => {
+              const modObj = mod.toObject();
+              const lessons = await this.lessonModel
+                .find({ moduleId: mod._id })
+                .sort({ order: 1 })
+                .exec();
+
+              const lessonsWithPractice = await Promise.all(
+                lessons.map(async (les) => {
+                  const lesObj = les.toObject();
+                  try {
+                    const practice = await this.practiceModel.findOne({ lessonId: les._id }).exec();
+                    return { ...lesObj, practice: practice?.toObject() || undefined };
+                  } catch {
+                    return { ...lesObj, practice: undefined };
+                  }
+                })
+              );
+
+              return { ...modObj, lessons: lessonsWithPractice };
+            })
+          );
+          
+          return { ...courseObj, modules: modulesWithLessons };
+        })
+      );
+    } catch (err: any) {
+      throw new BadRequestException(`Kurslarni yuklashda xatolik: ${err.message}`);
+    }
   }
 
   async findOne(id: string): Promise<any> {
@@ -67,13 +80,11 @@ export class CoursesService {
     
     const courseObj = course.toObject();
     
-    // Find modules of this course
     const modules = await this.moduleModel
       .find({ courseId: course._id })
       .sort({ order: 1 })
       .exec();
       
-    // Find lessons for each module
     const modulesWithLessons = await Promise.all(
       modules.map(async (mod) => {
         const modObj = mod.toObject();
@@ -81,17 +92,24 @@ export class CoursesService {
           .find({ moduleId: mod._id })
           .sort({ order: 1 })
           .exec();
-        return {
-          ...modObj,
-          lessons,
-        };
+
+        const lessonsWithPractice = await Promise.all(
+          lessons.map(async (les) => {
+            const lesObj = les.toObject();
+            try {
+              const practice = await this.practiceModel.findOne({ lessonId: les._id }).exec();
+              return { ...lesObj, practice: practice?.toObject() || undefined };
+            } catch {
+              return { ...lesObj, practice: undefined };
+            }
+          })
+        );
+
+        return { ...modObj, lessons: lessonsWithPractice };
       })
     );
     
-    return {
-      ...courseObj,
-      modules: modulesWithLessons,
-    };
+    return { ...courseObj, modules: modulesWithLessons };
   }
 
   async update(id: string, updateCourseDto: UpdateCourseDto): Promise<CourseDocument> {
@@ -140,8 +158,8 @@ export class CoursesService {
 
     const { title, description, price, duration, level, status, thumbnail, modules } = importData;
     
-    if (!title || !description || !duration || !level) {
-      throw new BadRequestException('Kursning majburiy maydonlari to\'ldirilmagan: title, description, duration, level');
+    if (!title || !description) {
+      throw new BadRequestException('Kursning majburiy maydonlari to\'ldirilmagan: title, description');
     }
 
     let totalLessons = 0;
@@ -159,8 +177,8 @@ export class CoursesService {
         title,
         description,
         price: price ?? 0,
-        duration,
-        level,
+        duration: duration || '',
+        level: level || '',
         status: status || 'DRAFT',
         thumbnail: thumbnail || '',
         totalLessons,
@@ -189,24 +207,49 @@ export class CoursesService {
                 throw new BadRequestException(`Modul "${modData.title}" ichidagi dars #${lIdx + 1} uchun nom kiritilmagan`);
               }
 
-              const formattedQuizzes = (lesData.quiz || []).map((q: any) => ({
-                question: q.question,
-                options: q.options || [],
-                correctAnswerIndex: q.correctAnswerIndex ?? 0,
-                round: q.round || 1,
-              }));
+              // Parse quiz questions and passing score
+              let formattedQuizzes = [];
+              let passingScore = 80;
+              if (lesData.quiz) {
+                if (lesData.quiz.passingScore !== undefined) {
+                  passingScore = lesData.quiz.passingScore;
+                }
+                const questionsList = Array.isArray(lesData.quiz) 
+                  ? lesData.quiz 
+                  : (lesData.quiz.questions || []);
+                
+                formattedQuizzes = questionsList.map((q: any) => ({
+                  question: q.question,
+                  options: q.options || [],
+                  correctAnswerIndex: q.correctAnswer !== undefined ? q.correctAnswer : (q.correctAnswerIndex ?? 0),
+                  round: q.round || 1,
+                }));
+              }
 
               const newLesson = new this.lessonModel({
                 title: lesData.title,
                 description: lesData.description || '',
-                videoUrl: lesData.videoUrl || '',
                 order: lIdx + 1,
                 moduleId: savedModule._id,
-                textContent: lesData.textContent || '',
-                practiceTasks: lesData.practiceTasks || [],
                 quiz: formattedQuizzes,
+                passingScore,
               });
-              await newLesson.save();
+              const savedLesson = await newLesson.save();
+
+              if (lesData.practice) {
+                const newPractice = new this.practiceModel({
+                  lessonId: savedLesson._id,
+                  title: lesData.practice.title || 'Amaliy topshiriq',
+                  description: lesData.practice.description || '',
+                  language: lesData.practice.language || 'html',
+                  starterCode: lesData.practice.starterCode || '',
+                  validationType: lesData.practice.validationType || 'contains',
+                  validationRules: lesData.practice.validationRules || [],
+                  xpReward: lesData.practice.xpReward ?? 50,
+                  coinReward: lesData.practice.coinReward ?? 10,
+                });
+                await newPractice.save();
+              }
             }
           }
         }

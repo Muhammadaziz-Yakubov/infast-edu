@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, ValidateNested } from 'class-validator';
+import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -8,7 +8,7 @@ export class QuizQuestionDto {
   @IsNotEmpty()
   question: string;
 
-  @ApiProperty({ example: ['Hyper Text Markup Language', 'High Text Machine Language', 'Hyper Tabular Mark Language'] })
+  @ApiProperty({ example: ['Hyper Text Markup Language', 'High Text Machine Language'] })
   @IsArray()
   @IsString({ each: true })
   options: string[];
@@ -23,6 +23,49 @@ export class QuizQuestionDto {
   round?: number;
 }
 
+export class PracticeTaskDto {
+  @ApiProperty({ example: 'H1 element yarating' })
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
+  @ApiProperty({ example: 'HTML code editor ichida h1 element yarating', required: false })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiProperty({ example: 'html', required: false })
+  @IsString()
+  @IsOptional()
+  language?: string;
+
+  @ApiProperty({ example: '', required: false })
+  @IsString()
+  @IsOptional()
+  starterCode?: string;
+
+  @ApiProperty({ example: 'contains', required: false })
+  @IsString()
+  @IsOptional()
+  validationType?: string;
+
+  @ApiProperty({ example: ['<h1>'], required: false })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  validationRules?: string[];
+
+  @ApiProperty({ example: 50, required: false })
+  @IsNumber()
+  @IsOptional()
+  xpReward?: number;
+
+  @ApiProperty({ example: 10, required: false })
+  @IsNumber()
+  @IsOptional()
+  coinReward?: number;
+}
+
 export class CreateLessonDto {
   @ApiProperty({ example: 'HTML Syntax & Basic Tags' })
   @IsString()
@@ -34,12 +77,6 @@ export class CreateLessonDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ example: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', required: false })
-  @IsString()
-  @IsOptional()
-  @IsUrl({}, { message: 'videoUrl must be a valid URL' })
-  videoUrl?: string;
-
   @ApiProperty({ example: 1, required: false })
   @IsNumber()
   @IsOptional()
@@ -50,16 +87,11 @@ export class CreateLessonDto {
   @IsNotEmpty()
   moduleId: string;
 
-  @ApiProperty({ example: 'HTML elements are the building blocks of web pages...', required: false })
-  @IsString()
+  @ApiProperty({ type: PracticeTaskDto, required: false })
+  @ValidateNested()
+  @Type(() => PracticeTaskDto)
   @IsOptional()
-  textContent?: string;
-
-  @ApiProperty({ example: ['Create an index.html file', 'Add a header and paragraph'], required: false })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  practiceTasks?: string[];
+  practice?: PracticeTaskDto;
 
   @ApiProperty({ type: [QuizQuestionDto], required: false })
   @IsArray()

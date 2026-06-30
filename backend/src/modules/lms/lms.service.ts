@@ -5,6 +5,7 @@ import { CourseModule, CourseModuleDocument } from './schemas/module.schema';
 import { Lesson, LessonDocument } from './schemas/lesson.schema';
 import { LessonProgress, LessonProgressDocument } from './schemas/lesson-progress.schema';
 import { Story, StoryDocument } from './schemas/story.schema';
+import { PracticeTask, PracticeTaskDocument } from './schemas/practice-task.schema';
 import { StudentsService } from '../students/students.service';
 
 @Injectable()
@@ -18,6 +19,8 @@ export class LmsService implements OnModuleInit {
     private readonly progressModel: Model<LessonProgressDocument>,
     @InjectModel(Story.name)
     private readonly storyModel: Model<StoryDocument>,
+    @InjectModel(PracticeTask.name)
+    private readonly practiceModel: Model<PracticeTaskDocument>,
     @Inject(forwardRef(() => StudentsService))
     private readonly studentsService: StudentsService
   ) { }
@@ -93,51 +96,184 @@ export class LmsService implements OnModuleInit {
   }
 
   // Lessons CRUD
-  async createLesson(dto: any): Promise<LessonDocument> {
+  async createLesson(dto: any): Promise<any> {
     let order = dto.order;
     if (order === undefined || order === null) {
       const count = await this.lessonModel.countDocuments({ moduleId: new Types.ObjectId(dto.moduleId) }).exec();
       order = count + 1;
     }
+    const { practice, ...lessonFields } = dto;
     const newLesson = new this.lessonModel({
-      ...dto,
+      ...lessonFields,
       order,
       moduleId: new Types.ObjectId(dto.moduleId),
     });
-    return newLesson.save();
+    const savedLesson = await newLesson.save();
+
+    if (practice) {
+      const newPractice = new this.practiceModel({
+        lessonId: savedLesson._id,
+        title: practice.title || 'Amaliy topshiriq',
+        description: practice.description || '',
+        language: practice.language || 'html',
+        starterCode: practice.starterCode || '',
+        validationType: practice.validationType || 'contains',
+        validationRules: practice.validationRules || [],
+        xpReward: practice.xpReward ?? 50,
+        coinReward: practice.coinReward ?? 10,
+      });
+      await newPractice.save();
+    }
+
+    return this.findOneLesson(savedLesson._id.toString());
   }
 
-  async findLessonsByModule(moduleId: string): Promise<LessonDocument[]> {
-    return this.lessonModel.find({ moduleId: new Types.ObjectId(moduleId) }).sort({ order: 1 }).exec();
+  async findLessonsByModule(moduleId: string): Promise<any[]> {
+    const lessons = await this.lessonModel.find({ moduleId: new Types.ObjectId(moduleId) }).sort({ order: 1 }).exec();
+    return Promise.all(
+      lessons.map(async (les) => {
+        const lesObj = les.toObject();
+        const practice = await this.practiceModel.findOne({ lessonId: les._id }).exec();
+        return {
+          ...lesObj,
+          practice: practice || undefined,
+        };
+      })
+    );
   }
 
-  async findOneLesson(id: string): Promise<LessonDocument> {
+  async findOneLesson(id: string): Promise<any> {
     const lesson = await this.lessonModel.findById(id).exec();
     if (!lesson) throw new NotFoundException('Lesson not found');
-    return lesson;
+    const lessonObj = lesson.toObject();
+    const practice = await this.practiceModel.findOne({ lessonId: lesson._id }).exec();
+    return {
+      ...lessonObj,
+      practice: practice || undefined,
+    };
   }
 
-  async updateLesson(id: string, dto: any): Promise<LessonDocument> {
+  async updateLesson(id: string, dto: any): Promise<any> {
+    const { practice, ...lessonFields } = dto;
     const updated = await this.lessonModel
-      .findByIdAndUpdate(id, dto, { new: true })
+      .findByIdAndUpdate(id, lessonFields, { new: true })
       .exec();
     if (!updated) throw new NotFoundException('Lesson not found');
-    return updated;
+
+    if (practice) {
+      await this.practiceModel.findOneAndUpdate(
+        { lessonId: updated._id },
+        {
+          title: practice.title,
+          description: practice.description,
+          language: practice.language || 'html',
+          starterCode: practice.starterCode || '',
+          validationType: practice.validationType || 'contains',
+          validationRules: practice.validationRules || [],
+          xpReward: practice.xpReward ?? 50,
+          coinReward: practice.coinReward ?? 10,
+        },
+        { upsert: true, new: true }
+      ).exec();
+    } else {
+      // If practice explicitly set to null/removed
+      if (dto.practice === null) {
+        await this.practiceModel.deleteMany({ lessonId: updated._id }).exec();
+      }
+    }
+
+    return this.findOneLesson(updated._id.toString());
   }
 
-  async removeLesson(id: string): Promise<LessonDocument> {
+  async removeLesson(id: string): Promise<any> {
     const deleted = await this.lessonModel.findByIdAndDelete(id).exec();
     if (!deleted) throw new NotFoundException('Lesson not found');
     // Clean up student progress logs
     await this.progressModel.deleteMany({ lessonId: new Types.ObjectId(id) }).exec();
+    // Clean up practice task
+    await this.practiceModel.deleteMany({ lessonId: new Types.ObjectId(id) }).exec();
     return deleted;
   }
 
   // Lesson Progress / Quiz Completion
+  // Validate practice coding task code and mark it complete on success
+  async validatePractice(studentId: string, lessonId: string, code: string): Promise<any> {
+    const lesson = await this.findOneLesson(lessonId);
+    if (!lesson.practice) {
+      throw new BadRequestException('Bu dars uchun amaliy topshiriq mavjud emas');
+    }
+
+    const practiceTask = lesson.practice;
+    const rules = practiceTask.validationRules || [];
+    let isValid = true;
+
+    if (practiceTask.validationType === 'contains') {
+      for (const rule of rules) {
+        if (!code.toLowerCase().includes(rule.toLowerCase())) {
+          isValid = false;
+          break;
+        }
+      }
+    } else {
+      for (const rule of rules) {
+        if (!code.includes(rule)) {
+          isValid = false;
+          break;
+        }
+      }
+    }
+
+    if (isValid) {
+      let progress = await this.progressModel.findOne({
+        studentId: new Types.ObjectId(studentId),
+        lessonId: lesson._id,
+      });
+
+      if (!progress) {
+        progress = new this.progressModel({
+          studentId: new Types.ObjectId(studentId),
+          lessonId: lesson._id,
+        });
+      }
+
+      const alreadyCompleted = progress.practiceCompleted;
+      let xpEarned = 0;
+      let coinsEarned = 0;
+
+      if (!alreadyCompleted) {
+        progress.practiceCompleted = true;
+        
+        if (progress.testCompleted && !progress.completed) {
+          progress.completed = true;
+          progress.completionDate = new Date();
+        }
+        
+        await progress.save();
+
+        xpEarned = practiceTask.xpReward ?? 50;
+        coinsEarned = practiceTask.coinReward ?? 10;
+
+        await this.studentsService.addXpAndCoins(studentId, xpEarned, coinsEarned);
+      }
+
+      return {
+        success: true,
+        xpEarned,
+        coinsEarned,
+        practiceCompleted: true,
+        lessonCompleted: progress.completed,
+      };
+    } else {
+      return {
+        success: false,
+        message: 'Kod validation qoidalaridan o\'tmadi. Iltimos, barcha shartlarni to\'g\'ri bajarganingizga ishonch hosil qiling.',
+      };
+    }
+  }
+
+  // Submit quiz answers; gates entry on practiceCompleted; marks testCompleted on pass
   async completeLesson(studentId: string, lessonId: string, quizAnswers?: number[], completedRounds?: number): Promise<any> {
     const lesson = await this.findOneLesson(lessonId);
-    let score = 0;
-    let perfectScoreBonus = false;
 
     // Find or create progress
     let progress = await this.progressModel.findOne({
@@ -152,6 +288,13 @@ export class LmsService implements OnModuleInit {
       });
     }
 
+    // Gate: test is only accessible after practice is completed
+    if (!progress.practiceCompleted) {
+      throw new BadRequestException('Avval amaliyot topshirig\'ini bajaring');
+    }
+
+    let score = 0;
+    let perfectScoreBonus = false;
     const isFirstTimeCompletion = !progress.completed;
 
     if (quizAnswers) {
@@ -163,9 +306,8 @@ export class LmsService implements OnModuleInit {
 
     const quizList = lesson.quiz ?? [];
     const hasQuiz = quizList.length > 0;
-    
-    // Determine total rounds count from quiz questions
-    const rounds = new Set(quizList.map(q => q.round || 1));
+
+    const rounds = new Set(quizList.map((q: any) => q.round || 1));
     const totalRoundsCount = rounds.size;
     const isLastRoundCompleted = completedRounds !== undefined && completedRounds >= totalRoundsCount;
 
@@ -181,57 +323,58 @@ export class LmsService implements OnModuleInit {
     if (hasQuiz) {
       if (allQuestionsAnswered) {
         let correctCount = 0;
-        quizList.forEach((q, idx) => {
+        quizList.forEach((q: any, idx: number) => {
           if (quizAnswers && idx < quizAnswers.length && q.correctAnswerIndex === quizAnswers[idx]) {
             correctCount++;
           }
         });
-
         score = Math.round((correctCount / quizList.length) * 100);
         if (correctCount === quizList.length) {
           perfectScoreBonus = true;
         }
         passed = score >= 80;
-      } else {
-        passed = false;
       }
     } else {
+      // No quiz → test step is considered passed
       passed = true;
     }
 
-    // Lesson is "completed" as long as student submitted all answers (any score)
-    // "passed" (score>=80) only gates XP/coin rewards
-    const isSubmitted = allQuestionsAnswered || !hasQuiz;
-    progress.completed = isSubmitted;
+    // Update intermediate round progress
+    if (completedRounds !== undefined) {
+      progress.completedRounds = completedRounds;
+    }
     if (allQuestionsAnswered) {
       progress.score = score;
     }
-    if (isSubmitted) {
+
+    // Only mark testCompleted when quiz is passed (≥ 80%)
+    if (passed && (allQuestionsAnswered || !hasQuiz)) {
+      progress.testCompleted = true;
+    }
+
+    // Lesson fully completed only when BOTH practice AND test are done
+    const isFullyCompleted = progress.practiceCompleted && progress.testCompleted;
+    if (isFullyCompleted && !progress.completed) {
+      progress.completed = true;
       progress.completionDate = new Date();
     }
+
     await progress.save();
 
-    // ── Reward student on first-time completion, scaled by score ──
-    // Formula:
-    //   base XP  = 20 (just for submitting)
-    //   score XP = score points (0–100), i.e. 1 XP per percentage point
-    //   perfect  = +50 XP bonus if all answers correct
-    //   coins    = score / 5  (0–20 coins), +10 bonus on perfect
+    // ── Reward only on first-time full completion ──
     let xpEarned = 0;
     let coinsEarned = 0;
 
-    if (isFirstTimeCompletion && isSubmitted) {
+    if (isFirstTimeCompletion && isFullyCompleted) {
       if (!hasQuiz) {
-        // No quiz lesson: flat reward
         xpEarned = 50;
         coinsEarned = 10;
       } else if (allQuestionsAnswered) {
-        xpEarned = 20 + score;             // base 20 + up to 100 score XP
-        coinsEarned = Math.round(score / 5); // up to 20 coins
-
+        xpEarned = 20 + score;
+        coinsEarned = Math.round(score / 5);
         if (perfectScoreBonus) {
-          xpEarned += 50;   // perfect-score bonus
-          coinsEarned += 10; // perfect-score coin bonus
+          xpEarned += 50;
+          coinsEarned += 10;
         }
       }
 
@@ -247,6 +390,9 @@ export class LmsService implements OnModuleInit {
       score,
       xpEarned,
       coinsEarned,
+      practiceCompleted: progress.practiceCompleted,
+      testCompleted: progress.testCompleted,
+      lessonCompleted: progress.completed,
     };
   }
 

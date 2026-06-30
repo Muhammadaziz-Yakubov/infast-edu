@@ -21,16 +21,16 @@ export class Course extends Document {
   @Prop()
   thumbnail?: string;
 
-  @Prop({ required: true, min: 0 })
+  @Prop({ default: 0, min: 0 })
   price: number;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   duration: string; // e.g., "6 months"
 
   @Prop({ required: true, min: 0 })
   totalLessons: number; // e.g., 114
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   level: string; // e.g., "Frontend Beginner", "Intermediate"
 
   @Prop({ type: String, enum: CourseStatus, default: CourseStatus.DRAFT })

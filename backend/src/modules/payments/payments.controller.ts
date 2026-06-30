@@ -70,4 +70,13 @@ export class PaymentsController {
   findOverdue() {
     return this.paymentsService.getOverdueStudents();
   }
+
+  @Post('check-statuses')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Manually trigger payment status check for all students (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Payment statuses updated.' })
+  async checkStatuses() {
+    await this.paymentsService.checkPaymentStatuses();
+    return { success: true, message: 'Barcha tolov statuslari yangilandi.' };
+  }
 }

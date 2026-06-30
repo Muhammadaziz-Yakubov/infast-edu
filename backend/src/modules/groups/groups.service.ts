@@ -196,11 +196,20 @@ export class GroupsService {
 
     const courseId = (group.courseId as any)?._id || group.courseId;
 
-    // 1. All modules + lessons for the group's course
-    const modules = await this.moduleModel
-      .find({ courseId: new Types.ObjectId(courseId.toString()) })
+    // 1. First try group-specific modules (created via LMS Builder for this group)
+    //    If none found, fall back to course-level modules
+    let modules = await this.moduleModel
+      .find({ groupId: new Types.ObjectId(groupId) })
       .sort({ order: 1 })
       .exec();
+
+    if (modules.length === 0 && courseId) {
+      modules = await this.moduleModel
+        .find({ courseId: new Types.ObjectId(courseId.toString()), groupId: { $exists: false } })
+        .sort({ order: 1 })
+        .exec();
+    }
+
     const moduleIds = modules.map((m) => m._id);
 
     const lessons = await this.lessonModel

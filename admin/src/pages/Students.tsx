@@ -52,6 +52,7 @@ export const Students: React.FC = () => {
   const [email, setEmail] = useState('');
   const [courseId, setCourseId] = useState('');
   const [groupId, setGroupId] = useState('');
+  const [password, setPassword] = useState('');
 
   // Generated Credentials output
   const [credentials, setCredentials] = useState<{ phone: string; pass: string } | null>(null);
@@ -90,6 +91,7 @@ export const Students: React.FC = () => {
         email: email || undefined,
         courseId: courseId || undefined,
         groupId: groupId || undefined,
+        password: password || undefined,
       });
 
       // Show credentials
@@ -109,6 +111,7 @@ export const Students: React.FC = () => {
       setEmail('');
       setCourseId('');
       setGroupId('');
+      setPassword('');
     } catch (err: any) {
       alert(err.message || 'Xatolik yuz berdi');
     }
@@ -498,6 +501,20 @@ export const Students: React.FC = () => {
                   />
                 </div>
 
+                {!editStudent && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Tizimga Kirish Paroli</label>
+                    <input
+                      type="text"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Kamida 6 ta belgi"
+                      className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-muted-foreground">Kursga Biriktirish</label>
                   <select
@@ -530,7 +547,7 @@ export const Students: React.FC = () => {
               {!editStudent && (
                 <div className="p-3 bg-primary/5 rounded-lg border border-primary/10">
                   <p className="text-xs text-primary leading-relaxed">
-                    <strong>Muhim:</strong> Talabaning boshlang'ich paroli uning tug'ilgan sanasidan nuqtalarsiz avtomat generatsiya qilinadi. Masalan: <strong>27.09.2011</strong> uchun parol <strong>27092011</strong> bo'ladi.
+                    <strong>Muhim:</strong> Belgilangan parol o'quvchining tizimga kirishi uchun boshlang'ich parol hisoblanadi.
                   </p>
                 </div>
               )}

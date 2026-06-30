@@ -26,6 +26,7 @@ export const LmsBuilder: React.FC = () => {
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [groupModules, setGroupModules] = useState<any[]>([]);
   const [isCustomGroupLms, setIsCustomGroupLms] = useState(false);
+  const [cloneSourceId, setCloneSourceId] = useState<string>('COURSE');
   
   // Group lock & start lesson state (Removed as requested)
 
@@ -402,23 +403,40 @@ export const LmsBuilder: React.FC = () => {
           </div>
 
           {builderMode === 'GROUP' && selectedGroupId && !isCustomGroupLms && (
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs space-y-2">
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs space-y-3">
               <p className="font-semibold text-amber-600">
                 Ushbu guruh hozirda umumiy kurs shablonidan foydalanmoqda.
               </p>
-              <p className="text-muted-foreground text-[10px]">
-                Guruh uchun alohida, mustaqil darslik va amaliy topshiriqlarni sozlashni xohlaysizmi?
-              </p>
+              
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground">Mavzular andozasini tanlang:</label>
+                <select
+                  value={cloneSourceId}
+                  onChange={(e) => setCloneSourceId(e.target.value)}
+                  className="w-full text-xs rounded border bg-background px-2.5 py-1.5 focus:ring-1 focus:ring-primary outline-none"
+                >
+                  <option value="COURSE">Kurs shabloni (Andoza)</option>
+                  {allGroupsList
+                    .filter((g) => g._id !== selectedGroupId)
+                    .map((g) => (
+                      <option key={g._id} value={g._id}>
+                        {g.name} guruhining darslari nusxasi
+                      </option>
+                    ))}
+                </select>
+              </div>
+
               <button
                 onClick={async () => {
                   const confirmClone = window.confirm(
-                    "Ishonchingiz komilmi? Bu amal guruh uchun kurs shablonidan nusxa oladi va individual tahrirlash imkonini beradi."
+                    "Ishonchingiz komilmi? Bu amal tanlangan manbadan barcha darslarni ushbu guruhga nusxalaydi."
                   );
                   if (!confirmClone) return;
                   setLoading(true);
                   try {
-                    await cloneCourseLmsToGroup(selectedGroupId);
-                    alert("Kurs shabloni guruhga muvaffaqiyatli nusxalandi!");
+                    const sourceGroupIdParam = cloneSourceId === 'COURSE' ? undefined : cloneSourceId;
+                    await cloneCourseLmsToGroup(selectedGroupId, sourceGroupIdParam);
+                    alert("Darslar guruhga muvaffaqiyatli nusxalandi!");
                     await loadGroupModules(selectedGroupId);
                   } catch (e: any) {
                     alert("Xatolik: " + (e.response?.data?.message || e.message));

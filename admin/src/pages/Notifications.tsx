@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Bell, Send, Megaphone } from 'lucide-react';
+import { broadcastNotification } from '../api/notifications';
 
 export const Notifications: React.FC = () => {
   const [messages, setMessages] = useState([
@@ -9,16 +10,21 @@ export const Notifications: React.FC = () => {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
-  const handleBroadcast = (e: React.FormEvent) => {
+  const handleBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !body) return;
-    setMessages([
-      { id: Date.now().toString(), title, body, date: 'Hozir' },
-      ...messages
-    ]);
-    setTitle('');
-    setBody('');
-    alert('E\'lon muvaffaqiyatli jo\'natildi (Barcha talabalarga)');
+    try {
+      await broadcastNotification(title, body);
+      setMessages([
+        { id: Date.now().toString(), title, body, date: 'Hozir' },
+        ...messages
+      ]);
+      setTitle('');
+      setBody('');
+      alert('E\'lon muvaffaqiyatli jo\'natildi (Barcha talabalarga)');
+    } catch (err: any) {
+      alert("Xatolik: " + (err.response?.data?.message || err.message));
+    }
   };
 
   return (

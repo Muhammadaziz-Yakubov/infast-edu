@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getCourses, createModule, createLesson, updateCourseModules, importCourse, updateLesson } from '../api/courses';
-import { getGroups, updateGroup, getGroupModules, cloneCourseLmsToGroup } from '../api/groups';
+import { getGroups, getGroupModules, cloneCourseLmsToGroup } from '../api/groups';
 import type { Course } from '../utils/mockDb';
 import {
   Layers,
@@ -13,8 +13,6 @@ import {
   GripVertical,
   Upload,
   Edit2,
-  Lock,
-  Settings,
 } from 'lucide-react';
 
 export const LmsBuilder: React.FC = () => {
@@ -29,12 +27,7 @@ export const LmsBuilder: React.FC = () => {
   const [groupModules, setGroupModules] = useState<any[]>([]);
   const [isCustomGroupLms, setIsCustomGroupLms] = useState(false);
   
-  // Group lock & start lesson state
-  const [courseGroups, setCourseGroups] = useState<any[]>([]);
-  const [, setLoadingGroups] = useState(false);
-  const [savingGroupId, setSavingGroupId] = useState<string | null>(null);
-  const [visualizeGroupId, setVisualizeGroupId] = useState<string>('none');
-  const [groupStartOrders, setGroupStartOrders] = useState<Record<string, number>>({});
+  // Group lock & start lesson state (Removed as requested)
 
   // LMS Navigation pointers
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
@@ -128,50 +121,7 @@ export const LmsBuilder: React.FC = () => {
     }
   }, [selectedGroupId, builderMode]);
 
-  const loadGroupsForCourse = async (courseId: string) => {
-    setLoadingGroups(true);
-    try {
-      const allGroups = await getGroups();
-      const filtered = allGroups.filter((g: any) => {
-        const cId = g.courseId?._id || g.courseId;
-        return cId?.toString() === courseId.toString();
-      });
-      setCourseGroups(filtered);
-      
-      const initialOrders: Record<string, number> = {};
-      filtered.forEach((g: any) => {
-        initialOrders[g._id] = g.startLessonOrder ?? 1;
-      });
-      setGroupStartOrders(initialOrders);
-    } catch (e) {
-      console.error('loadGroupsForCourse error:', e);
-    } finally {
-      setLoadingGroups(false);
-    }
-  };
 
-  useEffect(() => {
-    if (selectedCourse) {
-      loadGroupsForCourse(selectedCourse._id);
-    } else {
-      setCourseGroups([]);
-    }
-  }, [selectedCourse]);
-
-  const handleUpdateGroupStart = async (groupId: string, startOrder: number) => {
-    setSavingGroupId(groupId);
-    try {
-      await updateGroup(groupId, { startLessonOrder: Number(startOrder) });
-      alert("Muvaffaqiyatli saqlandi! Ushbu guruh talabalariga oldingi darslar qulflanadi.");
-      if (selectedCourse) {
-        await loadGroupsForCourse(selectedCourse._id);
-      }
-    } catch (err: any) {
-      alert("Xatolik: " + (err.response?.data?.message || err.message));
-    } finally {
-      setSavingGroupId(null);
-    }
-  };
 
 
 
@@ -410,7 +360,6 @@ export const LmsBuilder: React.FC = () => {
                 setSelectedCourse(course || null);
                 setActiveModuleId(null);
                 setActiveLesson(null);
-                setVisualizeGroupId('none');
               }}
               className="text-sm rounded-lg border bg-background px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none"
             >
@@ -440,67 +389,6 @@ export const LmsBuilder: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Group Start Lesson Configurator & Visualizer */}
-      {selectedCourse && courseGroups.length > 0 && (
-        <div className="bg-card border p-5 rounded-xl shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
-            <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-              <Settings className="w-4 h-4 text-primary" />
-              Guruhlarning dars boshlanish darajasi (Lock/Unlock)
-            </h3>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Lock visualizer:</span>
-              <select
-                value={visualizeGroupId}
-                onChange={(e) => setVisualizeGroupId(e.target.value)}
-                className="rounded border bg-background px-2 py-1 outline-none text-xs font-semibold"
-              >
-                <option value="none">Hammasi ochiq</option>
-                {courseGroups.map((g) => (
-                  <option key={g._id} value={g._id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {courseGroups.map((group) => {
-              const startOrder = groupStartOrders[group._id] ?? group.startLessonOrder ?? 1;
-              const isSaving = savingGroupId === group._id;
-              
-              return (
-                <div key={group._id} className="p-3 bg-secondary/30 rounded-lg border flex flex-col justify-between gap-3 hover:bg-secondary/40 transition-colors">
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">{group.name}</h4>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Ushbu guruh qaysi darsdan boshlanadi?</p>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      value={startOrder}
-                      onChange={(e) => {
-                        const val = Math.max(1, parseInt(e.target.value, 10) || 1);
-                        setGroupStartOrders(prev => ({ ...prev, [group._id]: val }));
-                      }}
-                      className="w-16 text-xs rounded border bg-background px-2 py-1.5 focus:ring-1 focus:ring-primary outline-none"
-                    />
-                    <button
-                      onClick={() => handleUpdateGroupStart(group._id, startOrder)}
-                      disabled={isSaving}
-                      className="flex-1 text-center bg-primary text-primary-foreground font-semibold py-1.5 px-3 rounded text-xs hover:opacity-90 transition-all disabled:opacity-50"
-                    >
-                      {isSaving ? "Saqlanmoqda..." : "Saqlash"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[550px]">
         
@@ -598,11 +486,6 @@ export const LmsBuilder: React.FC = () => {
                   <div className="pl-3 space-y-1">
                     {mod.lessons.map((les: any) => {
                       const isSelected = activeLesson?._id === les._id;
-                      
-                      // Calculate lock status if visualizing a group
-                      const visualizerGroup = courseGroups.find(g => g._id === visualizeGroupId);
-                      const startLessonOrder = visualizerGroup ? (visualizerGroup.startLessonOrder ?? 1) : 1;
-                      const isLessonLocked = les.order < startLessonOrder;
 
                       return (
                         <div
@@ -644,23 +527,12 @@ export const LmsBuilder: React.FC = () => {
                             setDraggedLessonId(null);
                           }}
                           className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors border border-transparent ${
-                            isLessonLocked ? 'opacity-40' : ''
-                          } ${
                             isSelected ? 'bg-secondary text-primary font-semibold border-border' : 'text-muted-foreground hover:bg-secondary/30 hover:text-foreground'
                           }`}
                         >
                           <GripVertical className="w-3 h-3 text-muted-foreground/60 shrink-0 cursor-grab" />
-                          {isLessonLocked ? (
-                            <Lock className="w-3.5 h-3.5 shrink-0 text-amber-500" />
-                          ) : (
-                            <Code className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                          )}
+                          <Code className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                           <span className="truncate">{les.title}</span>
-                          {isLessonLocked && (
-                            <span className="ml-auto text-[9px] bg-amber-500/10 text-amber-600 px-1 rounded font-bold">
-                              locked
-                            </span>
-                          )}
                         </div>
                       );
                     })}

@@ -116,7 +116,10 @@ export const Students: React.FC = () => {
       setPassword('');
       setNextPaymentDate('');
     } catch (err: any) {
-      alert(err.message || 'Xatolik yuz berdi');
+      const errMsg = err.response?.data?.message
+        ? (Array.isArray(err.response.data.message) ? err.response.data.message.join('\n') : err.response.data.message)
+        : (err.message || 'Xatolik yuz berdi');
+      alert(errMsg);
     }
   };
 
@@ -138,7 +141,10 @@ export const Students: React.FC = () => {
       setNextPaymentDate('');
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Xatolik yuz berdi');
+      const errMsg = err.response?.data?.message
+        ? (Array.isArray(err.response.data.message) ? err.response.data.message.join('\n') : err.response.data.message)
+        : (err.message || 'Xatolik yuz berdi');
+      alert(errMsg);
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getCourses, createModule, createLesson, updateCourseModules } from '../api/courses';
+import { getCourses, createModule, createLesson, updateCourseModules, importCourse } from '../api/courses';
 import type { Course } from '../utils/mockDb';
 import {
   Layers,
@@ -10,6 +10,7 @@ import {
   Save,
   ListTodo,
   GripVertical,
+  Upload,
 } from 'lucide-react';
 
 // Convert any YouTube URL format to embed URL
@@ -75,6 +76,49 @@ export const LmsBuilder: React.FC = () => {
     }
   };
 
+  const handleImportJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        
+        if (!json.title || !json.description || !json.duration || !json.level) {
+          alert("Xato JSON formati: Kursda 'title', 'description', 'duration' va 'level' bo'lishi shart.");
+          return;
+        }
+
+        const confirmImport = window.confirm(`"${json.title}" kursini import qilishni xohlaysizmi? Bu yangi kurs, modullar va darslarni avtomatik ravishda yaratadi.`);
+        if (!confirmImport) return;
+
+        setLoading(true);
+        const imported = await importCourse(json);
+        alert("Kurs muvaffaqiyatli import qilindi!");
+        
+        const updatedCourses = await getCourses();
+        setCourses(updatedCourses);
+        const matched = updatedCourses.find(c => c._id === imported._id);
+        if (matched) {
+          setSelectedCourse(matched);
+        } else if (updatedCourses.length > 0) {
+          setSelectedCourse(updatedCourses[0]);
+        }
+        
+        setActiveModuleId(null);
+        setActiveLesson(null);
+      } catch (err: any) {
+        console.error(err);
+        alert(`Import qilishda xatolik yuz berdi: ${err.message || 'JSON formati xato'}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const handleAddModule = async () => {
     if (!selectedCourse || !moduleTitle) return;
     try {
@@ -138,9 +182,27 @@ export const LmsBuilder: React.FC = () => {
     <div className="space-y-6 animate-in fade-in duration-200">
       
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-1">LMS Builder</h1>
-        <p className="text-muted-foreground">Kurs mavzulari, video darslar, uy vazifalari va quiz testlarini tuzish ish stoli.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight mb-1">LMS Builder</h1>
+          <p className="text-muted-foreground">Kurs mavzulari, video darslar, uy vazifalari va quiz testlarini tuzish ish stoli.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="file"
+            id="json-import-input"
+            accept=".json"
+            onChange={handleImportJson}
+            className="hidden"
+          />
+          <label
+            htmlFor="json-import-input"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg hover:opacity-90 transition-all shadow-sm cursor-pointer text-sm"
+          >
+            <Upload className="w-4 h-4" />
+            Import JSON
+          </label>
+        </div>
       </div>
 
       {/* Select Course dropdown */}

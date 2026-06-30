@@ -23,3 +23,8 @@ export async function createLesson(dto: any): Promise<any> {
 export async function updateCourseModules(courseId: string, modules: any[]): Promise<void> {
   await apiClient.put(`/courses/${courseId}/modules`, { modules });
 }
+
+export async function importCourse(importData: any): Promise<any> {
+  const res = await apiClient.post('/courses/import', importData);
+  return res.data.data;
+}

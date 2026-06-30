@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getCourses, createModule, createLesson, updateCourseModules, importCourse, updateLesson } from '../api/courses';
+import { getCourses, createModule, createLesson, updateCourseModules, importCourse, updateLesson, duplicateLesson } from '../api/courses';
 import { getGroups, getGroupModules, cloneCourseLmsToGroup } from '../api/groups';
 import type { Course } from '../utils/mockDb';
 import {
@@ -13,6 +13,7 @@ import {
   GripVertical,
   Upload,
   Edit2,
+  Copy,
 } from 'lucide-react';
 
 export const LmsBuilder: React.FC = () => {
@@ -27,6 +28,13 @@ export const LmsBuilder: React.FC = () => {
   const [groupModules, setGroupModules] = useState<any[]>([]);
   const [isCustomGroupLms, setIsCustomGroupLms] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState<string>('COURSE');
+
+  // Lesson Duplication Modal States
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [targetGroupId, setTargetGroupId] = useState<string>('');
+  const [targetModules, setTargetModules] = useState<any[]>([]);
+  const [targetModuleId, setTargetModuleId] = useState<string>('');
+  const [duplicating, setDuplicating] = useState(false);
   
   // Group lock & start lesson state (Removed as requested)
 
@@ -298,6 +306,46 @@ export const LmsBuilder: React.FC = () => {
     setQuizQuestion('');
     setQuizOptions(['', '', '', '']);
     setQuizCorrectIndex(0);
+  };
+
+  const handleTargetGroupChange = async (groupId: string) => {
+    setTargetGroupId(groupId);
+    setTargetModuleId('');
+    if (!groupId) {
+      setTargetModules([]);
+      return;
+    }
+    try {
+      const modulesList = await getGroupModules(groupId);
+      setTargetModules(modulesList);
+      if (modulesList.length > 0) {
+        setTargetModuleId(modulesList[0]._id);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDuplicateConfirm = async () => {
+    if (!activeLesson || !targetModuleId) return;
+    setDuplicating(true);
+    try {
+      await duplicateLesson(activeLesson._id, targetModuleId);
+      alert("Dars muvaffaqiyatli nusxalandi!");
+      setShowDuplicateModal(false);
+      
+      // Reset state
+      setTargetGroupId('');
+      setTargetModules([]);
+      setTargetModuleId('');
+      
+      // Refresh current builder view
+      await refreshBuilderData();
+    } catch (e: any) {
+      alert("Xatolik: " + (e.response?.data?.message || e.message));
+    } finally {
+      setDuplicating(false);
+    }
   };
 
   const activeModules = builderMode === 'COURSE' 
@@ -1038,13 +1086,22 @@ export const LmsBuilder: React.FC = () => {
                       <p className="text-xs text-muted-foreground">{activeLesson.description || 'Tavsif kiritilmagan'}</p>
                       <p className="text-[10px] text-muted-foreground mt-1">Tartib raqami: #{activeLesson.order}</p>
                     </div>
-                    <button
-                      onClick={startEditing}
-                      className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-semibold hover:bg-secondary text-foreground transition-all shadow-sm shrink-0"
-                    >
-                      <Edit2 className="w-3.5 h-3.5 text-primary" />
-                      Tahrirlash
-                    </button>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => setShowDuplicateModal(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-sm"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        Darsni nusxalash
+                      </button>
+                      <button
+                        onClick={startEditing}
+                        className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-semibold hover:bg-secondary text-foreground transition-all shadow-sm"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-primary" />
+                        Tahrirlash
+                      </button>
+                    </div>
                   </div>
 
                   {activeLesson.practice && (
@@ -1132,6 +1189,76 @@ export const LmsBuilder: React.FC = () => {
         </div>
 
       </div>
+
+      {showDuplicateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card border rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Darsni boshqa guruhga nusxalash</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Ushbu dars nusxasini qaysi guruh va modulga ko'chirmoqchisiz?</p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Guruhni tanlang:</label>
+                <select
+                  value={targetGroupId}
+                  onChange={(e) => handleTargetGroupChange(e.target.value)}
+                  className="w-full text-sm rounded-lg border bg-background px-3 py-2 focus:ring-1 focus:ring-primary outline-none"
+                >
+                  <option value="">Guruhni tanlang...</option>
+                  {allGroupsList.map((g) => (
+                    <option key={g._id} value={g._id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {targetGroupId && (
+                <div className="space-y-1 animate-in slide-in-from-top-2 duration-200">
+                  <label className="text-xs font-semibold text-muted-foreground">Modulni tanlang:</label>
+                  {targetModules.length === 0 ? (
+                    <p className="text-xs text-destructive bg-destructive/5 border border-destructive/10 p-2 rounded-lg">
+                      Ushbu guruhda modullar mavjud emas. Avval guruhda modul yarating.
+                    </p>
+                  ) : (
+                    <select
+                      value={targetModuleId}
+                      onChange={(e) => setTargetModuleId(e.target.value)}
+                      className="w-full text-sm rounded-lg border bg-background px-3 py-2 focus:ring-1 focus:ring-primary outline-none"
+                    >
+                      {targetModules.map((m) => (
+                        <option key={m._id} value={m._id}>{m.title}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setShowDuplicateModal(false);
+                  setTargetGroupId('');
+                  setTargetModules([]);
+                  setTargetModuleId('');
+                }}
+                disabled={duplicating}
+                className="px-4 py-2 border rounded-lg text-sm font-semibold hover:bg-secondary transition-all disabled:opacity-50"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={handleDuplicateConfirm}
+                disabled={duplicating || !targetModuleId}
+                className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg hover:opacity-90 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+              >
+                {duplicating ? "Nusxalanmoqda..." : "Nusxalash"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -108,7 +108,8 @@ export const LmsBuilder: React.FC = () => {
         setActiveLesson(null);
       } catch (err: any) {
         console.error(err);
-        alert(`Import qilishda xatolik yuz berdi: ${err.message || 'JSON formati xato'}`);
+        const errMsg = err.response?.data?.message || err.message || 'JSON formati xato';
+        alert(`Import qilishda xatolik yuz berdi: ${errMsg}`);
       } finally {
         setLoading(false);
       }

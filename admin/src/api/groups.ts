@@ -24,3 +24,14 @@ export async function getGroupSchedule(groupId: string): Promise<any[]> {
   const res = await apiClient.get(`/groups/${groupId}/schedule`);
   return res.data.data;
 }
+
+export async function getGroupProgress(groupId: string): Promise<any> {
+  const res = await apiClient.get(`/groups/${groupId}/progress`);
+  return res.data.data;
+}
+
+export async function updateGroup(groupId: string, dto: any): Promise<any> {
+  const res = await apiClient.patch(`/groups/${groupId}`, dto);
+  return res.data.data;
+}
+

@@ -28,3 +28,8 @@ export async function importCourse(importData: any): Promise<any> {
   const res = await apiClient.post('/courses/import', importData);
   return res.data.data;
 }
+
+export async function updateLesson(id: string, dto: any): Promise<any> {
+  const res = await apiClient.patch(`/lms/lessons/${id}`, dto);
+  return res.data.data;
+}

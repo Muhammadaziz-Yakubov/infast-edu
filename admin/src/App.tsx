@@ -21,6 +21,8 @@ import { Stories } from './pages/Stories';
 import { Events } from './pages/Events';
 import { Referrals } from './pages/Referrals';
 import { Settings } from './pages/Settings';
+import { LmsCheck } from './pages/LmsCheck';
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +62,7 @@ export const App: React.FC = () => {
             {/* LMS Syllabus */}
             <Route path="/courses" element={<Courses />} />
             <Route path="/lms" element={<LmsBuilder />} />
+            <Route path="/lms-check" element={<LmsCheck />} />
             <Route path="/homework" element={<Homework />} />
             
             {/* Operations */}

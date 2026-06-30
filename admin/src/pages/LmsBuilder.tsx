@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getCourses, createModule, createLesson, updateCourseModules, importCourse } from '../api/courses';
+import { getCourses, createModule, createLesson, updateCourseModules, importCourse, updateLesson } from '../api/courses';
+import { getGroups, updateGroup } from '../api/groups';
 import type { Course } from '../utils/mockDb';
 import {
   Layers,
@@ -11,6 +12,9 @@ import {
   ListTodo,
   GripVertical,
   Upload,
+  Edit2,
+  Lock,
+  Settings,
 } from 'lucide-react';
 
 export const LmsBuilder: React.FC = () => {
@@ -18,9 +22,17 @@ export const LmsBuilder: React.FC = () => {
   const [, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   
+  // Group lock & start lesson state
+  const [courseGroups, setCourseGroups] = useState<any[]>([]);
+  const [, setLoadingGroups] = useState(false);
+  const [savingGroupId, setSavingGroupId] = useState<string | null>(null);
+  const [visualizeGroupId, setVisualizeGroupId] = useState<string>('none');
+  const [groupStartOrders, setGroupStartOrders] = useState<Record<string, number>>({});
+
   // LMS Navigation pointers
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [activeLesson, setActiveLesson] = useState<any | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Drag and Drop reordering state
   const [draggedModuleId, setDraggedModuleId] = useState<string | null>(null);
@@ -73,6 +85,53 @@ export const LmsBuilder: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const loadGroupsForCourse = async (courseId: string) => {
+    setLoadingGroups(true);
+    try {
+      const allGroups = await getGroups();
+      const filtered = allGroups.filter((g: any) => {
+        const cId = g.courseId?._id || g.courseId;
+        return cId?.toString() === courseId.toString();
+      });
+      setCourseGroups(filtered);
+      
+      const initialOrders: Record<string, number> = {};
+      filtered.forEach((g: any) => {
+        initialOrders[g._id] = g.startLessonOrder ?? 1;
+      });
+      setGroupStartOrders(initialOrders);
+    } catch (e) {
+      console.error('loadGroupsForCourse error:', e);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCourse) {
+      loadGroupsForCourse(selectedCourse._id);
+    } else {
+      setCourseGroups([]);
+    }
+  }, [selectedCourse]);
+
+  const handleUpdateGroupStart = async (groupId: string, startOrder: number) => {
+    setSavingGroupId(groupId);
+    try {
+      await updateGroup(groupId, { startLessonOrder: Number(startOrder) });
+      alert("Muvaffaqiyatli saqlandi! Ushbu guruh talabalariga oldingi darslar qulflanadi.");
+      if (selectedCourse) {
+        await loadGroupsForCourse(selectedCourse._id);
+      }
+    } catch (err: any) {
+      alert("Xatolik: " + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingGroupId(null);
+    }
+  };
+
+
 
   const handleImportJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -171,6 +230,60 @@ export const LmsBuilder: React.FC = () => {
     }
   };
 
+  const startEditing = () => {
+    if (!activeLesson) return;
+    setLessonTitle(activeLesson.title || '');
+    setLessonDesc(activeLesson.description || '');
+    if (activeLesson.practice) {
+      setPracticeTitle(activeLesson.practice.title || '');
+      setPracticeDesc(activeLesson.practice.description || '');
+      setPracticeLang(activeLesson.practice.language || 'html');
+      setPracticeStarter(activeLesson.practice.starterCode || '');
+      setPracticeRules(activeLesson.practice.validationRules?.join(', ') || '');
+      setPracticeXp(activeLesson.practice.xpReward || 50);
+      setPracticeCoins(activeLesson.practice.coinReward || 10);
+    } else {
+      setPracticeTitle('');
+      setPracticeDesc('');
+      setPracticeLang('html');
+      setPracticeStarter('');
+      setPracticeRules('');
+      setPracticeXp(50);
+      setPracticeCoins(10);
+    }
+    setQuizzes(activeLesson.quiz || []);
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!activeLesson || !lessonTitle) return;
+    try {
+      const updatedLesson = await updateLesson(activeLesson._id, {
+        title: lessonTitle,
+        description: lessonDesc,
+        practice: practiceTitle ? {
+          title: practiceTitle,
+          description: practiceDesc,
+          language: practiceLang,
+          starterCode: practiceStarter,
+          validationType: 'contains',
+          validationRules: practiceRules.split(',').map(r => r.trim()).filter(Boolean),
+          xpReward: Number(practiceXp),
+          coinReward: Number(practiceCoins)
+        } : null,
+        quiz: quizzes,
+      });
+
+      setIsEditing(false);
+      await loadData();
+      
+      // Update the active lesson to reflect the edits
+      setActiveLesson(updatedLesson);
+    } catch (err: any) {
+      alert(err.message || 'Saqlashda xatolik yuz berdi');
+    }
+  };
+
   const addQuizQuestion = () => {
     if (!quizQuestion || quizOptions.some(opt => opt === '')) {
       alert('Iltimos, test savoli va barcha javob variantlarini to\'ldiring');
@@ -228,6 +341,7 @@ export const LmsBuilder: React.FC = () => {
             setSelectedCourse(course || null);
             setActiveModuleId(null);
             setActiveLesson(null);
+            setVisualizeGroupId('none');
           }}
           className="text-sm rounded-lg border bg-background px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none"
         >
@@ -236,6 +350,67 @@ export const LmsBuilder: React.FC = () => {
           ))}
         </select>
       </div>
+
+      {/* Group Start Lesson Configurator & Visualizer */}
+      {selectedCourse && courseGroups.length > 0 && (
+        <div className="bg-card border p-5 rounded-xl shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b pb-3">
+            <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+              <Settings className="w-4 h-4 text-primary" />
+              Guruhlarning dars boshlanish darajasi (Lock/Unlock)
+            </h3>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Lock visualizer:</span>
+              <select
+                value={visualizeGroupId}
+                onChange={(e) => setVisualizeGroupId(e.target.value)}
+                className="rounded border bg-background px-2 py-1 outline-none text-xs font-semibold"
+              >
+                <option value="none">Hammasi ochiq</option>
+                {courseGroups.map((g) => (
+                  <option key={g._id} value={g._id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courseGroups.map((group) => {
+              const startOrder = groupStartOrders[group._id] ?? group.startLessonOrder ?? 1;
+              const isSaving = savingGroupId === group._id;
+              
+              return (
+                <div key={group._id} className="p-3 bg-secondary/30 rounded-lg border flex flex-col justify-between gap-3 hover:bg-secondary/40 transition-colors">
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">{group.name}</h4>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Ushbu guruh qaysi darsdan boshlanadi?</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={startOrder}
+                      onChange={(e) => {
+                        const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                        setGroupStartOrders(prev => ({ ...prev, [group._id]: val }));
+                      }}
+                      className="w-16 text-xs rounded border bg-background px-2 py-1.5 focus:ring-1 focus:ring-primary outline-none"
+                    />
+                    <button
+                      onClick={() => handleUpdateGroupStart(group._id, startOrder)}
+                      disabled={isSaving}
+                      className="flex-1 text-center bg-primary text-primary-foreground font-semibold py-1.5 px-3 rounded text-xs hover:opacity-90 transition-all disabled:opacity-50"
+                    >
+                      {isSaving ? "Saqlanmoqda..." : "Saqlash"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[550px]">
         
@@ -299,12 +474,19 @@ export const LmsBuilder: React.FC = () => {
                   <div className="pl-3 space-y-1">
                     {mod.lessons.map((les: any) => {
                       const isSelected = activeLesson?._id === les._id;
+                      
+                      // Calculate lock status if visualizing a group
+                      const visualizerGroup = courseGroups.find(g => g._id === visualizeGroupId);
+                      const startLessonOrder = visualizerGroup ? (visualizerGroup.startLessonOrder ?? 1) : 1;
+                      const isLessonLocked = les.order < startLessonOrder;
+
                       return (
                         <div
                           key={les._id}
                           onClick={() => {
                             setActiveModuleId(mod._id);
                             setActiveLesson(les);
+                            setIsEditing(false);
                           }}
                           draggable
                           onDragStart={(e) => {
@@ -336,12 +518,23 @@ export const LmsBuilder: React.FC = () => {
                             setDraggedLessonId(null);
                           }}
                           className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors border border-transparent ${
+                            isLessonLocked ? 'opacity-40' : ''
+                          } ${
                             isSelected ? 'bg-secondary text-primary font-semibold border-border' : 'text-muted-foreground hover:bg-secondary/30 hover:text-foreground'
                           }`}
                         >
                           <GripVertical className="w-3 h-3 text-muted-foreground/60 shrink-0 cursor-grab" />
-                          <Code className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                          {isLessonLocked ? (
+                            <Lock className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                          ) : (
+                            <Code className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                          )}
                           <span className="truncate">{les.title}</span>
+                          {isLessonLocked && (
+                            <span className="ml-auto text-[9px] bg-amber-500/10 text-amber-600 px-1 rounded font-bold">
+                              locked
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -597,13 +790,245 @@ export const LmsBuilder: React.FC = () => {
                     </div>
                   </div>
                 </div>
+              ) : isEditing ? (
+                // Edit Lesson Workspace Form
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-bold">Darsni Tahrirlash</h3>
+                    <p className="text-xs text-muted-foreground">Dars, amaliy topshiriq va quiz testlarini tahrirlang.</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Dars nomi</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="E.g. HTML Kirish"
+                          value={lessonTitle}
+                          onChange={(e) => setLessonTitle(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Dars tavsifi</label>
+                        <input
+                          type="text"
+                          placeholder="Dars haqida qisqacha ma'lumot..."
+                          value={lessonDesc}
+                          onChange={(e) => setLessonDesc(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Practice Task Fields */}
+                    <div className="border rounded-xl p-4 space-y-4 bg-secondary/10">
+                      <h4 className="font-bold text-xs flex items-center gap-1.5 text-primary uppercase tracking-wider">
+                        <Code className="w-4 h-4" />
+                        💻 Amaliyot Topshirig'i (Practice Task)
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">Topshiriq nomi</label>
+                          <input
+                            type="text"
+                            placeholder="E.g. H1 element yarating"
+                            value={practiceTitle}
+                            onChange={(e) => setPracticeTitle(e.target.value)}
+                            className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">Dasturlash tili</label>
+                          <select
+                            value={practiceLang}
+                            onChange={(e) => setPracticeLang(e.target.value)}
+                            className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                          >
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="javascript">JavaScript</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-muted-foreground">Topshiriq tavsifi (Yo'riqnoma)</label>
+                        <textarea
+                          rows={2}
+                          placeholder="Topshiriq shartlarini yozing..."
+                          value={practiceDesc}
+                          onChange={(e) => setPracticeDesc(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-xs bg-background outline-none resize-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-muted-foreground">Boshlang'ich kod (Starter Code)</label>
+                        <textarea
+                          rows={2}
+                          placeholder="Talaba muharrirni ochganda chiqadigan kod..."
+                          value={practiceStarter}
+                          onChange={(e) => setPracticeStarter(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-xs bg-background outline-none font-mono resize-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-muted-foreground">Validation qoidalari (Tekshirish so'zlari, vergul bilan ajrating)</label>
+                        <input
+                          type="text"
+                          placeholder="E.g. <h1>, </h1>, Salom"
+                          value={practiceRules}
+                          onChange={(e) => setPracticeRules(e.target.value)}
+                          className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">XP Mukofot</label>
+                          <input
+                            type="number"
+                            value={practiceXp}
+                            onChange={(e) => setPracticeXp(Number(e.target.value))}
+                            className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-muted-foreground">Coin Mukofot</label>
+                          <input
+                            type="number"
+                            value={practiceCoins}
+                            onChange={(e) => setPracticeCoins(Number(e.target.value))}
+                            className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quiz editor within creation form */}
+                    <div className="border rounded-xl p-4 space-y-4 bg-secondary/10">
+                      <h4 className="font-bold text-xs flex items-center gap-1.5">
+                        <HelpCircle className="w-4 h-4 text-primary" />
+                        Quiz Test Savollarini Yaratish ({quizzes.length} ta)
+                      </h4>
+
+                      {quizzes.length > 0 && (
+                        <div className="space-y-2 border-b pb-3">
+                          {quizzes.map((q, idx) => (
+                            <div key={idx} className="flex justify-between items-center bg-card p-2 border rounded-lg text-xs">
+                              <div>
+                                <span className="font-semibold block">{idx + 1}. {q.question}</span>
+                                <span className="text-muted-foreground">Raund: {q.round || 1} | Variant: {q.options[q.correctAnswerIndex]}</span>
+                              </div>
+                              <button
+                                onClick={() => setQuizzes(quizzes.filter((_, i) => i !== idx))}
+                                className="text-destructive hover:underline text-[10px]"
+                              >
+                                O'chirish
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="space-y-3">
+                        <input
+                           type="text"
+                           placeholder="Test savoli..."
+                           value={quizQuestion}
+                           onChange={(e) => setQuizQuestion(e.target.value)}
+                           className="w-full border rounded-lg p-2 text-xs bg-background outline-none"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                           {quizOptions.map((opt, oIdx) => (
+                             <input
+                               key={oIdx}
+                               type="text"
+                               placeholder={`Variant ${oIdx + 1}...`}
+                               value={opt}
+                               onChange={(e) => {
+                                 const list = [...quizOptions];
+                                 list[oIdx] = e.target.value;
+                                 setQuizOptions(list);
+                               }}
+                               className="border rounded-lg p-2 text-xs bg-background outline-none"
+                             />
+                           ))}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground">To'g'ri javob indexi:</span>
+                          <select
+                            value={quizCorrectIndex}
+                            onChange={(e) => setQuizCorrectIndex(Number(e.target.value))}
+                            className="border rounded px-2 py-1 text-xs bg-background outline-none"
+                          >
+                            <option value={0}>Variant 1</option>
+                            <option value={1}>Variant 2</option>
+                            <option value={2}>Variant 3</option>
+                            <option value={3}>Variant 4</option>
+                          </select>
+
+                          <span className="text-xs text-muted-foreground ml-2">Raund:</span>
+                          <select
+                            value={quizRound}
+                            onChange={(e) => setQuizRound(Number(e.target.value))}
+                            className="border rounded px-2 py-1 text-xs bg-background outline-none w-24"
+                          >
+                            <option value={1}>1-Raund</option>
+                            <option value={2}>2-Raund</option>
+                            <option value={3}>3-Raund</option>
+                            <option value={4}>4-Raund</option>
+                            <option value={5}>5-Raund</option>
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={addQuizQuestion}
+                            className="ml-auto flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded bg-secondary text-primary hover:bg-secondary/70 transition-all border"
+                          >
+                            Savolni Qo'shish
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        className="px-4 py-2 border rounded-lg text-sm font-semibold hover:bg-secondary transition-all"
+                      >
+                        Bekor qilish
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg hover:opacity-90 transition-all flex items-center gap-2 shadow-sm"
+                      >
+                        <Save className="w-4 h-4" />
+                        Saqlash
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 // View Lesson Details
                 <div className="space-y-6">
-                  <div>
-                    <h3 className="text-xl font-bold">{activeLesson.title}</h3>
-                    <p className="text-xs text-muted-foreground">{activeLesson.description || 'Tavsif kiritilmagan'}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">Tartib raqami: #{activeLesson.order}</p>
+                  <div className="flex justify-between items-start gap-4">
+                    <div>
+                      <h3 className="text-xl font-bold">{activeLesson.title}</h3>
+                      <p className="text-xs text-muted-foreground">{activeLesson.description || 'Tavsif kiritilmagan'}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Tartib raqami: #{activeLesson.order}</p>
+                    </div>
+                    <button
+                      onClick={startEditing}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-semibold hover:bg-secondary text-foreground transition-all shadow-sm shrink-0"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-primary" />
+                      Tahrirlash
+                    </button>
                   </div>
 
                   {activeLesson.practice && (

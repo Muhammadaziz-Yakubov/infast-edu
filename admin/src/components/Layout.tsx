@@ -23,6 +23,7 @@ import {
   Tv,
   Calendar,
   Gift,
+  ClipboardCheck,
 } from 'lucide-react';
 
 export const Layout: React.FC = () => {
@@ -56,7 +57,9 @@ export const Layout: React.FC = () => {
     { name: 'Groups', path: '/groups', icon: FolderKanban },
     { name: 'Courses', path: '/courses', icon: BookOpen },
     { name: 'LMS Builder', path: '/lms', icon: GraduationCap },
+    { name: 'LMS Check', path: '/lms-check', icon: ClipboardCheck },
     { name: 'Homework', path: '/homework', icon: FileCode },
+
     { name: 'Payments', path: '/payments', icon: CreditCard },
     { name: 'Attendance', path: '/attendance', icon: CheckSquare },
     { name: 'Market', path: '/market', icon: ShoppingBag },

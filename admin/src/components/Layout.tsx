@@ -24,6 +24,7 @@ import {
   Calendar,
   Gift,
   ClipboardCheck,
+  MessageSquare,
 } from 'lucide-react';
 
 export const Layout: React.FC = () => {
@@ -68,6 +69,7 @@ export const Layout: React.FC = () => {
     { name: 'Referrals', path: '/referrals', icon: Gift },
     { name: 'Analytics', path: '/analytics', icon: BarChart3 },
     { name: 'Notifications', path: '/notifications', icon: Bell },
+    { name: 'Chat', path: '/chat', icon: MessageSquare },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 

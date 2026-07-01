@@ -22,6 +22,7 @@ import { Events } from './pages/Events';
 import { Referrals } from './pages/Referrals';
 import { Settings } from './pages/Settings';
 import { LmsCheck } from './pages/LmsCheck';
+import { Chat } from './pages/Chat';
 
 
 const queryClient = new QueryClient({
@@ -78,6 +79,7 @@ export const App: React.FC = () => {
             {/* Reporting & Logs */}
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/chat" element={<Chat />} />
             
             {/* Configurations */}
             <Route path="/settings" element={<Settings />} />

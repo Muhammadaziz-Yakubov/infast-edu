@@ -6,6 +6,7 @@ import { GroupLessonSchedule, GroupLessonScheduleDocument } from './schemas/grou
 import { CourseModule, CourseModuleDocument } from '../lms/schemas/module.schema';
 import { Lesson, LessonDocument } from '../lms/schemas/lesson.schema';
 import { StudentsService } from '../students/students.service';
+import { ChatService } from '../chat/chat.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 
 @Injectable()
@@ -20,7 +21,9 @@ export class GroupsService {
     @InjectModel(Lesson.name)
     private readonly lessonModel: Model<LessonDocument>,
     @Inject(forwardRef(() => StudentsService))
-    private readonly studentsService: StudentsService
+    private readonly studentsService: StudentsService,
+    @Inject(forwardRef(() => ChatService))
+    private readonly chatService: ChatService,
   ) {}
 
   async createGroup(dto: CreateGroupDto): Promise<GroupDocument> {
@@ -46,6 +49,17 @@ export class GroupsService {
 
     // Automatically generate the lesson schedule dates
     await this.generateLessonSchedule(savedGroup._id.toString());
+
+    // Auto-create group chat room
+    try {
+      await this.chatService.createGroupRoom(
+        savedGroup._id.toString(),
+        savedGroup.name,
+        [], // students join when enrolled
+      );
+    } catch (e) {
+      console.error('Failed to create group chat room:', e.message);
+    }
 
     return savedGroup;
   }
@@ -102,6 +116,13 @@ export class GroupsService {
       courseId: group.courseId.toString(),
     });
 
+    // Auto-add student to group chat room
+    try {
+      await this.chatService.addParticipant(groupId, studentId);
+    } catch (e) {
+      console.error('Failed to add student to group chat:', e.message);
+    }
+
     return group;
   }
 
@@ -118,6 +139,13 @@ export class GroupsService {
       groupId: '',
       courseId: '',
     });
+
+    // Remove student from group chat room
+    try {
+      await this.chatService.removeParticipant(groupId, studentId);
+    } catch (e) {
+      console.error('Failed to remove student from group chat:', e.message);
+    }
 
     return group;
   }

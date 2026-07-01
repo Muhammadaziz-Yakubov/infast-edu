@@ -19,7 +19,7 @@ export class PaymentsService implements OnModuleInit {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(Notification.name)
     private readonly notificationModel: Model<NotificationDocument>
-  ) {}
+  ) { }
 
   onModuleInit() {
     // Run status checker immediately on start, then every 12 hours
@@ -244,7 +244,7 @@ export class PaymentsService implements OnModuleInit {
       }
 
       const nextPay = new Date(latestPayment.nextPaymentDate);
-      
+
       // Calculate 5 days before payment date
       const fiveDaysBefore = new Date(nextPay);
       fiveDaysBefore.setDate(fiveDaysBefore.getDate() - 5);

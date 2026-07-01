@@ -513,4 +513,43 @@ export class StudentsService implements OnModuleInit {
     }
     return { success: true, avatar: user.avatar };
   }
+
+  async updateOwnProfile(
+    userId: string,
+    data: { firstName?: string; lastName?: string; dateOfBirth?: string },
+  ): Promise<any> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) throw new NotFoundException('User not found');
+
+    const userUpdates: any = {};
+    const profileUpdates: any = {};
+
+    // Build fullName from firstName + lastName
+    if (data.firstName !== undefined || data.lastName !== undefined) {
+      const currentParts = (user.fullName || '').split(' ');
+      const currentFirst = currentParts[0] || '';
+      const currentLast = currentParts.slice(1).join(' ') || '';
+      const newFirst = data.firstName !== undefined ? data.firstName.trim() : currentFirst;
+      const newLast = data.lastName !== undefined ? data.lastName.trim() : currentLast;
+      userUpdates.fullName = `${newFirst} ${newLast}`.trim();
+    }
+
+    if (data.dateOfBirth !== undefined) {
+      userUpdates.dateOfBirth = data.dateOfBirth;
+      profileUpdates.dateOfBirth = data.dateOfBirth;
+    }
+
+    if (Object.keys(userUpdates).length > 0) {
+      await this.userModel.findByIdAndUpdate(userId, userUpdates).exec();
+    }
+    if (Object.keys(profileUpdates).length > 0) {
+      await this.studentProfileModel.findOneAndUpdate(
+        { userId: new Types.ObjectId(userId) },
+        profileUpdates,
+      ).exec();
+    }
+
+    const updatedUser = await this.userModel.findById(userId).exec();
+    return { success: true, fullName: updatedUser?.fullName, dateOfBirth: data.dateOfBirth };
+  }
 }

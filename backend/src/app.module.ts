@@ -19,6 +19,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { EventsModule } from './modules/events/events.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ReferralsModule } from './modules/referrals/referrals.module';
     AnalyticsModule,
     EventsModule,
     ReferralsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [

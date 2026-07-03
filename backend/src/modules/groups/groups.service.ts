@@ -259,12 +259,14 @@ export class GroupsService {
       .populate('userId', 'fullName avatar')
       .exec();
 
-    const studentIds = studentProfiles.map((s: any) => s._id);
+    const userIds = studentProfiles
+      .map((s: any) => s.userId?._id || s.userId)
+      .filter((id) => id != null);
 
     // 3. All lesson progress for these students
     const LessonProgressModel = this.groupModel.db.model('LessonProgress');
     const progressList = await LessonProgressModel.find({
-      studentId: { $in: studentIds },
+      studentId: { $in: userIds },
     }).exec();
 
     // 4. Build per-lesson quiz question details (for error analysis)
@@ -281,9 +283,10 @@ export class GroupsService {
       const spObj = sp.toObject();
       const userId = spObj.userId;
       const spId = spObj._id.toString();
+      const uId = (userId?._id || userId)?.toString() || '';
 
       const studentProgress = progressList
-        .filter((p: any) => p.studentId.toString() === spId)
+        .filter((p: any) => p.studentId.toString() === uId)
         .map((p: any) => ({
           lessonId: p.lessonId.toString(),
           completed: p.completed,
@@ -295,7 +298,7 @@ export class GroupsService {
 
       return {
         _id: spId,
-        userId: userId?._id || userId,
+        userId: uId,
         fullName: userId?.fullName || 'Noma\'lum',
         avatar: userId?.avatar || null,
         progress: studentProgress,

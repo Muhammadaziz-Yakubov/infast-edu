@@ -533,7 +533,7 @@ export const AiAdvisor: React.FC = () => {
                 {/* Best Sources */}
                 <div className="space-y-2">
                   <span className="text-xs font-bold text-muted-foreground uppercase">Eng Yaxshi Trafik Manbalari (Top 3)</span>
-                  {marketingInsights.bestTrafficSources === "Insufficient data" ? (
+                  {!Array.isArray(marketingInsights.bestTrafficSources) || marketingInsights.bestTrafficSources.length === 0 ? (
                     <p className="text-xs italic text-muted-foreground">Etarli marketing ma'lumoti yo'q.</p>
                   ) : (
                     <div className="space-y-1.5">
@@ -552,7 +552,7 @@ export const AiAdvisor: React.FC = () => {
                 {/* Campaigns Performance */}
                 <div className="space-y-2">
                   <span className="text-xs font-bold text-muted-foreground uppercase">Kampaniya Natijalari</span>
-                  {marketingInsights.campaignPerformance === "Insufficient data" || marketingInsights.campaignPerformance.length === 0 ? (
+                  {!Array.isArray(marketingInsights.campaignPerformance) || marketingInsights.campaignPerformance.length === 0 ? (
                     <p className="text-xs italic text-muted-foreground">Faol kampaniyalar topilmadi.</p>
                   ) : (
                     <div className="space-y-1.5">

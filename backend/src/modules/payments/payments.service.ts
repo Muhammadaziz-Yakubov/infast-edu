@@ -215,6 +215,7 @@ export class PaymentsService implements OnModuleInit {
         _id: pObj._id,
         studentId: student?._id || pObj.studentId,
         studentName: student?.fullName || 'Noma\'lum Talaba',
+        studentLabel: student?.label || '',
         studentPhone: student?.studentPhone || student?.phone || '',
         amount: pObj.amount,
         paymentDate: pObj.paymentDate ? new Date(pObj.paymentDate).toISOString().split('T')[0] : '',

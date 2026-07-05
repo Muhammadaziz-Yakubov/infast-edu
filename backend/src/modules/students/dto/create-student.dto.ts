@@ -53,4 +53,9 @@ export class CreateStudentDto {
   @IsString()
   @IsOptional()
   nextPaymentDate?: string;
+
+  @ApiProperty({ example: 'Olimpiadachi', required: false })
+  @IsString()
+  @IsOptional()
+  label?: string;
 }

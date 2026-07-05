@@ -127,14 +127,14 @@ export class HomeworkService {
   async getSubmissionsForHomework(homeworkId: string): Promise<HomeworkSubmissionDocument[]> {
     return this.submissionModel
       .find({ homeworkId: new Types.ObjectId(homeworkId) })
-      .populate('studentId', 'fullName email phone')
+      .populate('studentId', 'fullName email phone label')
       .exec();
   }
 
   async findAllSubmissions(): Promise<any[]> {
     const submissions = await this.submissionModel
       .find()
-      .populate('studentId', 'fullName email phone')
+      .populate('studentId', 'fullName email phone label')
       .populate('homeworkId', 'title')
       .exec();
 
@@ -144,6 +144,7 @@ export class HomeworkService {
         _id: subObj._id,
         studentId: subObj.studentId?._id || subObj.studentId,
         studentName: subObj.studentId?.fullName || 'Noma\'lum Talaba',
+        studentLabel: subObj.studentId?.label || '',
         homeworkTitle: subObj.homeworkId?.title || 'Noma\'lum Topshiriq',
         completedAt: subObj.completedAt || subObj.createdAt || new Date(),
         score: subObj.score,

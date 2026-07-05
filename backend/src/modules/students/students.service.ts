@@ -134,6 +134,7 @@ export class StudentsService implements OnModuleInit {
         return {
           _id: user?._id?.toString() || pObj._id?.toString(),
           fullName: user?.fullName || 'Noma\'lum Talaba',
+          label: user?.label || '',
           email: user?.email || '',
           studentPhone: pObj.studentPhone || user?.studentPhone || user?.phone || '',
           parentPhone: pObj.parentPhone || '',
@@ -181,6 +182,7 @@ export class StudentsService implements OnModuleInit {
       avatar,
       role: Role.STUDENT,
       status: UserStatus.ACTIVE, // Default active for newly created student by admin
+      label: createStudentDto.label || undefined,
     });
     const savedUser = await user.save();
 
@@ -245,6 +247,7 @@ export class StudentsService implements OnModuleInit {
     if (updateStudentDto.email !== undefined) userUpdates.email = updateStudentDto.email;
     if (updateStudentDto.avatar !== undefined) userUpdates.avatar = updateStudentDto.avatar;
     if (updateStudentDto.status !== undefined) userUpdates.status = updateStudentDto.status;
+    if (updateStudentDto.label !== undefined) userUpdates.label = updateStudentDto.label;
     if (updateStudentDto.password !== undefined) {
       userUpdates.password = await bcrypt.hash(updateStudentDto.password, 10);
     }
@@ -454,6 +457,7 @@ export class StudentsService implements OnModuleInit {
     const user = profileObj.userId as any;
     if (user) {
       profileObj.fullName = user.fullName;
+      profileObj.label = user.label || '';
       profileObj.email = user.email || '';
       profileObj.status = user.status;
       profileObj.avatar = user.avatar || '';
@@ -466,7 +470,7 @@ export class StudentsService implements OnModuleInit {
   async getLeaderboard(): Promise<any[]> {
     const profiles = await this.studentProfileModel
       .find()
-      .populate('userId', 'fullName avatar email phone')
+      .populate('userId', 'fullName avatar email phone label')
       .sort({ xp: -1 })
       .limit(100)
       .exec();

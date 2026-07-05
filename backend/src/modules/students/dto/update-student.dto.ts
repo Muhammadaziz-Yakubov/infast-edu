@@ -87,4 +87,9 @@ export class UpdateStudentDto {
   @IsString()
   @IsOptional()
   nextPaymentDate?: string;
+
+  @ApiProperty({ example: 'Olimpiadachi', required: false })
+  @IsString()
+  @IsOptional()
+  label?: string;
 }

@@ -45,6 +45,9 @@ export class User extends Document {
   @Prop()
   avatar?: string;
 
+  @Prop()
+  label?: string;
+
   @Prop({ type: String, enum: UserStatus, default: UserStatus.PENDING })
   status: UserStatus;
 

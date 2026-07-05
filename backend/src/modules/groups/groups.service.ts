@@ -256,7 +256,7 @@ export class GroupsService {
     const StudentProfileModel = this.groupModel.db.model('StudentProfile');
     const studentProfiles = await StudentProfileModel
       .find({ groupId: new Types.ObjectId(groupId) })
-      .populate('userId', 'fullName avatar')
+      .populate('userId', 'fullName avatar label')
       .exec();
 
     const userIds = studentProfiles
@@ -301,6 +301,7 @@ export class GroupsService {
         userId: uId,
         fullName: userId?.fullName || 'Noma\'lum',
         avatar: userId?.avatar || null,
+        label: userId?.label || '',
         progress: studentProgress,
       };
     });

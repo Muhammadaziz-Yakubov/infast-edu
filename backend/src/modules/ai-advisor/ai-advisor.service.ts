@@ -257,7 +257,12 @@ export class AiAdvisorService {
 
         // 2. Late Payment Check
         const studPayments = payments.filter(p => p.studentId.toString() === student._id.toString());
-        const latePay = studPayments.some(p => p.status === PaymentStatus.OVERDUE || p.status === PaymentStatus.UNPAID);
+        let latePay = false;
+        if (studPayments.length > 0) {
+          studPayments.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
+          const latestPayment = studPayments[0];
+          latePay = latestPayment.status === PaymentStatus.OVERDUE || latestPayment.status === PaymentStatus.UNPAID;
+        }
         if (latePay) {
           reasons.push('Muddati o\'tgan to\'lov');
           actions.push('O\'quvchi bilan bog\'lanib, to\'lovni amalga oshirishni so\'rash.');

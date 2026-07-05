@@ -59,6 +59,7 @@ export const Students: React.FC = () => {
   const [groupId, setGroupId] = useState('');
   const [password, setPassword] = useState('');
   const [nextPaymentDate, setNextPaymentDate] = useState('');
+  const [label, setLabel] = useState('');
 
   // Generated Credentials output
   const [credentials, setCredentials] = useState<{ phone: string; pass: string } | null>(null);
@@ -116,6 +117,7 @@ export const Students: React.FC = () => {
         groupId: groupId || undefined,
         password: password || undefined,
         nextPaymentDate: nextPaymentDate || undefined,
+        label: label || undefined,
       });
 
       // Show credentials
@@ -137,6 +139,7 @@ export const Students: React.FC = () => {
       setGroupId('');
       setPassword('');
       setNextPaymentDate('');
+      setLabel('');
     } catch (err: any) {
       const errMsg = err.response?.data?.message
         ? (Array.isArray(err.response.data.message) ? err.response.data.message.join('\n') : err.response.data.message)
@@ -158,9 +161,11 @@ export const Students: React.FC = () => {
         courseId: courseId || undefined,
         groupId: groupId || undefined,
         nextPaymentDate: nextPaymentDate || undefined,
+        label: label || undefined,
       });
       setEditStudent(null);
       setNextPaymentDate('');
+      setLabel('');
       await loadData();
     } catch (err: any) {
       const errMsg = err.response?.data?.message
@@ -186,6 +191,7 @@ export const Students: React.FC = () => {
     setEmail(student.email || '');
     setCourseId(student.courseId || '');
     setGroupId(student.groupId || '');
+    setLabel(student.label || '');
     setNextPaymentDate('');
   };
 
@@ -245,6 +251,16 @@ export const Students: React.FC = () => {
           <button
             onClick={() => {
               setCredentials(null);
+              setFullName('');
+              setStudentPhone('+998');
+              setParentPhone('+998');
+              setDateOfBirth('');
+              setEmail('');
+              setCourseId('');
+              setGroupId('');
+              setPassword('');
+              setNextPaymentDate('');
+              setLabel('');
               setCreateOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-sm"
@@ -350,7 +366,12 @@ export const Students: React.FC = () => {
                             className="w-10 h-10 rounded-full bg-secondary"
                           />
                           <div>
-                            <span className="font-semibold block text-primary hover:underline cursor-pointer" onClick={() => navigate(`/students/${student._id}`)}>
+                            <span className="font-semibold flex items-center gap-1.5 text-primary hover:underline cursor-pointer" onClick={() => navigate(`/students/${student._id}`)}>
+                              {student.label && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 rounded">
+                                  {student.label}
+                                </span>
+                              )}
                               {student.fullName}
                             </span>
                             <span className="text-xs text-muted-foreground">{student.email || 'Email yo\'q'}</span>
@@ -509,6 +530,17 @@ export const Students: React.FC = () => {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="E.g. John Doe"
+                    className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Belgi (Tag)</label>
+                  <input
+                    type="text"
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
+                    placeholder="Masalan: Olimpiadachi, VIP"
                     className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>

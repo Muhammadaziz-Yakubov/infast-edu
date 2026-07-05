@@ -18,6 +18,7 @@ export interface Student {
   mustChangePassword?: boolean;
   attendancePercentage?: number;
   homeworkProgress?: number;
+  label?: string;
 }
 
 export interface Group {
@@ -49,6 +50,7 @@ export interface HomeworkSubmission {
   _id: string;
   studentId: string;
   studentName: string;
+  studentLabel?: string;
   homeworkId: string;
   homeworkTitle: string;
   score: number;
@@ -60,6 +62,7 @@ export interface Payment {
   _id: string;
   studentId: string;
   studentName: string;
+  studentLabel?: string;
   amount: number;
   paymentDate: string;
   nextPaymentDate: string;

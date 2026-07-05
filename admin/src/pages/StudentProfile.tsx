@@ -65,6 +65,11 @@ export const StudentProfile: React.FC = () => {
         </button>
         <div>
           <div className="flex items-center gap-3">
+            {profile.label && (
+              <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded-md">
+                {profile.label}
+              </span>
+            )}
             <h1 className="text-2xl font-bold tracking-tight">{profile.fullName}</h1>
             <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
               profile.status === 'ACTIVE' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'

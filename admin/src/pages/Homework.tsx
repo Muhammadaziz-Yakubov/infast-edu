@@ -134,7 +134,14 @@ export const Homework: React.FC = () => {
                 {submissions.map((sub) => (
                   <tr key={sub._id} className="hover:bg-muted/10 transition-colors">
                     <td className="px-6 py-4">
-                      <span className="font-semibold block">{sub.studentName}</span>
+                      <span className="font-semibold flex items-center gap-1">
+                        {sub.studentLabel && (
+                          <span className="inline-flex items-center px-1 py-0.2 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
+                            {sub.studentLabel}
+                          </span>
+                        )}
+                        <span>{sub.studentName}</span>
+                      </span>
                       <span className="text-xs text-muted-foreground">ID: {sub.studentId}</span>
                     </td>
                     <td className="px-6 py-4 font-medium">{sub.homeworkTitle}</td>

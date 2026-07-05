@@ -182,7 +182,14 @@ export const Payments: React.FC = () => {
               <tbody className="divide-y text-sm">
                 {filteredPayments.map((p) => (
                   <tr key={p._id} className="hover:bg-muted/10 transition-colors">
-                    <td className="px-6 py-4 font-semibold">{p.studentName}</td>
+                    <td className="px-6 py-4 font-semibold flex items-center gap-1">
+                      {p.studentLabel && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
+                          {p.studentLabel}
+                        </span>
+                      )}
+                      <span>{p.studentName}</span>
+                    </td>
                     <td className="px-6 py-4 font-bold text-primary">
                       {p.amount.toLocaleString()} so'm
                     </td>

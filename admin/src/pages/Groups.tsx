@@ -282,7 +282,14 @@ export const Groups: React.FC = () => {
                             <div className="flex items-center gap-2.5 min-w-0">
                               <img src={s.avatar} alt="" className="w-8 h-8 rounded-full bg-secondary shrink-0" />
                               <div className="min-w-0">
-                                <span className="text-sm font-semibold truncate block">{s.fullName}</span>
+                                <span className="text-sm font-semibold truncate flex items-center gap-1">
+                                  {s.label && (
+                                    <span className="inline-flex items-center px-1 py-0.2 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
+                                      {s.label}
+                                    </span>
+                                  )}
+                                  <span className="truncate">{s.fullName}</span>
+                                </span>
                                 <span className="text-xs text-muted-foreground truncate block">{s.studentPhone}</span>
                               </div>
                             </div>
@@ -361,7 +368,14 @@ export const Groups: React.FC = () => {
                     <div className="flex items-center gap-2.5">
                       <img src={s.avatar} alt="" className="w-8 h-8 rounded-full bg-secondary" />
                       <div>
-                        <p className="text-sm font-semibold">{s.fullName}</p>
+                        <p className="text-sm font-semibold flex items-center gap-1">
+                          {s.label && (
+                            <span className="inline-flex items-center px-1 py-0.2 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
+                              {s.label}
+                            </span>
+                          )}
+                          <span>{s.fullName}</span>
+                        </p>
                         <span className="text-xs text-muted-foreground">{s.studentPhone}</span>
                       </div>
                     </div>

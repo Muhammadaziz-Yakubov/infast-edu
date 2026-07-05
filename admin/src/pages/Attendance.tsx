@@ -212,7 +212,14 @@ export const Attendance: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <img src={s.avatar} alt="" className="w-10 h-10 rounded-full bg-secondary" />
                       <div>
-                        <span className="font-semibold block text-sm">{s.fullName}</span>
+                        <span className="font-semibold flex items-center gap-1 text-sm">
+                          {s.label && (
+                            <span className="inline-flex items-center px-1 py-0.2 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
+                              {s.label}
+                            </span>
+                          )}
+                          <span>{s.fullName}</span>
+                        </span>
                         <span className="text-xs text-muted-foreground">{s.studentPhone}</span>
                       </div>
                     </div>

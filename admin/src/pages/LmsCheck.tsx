@@ -349,7 +349,14 @@ export const LmsCheck: React.FC = () => {
                                   alt=""
                                   className="w-8 h-8 rounded-full bg-secondary shrink-0"
                                 />
-                                <span className="text-sm font-semibold text-foreground truncate">{student.fullName}</span>
+                                <span className="text-sm font-semibold text-foreground truncate flex items-center gap-1">
+                                  {student.label && (
+                                    <span className="inline-flex items-center px-1 py-0.2 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
+                                      {student.label}
+                                    </span>
+                                  )}
+                                  <span className="truncate">{student.fullName}</span>
+                                </span>
                               </td>
                               {progressData.lessons.map((les: any) => {
                                 const lp = student.progress.find((p: any) => p.lessonId === les._id);
@@ -480,7 +487,14 @@ export const LmsCheck: React.FC = () => {
                             <div className="divide-y">
                               {task.students.map((student: any) => (
                                 <div key={student._id} className="px-5 py-3 flex items-center justify-between hover:bg-secondary/20 transition-colors">
-                                  <span className="text-sm font-medium text-foreground">{student.fullName}</span>
+                                  <span className="text-sm font-medium text-foreground flex items-center gap-1">
+                                    {student.label && (
+                                      <span className="inline-flex items-center px-1 py-0.2 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
+                                        {student.label}
+                                      </span>
+                                    )}
+                                    <span>{student.fullName}</span>
+                                  </span>
                                   <div className="flex gap-4">
                                     <span className="flex items-center gap-1.5 text-xs">
                                       Practice: {student.practiceDone ? (

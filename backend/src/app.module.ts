@@ -20,6 +20,21 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { EventsModule } from './modules/events/events.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { CustomFieldsModule } from './modules/custom-fields/custom-fields.module';
+import { LeadSourcesModule } from './modules/lead-sources/lead-sources.module';
+import { CampaignsModule } from './modules/campaigns/campaigns.module';
+import { ActivitiesModule } from './modules/activities/activities.module';
+import { LeadsModule } from './modules/leads/leads.module';
+import { CallsModule } from './modules/calls/calls.module';
+import { MeetingsModule } from './modules/meetings/meetings.module';
+import { DemoLessonsModule } from './modules/demo-lessons/demo-lessons.module';
+import { NotesModule } from './modules/notes/notes.module';
+import { TasksModule } from './modules/tasks/tasks.module';
+import { FollowUpsModule } from './modules/follow-ups/follow-ups.module';
+import { AttachmentsModule } from './modules/attachments/attachments.module';
+import { RemindersModule } from './modules/reminders/reminders.module';
+import { ConversionsModule } from './modules/conversions/conversions.module';
+import { CrmAnalyticsModule } from './modules/crm-analytics/crm-analytics.module';
 
 @Module({
   imports: [
@@ -52,6 +67,21 @@ import { ChatModule } from './modules/chat/chat.module';
     EventsModule,
     ReferralsModule,
     ChatModule,
+    CustomFieldsModule,
+    LeadSourcesModule,
+    CampaignsModule,
+    ActivitiesModule,
+    LeadsModule,
+    CallsModule,
+    MeetingsModule,
+    DemoLessonsModule,
+    NotesModule,
+    TasksModule,
+    FollowUpsModule,
+    AttachmentsModule,
+    RemindersModule,
+    ConversionsModule,
+    CrmAnalyticsModule,
   ],
   controllers: [AppController],
   providers: [

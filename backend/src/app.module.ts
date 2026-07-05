@@ -35,6 +35,7 @@ import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
 import { ConversionsModule } from './modules/conversions/conversions.module';
 import { CrmAnalyticsModule } from './modules/crm-analytics/crm-analytics.module';
+import { AiAdvisorModule } from './modules/ai-advisor/ai-advisor.module';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { CrmAnalyticsModule } from './modules/crm-analytics/crm-analytics.module
     RemindersModule,
     ConversionsModule,
     CrmAnalyticsModule,
+    AiAdvisorModule,
   ],
   controllers: [AppController],
   providers: [

@@ -115,18 +115,18 @@ export class AiAdvisorService {
       healthScore = Math.round(sum / metricsForHealth.length);
 
       if (healthScore >= 80) {
-        aiSummary = `The center is performing optimally with a health score of ${healthScore}%. Attendance is high, lead conversion is strong, and payment collections are healthy. Focus on expansion.`;
+        aiSummary = `O'quv markazi ${healthScore}% ko'rsatkich bilan optimal ishlamoqda. Davomat yuqori, lidlar konversiyasi kuchli va to'lovlar yig'ilishi yaxshi. Rivojlanishga e'tibor qarating.`;
       } else if (healthScore >= 50) {
-        aiSummary = `The center performance is moderate at ${healthScore}%. There are active alerts regarding low-enrolled groups and attendance dropouts that require prompt attention.`;
+        aiSummary = `O'quv markazi ko'rsatkichi ${healthScore}% bilan o'rtacha holatda. Guruhlar to'lishi va davomat pasayishi bilan bog'liq faol ogohlantirishlar mavjud bo'lib, tezkor choralar ko'rish talab etiladi.`;
       } else {
-        aiSummary = `Action required: Center health score has dropped to ${healthScore}%. Critical risks detected in group occupancy, overdue cash flow, and high student attrition.`;
+        aiSummary = `Tezkor choralar zarur: O'quv markazi salomatlik ko'rsatkichi ${healthScore}% gacha tushib ketdi. Guruhlar to'lishi, muddati o'tgan to'lovlar va o'quvchilar chiqib ketishida yuqori xavflar aniqlandi.`;
       }
     }
 
     // --- GROUP RISK & ANALYSIS ---
     const groupRisks: any[] = [];
     if (groups.length === 0) {
-      groupRisks.push({ message: "Insufficient data" });
+      groupRisks.push({ message: "Ma'lumotlar yetarli emas" });
     } else {
       for (const group of groups) {
         const studentCount = group.students ? group.students.length : 0;
@@ -134,14 +134,14 @@ export class AiAdvisorService {
           const rec: AIRecommendation = {
             priority: 'CRITICAL',
             category: 'GROUP',
-            problem: `Group "${group.name}" has critical low enrollment (${studentCount} students).`,
-            rootCause: `Slow student sign-ups or lack of marketing for the class level.`,
-            businessImpact: `Low margins. Teacher salary and room costs exceed tuition revenue.`,
-            recommendation: `Merge this group with another group running the same course, or move class to a smaller slot.`,
+            problem: `"${group.name}" guruhida talabalar soni kritik darajada kam (${studentCount} ta o'quvchi).`,
+            rootCause: `Ushbu daraja uchun arizalar kamligi yoki marketing yetarli darajada olib borilmagani.`,
+            businessImpact: `Rentabellilikning pastligi. O'qituvchi oyligi va xona ijarasi xarajatlari to'lovlardan oshib ketadi.`,
+            recommendation: `Ushbu guruhni xuddi shu yo'nalishdagi boshqa guruh bilan birlashtiring yoki dars vaqtini kichikroq xonaga o'tkazing.`,
             suggestedActions: [
-              `Review course schedule to find compatible groups for merge.`,
-              `Contact inactive leads interested in course level.`,
-              `Propose online/hybrid class option to students.`,
+              `Birlashtirish uchun boshqa mos guruhlar jadvalini ko'rib chiqish.`,
+              `Ushbu kurs darajasiga qiziqqan nofaol lidlar bilan bog'lanish.`,
+              `O'quvchilarga onlayn/gibrid dars variantini taklif qilish.`,
             ],
             timestamp,
           };
@@ -157,13 +157,13 @@ export class AiAdvisorService {
           const rec: AIRecommendation = {
             priority: 'WARNING',
             category: 'GROUP',
-            problem: `Group "${group.name}" has sub-optimal enrollment (${studentCount} students).`,
-            rootCause: `Low conversion from demo lessons for this course tier.`,
-            businessImpact: `Lower resource efficiency.`,
-            recommendation: `Launch a targeted marketing drive or follow up with leads marked for demo lessons.`,
+            problem: `"${group.name}" guruhida o'quvchilar soni optimal darajadan past (${studentCount} ta o'quvchi).`,
+            rootCause: `Ushbu kurs darajasi uchun sinov darslaridan konversiya pastligi.`,
+            businessImpact: `Resurslardan unumsiz foydalanish.`,
+            recommendation: `Maqsadli marketing kampaniyasini boshlang yoki sinov darslariga yozilgan lidlar bilan qayta bog'laning.`,
             suggestedActions: [
-              `Filter CRM leads matching course level.`,
-              `Create a special offer for remaining seats.`,
+              `Kurs darajasiga mos keladigan CRM lidlarini saralash.`,
+              `Qolgan bo'sh o'rinlar uchun maxsus chegirma yaratish.`,
             ],
             timestamp,
           };
@@ -181,7 +181,7 @@ export class AiAdvisorService {
             groupName: group.name,
             studentCount,
             status: 'HEALTHY',
-            recommendation: 'No action required.',
+            recommendation: 'Hech qanday chora talab etilmaydi.',
           });
         }
       }
@@ -192,7 +192,7 @@ export class AiAdvisorService {
     const uniqueDates = Array.from(new Set(attendance.map(a => new Date(a.date).toDateString())));
     
     if (uniqueDates.length < 3) {
-      attendanceAlerts.push({ message: "Not enough historical information" });
+      attendanceAlerts.push({ message: "Tarixiy ma'lumotlar yetarli emas" });
     } else {
       // Analyze attendance changes by group
       for (const group of groups) {
@@ -213,13 +213,13 @@ export class AiAdvisorService {
           const rec: AIRecommendation = {
             priority: recentRate < 0.6 ? 'CRITICAL' : 'WARNING',
             category: 'ATTENDANCE',
-            problem: `Group "${group.name}" exhibits declining attendance rate from ${Math.round(prevRate * 100)}% to ${Math.round(recentRate * 100)}%.`,
-            rootCause: `Failing engagement or material difficulty hike.`,
-            businessImpact: `High correlation with future student churn and lost tuition.`,
-            recommendation: `Speak with the class teacher to check course pace, and contact absent students.`,
+            problem: `"${group.name}" guruhida davomat ko'rsatkichi ${Math.round(prevRate * 100)}% dan ${Math.round(recentRate * 100)}% gacha pasayib ketgan.`,
+            rootCause: `Darslar qiziqarsizligi yoki mavzularning murakkablashib ketganligi.`,
+            businessImpact: `O'quvchining kursni tark etishi va markaz daromadining yo'qolishi xavfi yuqoriligi.`,
+            recommendation: `O'qituvchi bilan dars tempini muhokama qiling va sababsiz kelmayotgan o'quvchilar bilan bog'laning.`,
             suggestedActions: [
-              `Teacher to call parents of students absent for 2 consecutive lessons.`,
-              `Schedule an optional review/support class.`,
+              `O'qituvchi ketma-ket 2 marta dars qoldirgan o'quvchilar ota-onalari bilan bog'lanishi.`,
+              `Qo'shimcha tushuntirish yoki qo'llab-quvvatlash darsini tashkil qilish.`,
             ],
             timestamp,
           };
@@ -237,7 +237,7 @@ export class AiAdvisorService {
     // --- STUDENT RISK ---
     const studentRisks: any[] = [];
     if (students.length === 0) {
-      studentRisks.push({ message: "Insufficient data" });
+      studentRisks.push({ message: "Ma'lumotlar yetarli emas" });
     } else {
       for (const student of students) {
         const reasons: string[] = [];
@@ -250,8 +250,8 @@ export class AiAdvisorService {
           const present = studAtt.filter(a => a.status === 'PRESENT').length;
           attScore = present / studAtt.length;
           if (attScore < 0.7) {
-            reasons.push(`Low Attendance (${Math.round(attScore * 100)}%)`);
-            actions.push(`Call parent/student to inquire about attendance drop.`);
+            reasons.push(`Past davomat (${Math.round(attScore * 100)}%)`);
+            actions.push(`O'quvchi yoki ota-onasi bilan bog'lanib, davomat pasayish sababini aniqlash.`);
           }
         }
 
@@ -259,8 +259,8 @@ export class AiAdvisorService {
         const studPayments = payments.filter(p => p.studentId.toString() === student._id.toString());
         const latePay = studPayments.some(p => p.status === PaymentStatus.OVERDUE || p.status === PaymentStatus.UNPAID);
         if (latePay) {
-          reasons.push('Overdue Payment');
-          actions.push('Contact student to request pending tuition fee.');
+          reasons.push('Muddati o\'tgan to\'lov');
+          actions.push('O\'quvchi bilan bog\'lanib, to\'lovni amalga oshirishni so\'rash.');
         }
 
         // 3. Homework Check
@@ -275,8 +275,8 @@ export class AiAdvisorService {
             const submittedCount = studSubmissions.length;
             hwRate = submittedCount / groupHomeworks.length;
             if (hwRate < 0.5) {
-              reasons.push(`Low Homework Submission (${Math.round(hwRate * 100)}%)`);
-              actions.push(`Assign support assistant to review incomplete homeworks.`);
+              reasons.push(`Past uy vazifasi topshirish ko'rsatkichi (${Math.round(hwRate * 100)}%)`);
+              actions.push(`Koordinatorni uy vazifalarini ko'rib chiqishga biriktirish.`);
             }
           }
         }
@@ -288,8 +288,8 @@ export class AiAdvisorService {
           if (testScores.length > 0) {
             const avgScore = testScores.reduce((acc, v) => acc + v, 0) / testScores.length;
             if (avgScore < 60) {
-              reasons.push(`Low Quiz Performance (${Math.round(avgScore)}% average)`);
-              actions.push(`Provide revision worksheets for failed quiz modules.`);
+              reasons.push(`Past test ko'rsatkichlari (o'rtacha ${Math.round(avgScore)}%)`);
+              actions.push(`Testdan yiqilgan mavzular bo'yicha qo'shimcha materiallar berish.`);
             }
           }
 
@@ -299,8 +299,8 @@ export class AiAdvisorService {
           if (lastActive > 0) {
             const daysSinceActive = (new Date().getTime() - lastActive) / (1000 * 60 * 60 * 24);
             if (daysSinceActive > 14) {
-              reasons.push(`No App Activity in ${Math.round(daysSinceActive)} days`);
-              actions.push(`Send push notification or automated SMS reminder to log back in.`);
+              reasons.push(`Ilovada faollik yo'qligi (${Math.round(daysSinceActive)} kundan beri)`);
+              actions.push(`Ilovaga kirishni eslatuvchi push-bildirishnoma yoki SMS jo'natish.`);
             }
           }
         }
@@ -310,10 +310,10 @@ export class AiAdvisorService {
           const rec: AIRecommendation = {
             priority: riskPriority,
             category: 'STUDENT',
-            problem: `Student "${student.fullName}" shows high churn risk indicators: ${reasons.join(', ')}.`,
-            rootCause: `Low platform engagement or academic/financial friction.`,
-            businessImpact: `Potential loss of customer lifetime value.`,
-            recommendation: `Reach out to ${student.fullName} directly to coordinate support action.`,
+            problem: `O'quvchi "${student.fullName}" guruhni tark etish xavfi ostida, sabablar: ${reasons.join(', ')}.`,
+            rootCause: `Ilovadagi faollikning pastligi, akademik yoki moliyaviy muammolar.`,
+            businessImpact: `O'quvchidan keladigan oylik daromad va uning umumiy qiymatining yo'qolishi.`,
+            recommendation: `Muammoni hal qilish uchun ${student.fullName} bilan to'g'ridan-to'g'ri bog'laning.`,
             suggestedActions: actions,
             timestamp,
           };
@@ -321,7 +321,7 @@ export class AiAdvisorService {
           studentRisks.push({
             studentId: student._id,
             studentName: student.fullName,
-            groupName: studGroup ? studGroup.name : 'Unassigned',
+            groupName: studGroup ? studGroup.name : 'Biriktirilmagan',
             riskLevel: riskPriority,
             reasons,
           });
@@ -334,7 +334,7 @@ export class AiAdvisorService {
     const activeTeachers = await this.userModel.find({ role: Role.TEACHER, status: UserStatus.ACTIVE }).exec();
 
     if (activeTeachers.length === 0) {
-      teacherInsights.push({ message: "Insufficient data" });
+      teacherInsights.push({ message: "Ma'lumotlar yetarli emas" });
     } else {
       for (const teacher of activeTeachers) {
         const teacherMeetings = meetings.filter(m => m.teacher?.toString() === teacher._id.toString() || (m.teacher as any)?._id?.toString() === teacher._id.toString());
@@ -344,18 +344,18 @@ export class AiAdvisorService {
           teacherInsights.push({
             teacherName: teacher.fullName,
             metrics: {
-              meetingsCompleted: "Insufficient data",
-              demoConversionRate: "Insufficient data",
-              homeworkSpeed: "Insufficient data (no group/grading association found)",
-              studentRetention: "Insufficient data (no group/grading association found)",
-              quizPerformance: "Insufficient data (no group/grading association found)",
+              meetingsCompleted: "Ma'lumotlar yetarli emas",
+              demoConversionRate: "Ma'lumotlar yetarli emas",
+              homeworkSpeed: "Ma'lumot yetarli emas (guruh yoki uy vazifasini baholash aloqasi topilmadi)",
+              studentRetention: "Ma'lumot yetarli emas (guruh yoki uy vazifasini baholash aloqasi topilmadi)",
+              quizPerformance: "Ma'lumot yetarli emas (guruh yoki uy vazifasini baholash aloqasi topilmadi)",
             }
           });
         } else {
           // Calculate Completed Meetings
           const totalMeetings = teacherMeetings.length;
           const completedMeetings = teacherMeetings.filter(m => m.status === 'COMPLETED').length;
-          const meetingsRate = totalMeetings > 0 ? `${completedMeetings}/${totalMeetings} (${Math.round((completedMeetings / totalMeetings) * 100)}%)` : "No meetings";
+          const meetingsRate = totalMeetings > 0 ? `${completedMeetings}/${totalMeetings} (${Math.round((completedMeetings / totalMeetings) * 100)}%)` : "Uchrashuvlar yo'q";
 
           // Calculate Demo conversion rate
           const totalDemos = teacherDemos.length;
@@ -368,16 +368,16 @@ export class AiAdvisorService {
               convertedDemos++;
             }
           }
-          const demoConv = totalDemos > 0 ? `${convertedDemos}/${totalDemos} (${Math.round((convertedDemos / totalDemos) * 100)}%)` : "No demo classes";
+          const demoConv = totalDemos > 0 ? `${convertedDemos}/${totalDemos} (${Math.round((convertedDemos / totalDemos) * 100)}%)` : "Sinov darslari yo'q";
 
           teacherInsights.push({
             teacherName: teacher.fullName,
             metrics: {
               meetingsCompleted: meetingsRate,
               demoConversionRate: demoConv,
-              homeworkSpeed: "Insufficient data (no group/grading association found)",
-              studentRetention: "Insufficient data (no group/grading association found)",
-              quizPerformance: "Insufficient data (no group/grading association found)",
+              homeworkSpeed: "Ma'lumot yetarli emas (guruh yoki uy vazifasini baholash aloqasi topilmadi)",
+              studentRetention: "Ma'lumot yetarli emas (guruh yoki uy vazifasini baholash aloqasi topilmadi)",
+              quizPerformance: "Ma'lumot yetarli emas (guruh yoki uy vazifasini baholash aloqasi topilmadi)",
             }
           });
 
@@ -386,13 +386,13 @@ export class AiAdvisorService {
             recommendations.push({
               priority: 'WARNING',
               category: 'TEACHER',
-              problem: `Teacher "${teacher.fullName}" has low meeting attendance/completion rate (${Math.round((completedMeetings / totalMeetings) * 100)}%).`,
-              rootCause: `Scheduling conflicts or administrative lag.`,
-              businessImpact: `Delayed conversion pipelines and client dissatisfaction.`,
-              recommendation: `Confirm schedule constraints with teacher and verify calendar sync.`,
+              problem: `O'qituvchi "${teacher.fullName}" uchrashuvlarni yakunlash darajasi juda past (${Math.round((completedMeetings / totalMeetings) * 100)}%).`,
+              rootCause: `Vaqt rejalashtirishdagi ziddiyatlar yoki ma'muriy kechikishlar.`,
+              businessImpact: `Lidlar oqimining kechikishi va mijozlar noroziligi.`,
+              recommendation: `O'qituvchi bilan uning dars jadvali cheklovlarini aniqlashtiring va kalendar sinxronizatsiyasini tekshiring.`,
               suggestedActions: [
-                `Review teacher meeting log.`,
-                `Confirm teacher availability hours in settings.`,
+                `O'qituvchining uchrashuvlar jurnalini ko'rib chiqish.`,
+                `Sozlamalarda o'qituvchining bo'sh vaqtlarini tasdiqlash.`,
               ],
               timestamp,
             });
@@ -403,9 +403,9 @@ export class AiAdvisorService {
 
     // --- FINANCE INSIGHTS ---
     let financeInsights: any = {
-      paidRevenue: "Insufficient data",
-      overdueDebt: "Insufficient data",
-      upcomingExpected: "Insufficient data",
+      paidRevenue: "Ma'lumotlar yetarli emas",
+      overdueDebt: "Ma'lumotlar yetarli emas",
+      upcomingExpected: "Ma'lumotlar yetarli emas",
     };
     let potentialRevenueLoss: number | "Insufficient data" = "Insufficient data";
 
@@ -426,13 +426,13 @@ export class AiAdvisorService {
         recommendations.push({
           priority: 'CRITICAL',
           category: 'FINANCE',
-          problem: `Accumulated tuition debt has reached ${overdue.toLocaleString()} UZS.`,
-          rootCause: `Late payments and lack of follow-up on overdue invoices.`,
-          businessImpact: `Negative cash flow impact and reduced operational liquidity.`,
-          recommendation: `Implement automated reminders and request staff to call debtors.`,
+          problem: `Markaz bo'yicha jami to'lovlar qarzdorligi ${overdue.toLocaleString()} UZS ga yetdi.`,
+          rootCause: `To'lovlarning o'z vaqtida amalga oshirilmasligi va qarzdorlar bilan ishlamaslik.`,
+          businessImpact: `Kassa aylanmasining pasayishi va markaz likvidligining kamayishi.`,
+          recommendation: `Avtomatik eslatmalarni yo'lga qo'ying va ma'murlardan qarzdorlarga qo'ng'iroq qilishni so'rang.`,
           suggestedActions: [
-            `Send automated payment reminders to active debtors.`,
-            `Freeze access for accounts overdue by more than 15 days.`,
+            `Faol qarzdorlarga avtomatik to'lov eslatmalarini yuborish.`,
+            `To'lovi 15 kundan ortiq kechikkan o'quvchilarning tizimga kirishini muzlatish.`,
           ],
           timestamp,
         });
@@ -441,7 +441,7 @@ export class AiAdvisorService {
 
     // --- MARKETING INSIGHTS ---
     let marketingInsights: any = {
-      leadConversionRate: "Insufficient data",
+      leadConversionRate: "Ma'lumotlar yetarli emas",
       bestTrafficSources: [],
       campaignPerformance: [],
     };
@@ -453,7 +453,7 @@ export class AiAdvisorService {
       // Best traffic sources
       const sourcesMap: { [key: string]: { count: number; converted: number } } = {};
       for (const l of leads) {
-        const sourceName = l.source ? (l.source as any).name || 'Direct / Organic' : 'Direct / Organic';
+        const sourceName = l.source ? (l.source as any).name || 'To\'g\'ridan-to\'g\'ri / Organik' : 'To\'g\'ridan-to\'g\'ri / Organik';
         if (!sourcesMap[sourceName]) {
           sourcesMap[sourceName] = { count: 0, converted: 0 };
         }
@@ -474,7 +474,7 @@ export class AiAdvisorService {
       const campaignsMap: { [key: string]: { count: number; converted: number } } = {};
       for (const l of leads) {
         if (!l.campaign) continue;
-        const campName = (l.campaign as any).name || 'Unknown';
+        const campName = (l.campaign as any).name || 'Noma\'lum';
         if (!campaignsMap[campName]) {
           campaignsMap[campName] = { count: 0, converted: 0 };
         }
@@ -493,8 +493,8 @@ export class AiAdvisorService {
 
       marketingInsights = {
         leadConversionRate: `${leadConvRatePct}%`,
-        bestTrafficSources: sortedSources.length > 0 ? sortedSources : "Insufficient data",
-        campaignPerformance: campaignsPerf.length > 0 ? campaignsPerf : "Insufficient data",
+        bestTrafficSources: sortedSources.length > 0 ? sortedSources : "Ma'lumotlar yetarli emas",
+        campaignPerformance: campaignsPerf.length > 0 ? campaignsPerf : "Ma'lumotlar yetarli emas",
       };
 
       // Opportunity alert: highlight top traffic source
@@ -502,13 +502,13 @@ export class AiAdvisorService {
         recommendations.push({
           priority: 'OPPORTUNITY',
           category: 'MARKETING',
-          problem: `High conversion efficiency detected from source "${sortedSources[0].source}" (${sortedSources[0].rate}%).`,
-          rootCause: `Strong market-channel fit.`,
-          businessImpact: `Possibility to scale conversions by increasing advertising spend on this channel.`,
-          recommendation: `Re-allocate marketing budget towards ${sortedSources[0].source}.`,
+          problem: `"${sortedSources[0].source}" manbasidan yuqori konversiya samaradorligi aniqlandi (${sortedSources[0].rate}%).`,
+          rootCause: `Marketing kanali va auditoriyaning mukammal mos kelishi.`,
+          businessImpact: `Ushbu kanalga reklama xarajatlarini oshirish orqali konversiyalarni ko'paytirish imkoniyati.`,
+          recommendation: `Marketing byudjetini ko'proq ${sortedSources[0].source} kanaliga yo'naltiring.`,
           suggestedActions: [
-            `Increase weekly spend on ${sortedSources[0].source}.`,
-            `Analyze demographics of converted leads from this source.`,
+            `"${sortedSources[0].source}" uchun haftalik byudjetni oshirish.`,
+            `Ushbu manbadan kelgan muvaffaqiyatli lidlar demografiyasini tahlil qilish.`,
           ],
           timestamp,
         });
@@ -519,7 +519,7 @@ export class AiAdvisorService {
     // Calculate sign-ups month by month
     const trendAnalysis: any[] = [];
     if (leads.length === 0) {
-      trendAnalysis.push({ message: "Insufficient data" });
+      trendAnalysis.push({ message: "Ma'lumotlar yetarli emas" });
     } else {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const monthlySignups: { [key: string]: number } = {};

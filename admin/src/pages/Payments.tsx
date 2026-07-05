@@ -5,7 +5,6 @@ import type { Payment, Student } from '../utils/mockDb';
 import {
   Plus,
   Search,
-  Filter,
   CheckCircle,
   Clock,
   AlertTriangle,
@@ -20,7 +19,6 @@ export const Payments: React.FC = () => {
 
   // Search & Filter state
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAID' | 'UPCOMING' | 'OVERDUE'>('ALL');
 
   // Confirmation Modal state
   const [createOpen, setCreateOpen] = useState(false);
@@ -73,8 +71,7 @@ export const Payments: React.FC = () => {
   // Filter payments
   const filteredPayments = payments.filter((p) => {
     const matchesSearch = p.studentName.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || p.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return p.status === 'PAID' && matchesSearch;
   });
 
   return (
@@ -141,20 +138,7 @@ export const Payments: React.FC = () => {
           />
         </div>
 
-        {/* Filter status */}
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="text-sm rounded-lg border bg-background px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none"
-          >
-            <option value="ALL">Barcha statuslar</option>
-            <option value="PAID">To'langan</option>
-            <option value="UPCOMING">To'lov yaqinlashmoqda</option>
-            <option value="OVERDUE">Qarzdorlar</option>
-          </select>
-        </div>
+        {/* Filter status is removed to only show PAID payments in the list */}
 
       </div>
 

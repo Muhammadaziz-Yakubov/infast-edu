@@ -20,7 +20,8 @@ export const ProtectedRoute: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated || user?.role !== 'SUPER_ADMIN') {
+  const allowedRoles = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'MANAGER', 'RECEPTION', 'TEACHER'];
+  if (!isAuthenticated || !allowedRoles.includes(user?.role || '')) {
     return <Navigate to="/login" replace />;
   }
 

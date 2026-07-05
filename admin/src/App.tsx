@@ -24,6 +24,15 @@ import { Settings } from './pages/Settings';
 import { LmsCheck } from './pages/LmsCheck';
 import { Chat } from './pages/Chat';
 
+// Marketing CRM Pages
+import { MarketingDashboard } from './pages/marketing/MarketingDashboard';
+import { LeadsList } from './pages/marketing/LeadsList';
+import { PipelineView } from './pages/marketing/PipelineView';
+import { Campaigns } from './pages/marketing/Campaigns';
+import { LeadSources } from './pages/marketing/LeadSources';
+import { ManagersPerformance } from './pages/marketing/ManagersPerformance';
+import { MarketingAnalytics } from './pages/marketing/MarketingAnalytics';
+import { LeadDetails } from './pages/marketing/LeadDetails';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,6 +85,16 @@ export const App: React.FC = () => {
             <Route path="/events" element={<Events />} />
             <Route path="/referrals" element={<Referrals />} />
             
+            {/* Marketing CRM */}
+            <Route path="/marketing" element={<MarketingDashboard />} />
+            <Route path="/marketing/leads" element={<LeadsList />} />
+            <Route path="/marketing/leads/:id" element={<LeadDetails />} />
+            <Route path="/marketing/pipeline" element={<PipelineView />} />
+            <Route path="/marketing/campaigns" element={<Campaigns />} />
+            <Route path="/marketing/sources" element={<LeadSources />} />
+            <Route path="/marketing/managers" element={<ManagersPerformance />} />
+            <Route path="/marketing/analytics" element={<MarketingAnalytics />} />
+
             {/* Reporting & Logs */}
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/notifications" element={<Notifications />} />

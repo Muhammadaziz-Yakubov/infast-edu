@@ -63,7 +63,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (userStr && token) {
       try {
         const user = JSON.parse(userStr);
-        if (user.role === 'SUPER_ADMIN') {
+        const allowedRoles = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'MANAGER', 'RECEPTION', 'TEACHER'];
+        if (allowedRoles.includes(user.role)) {
           set({
             user,
             accessToken: token,

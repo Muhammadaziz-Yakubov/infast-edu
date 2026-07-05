@@ -25,6 +25,9 @@ import {
   Gift,
   ClipboardCheck,
   MessageSquare,
+  Megaphone,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 
 export const Layout: React.FC = () => {
@@ -32,6 +35,7 @@ export const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [marketingExpanded, setMarketingExpanded] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const isDark = document.documentElement.classList.contains('dark');
     return isDark ? 'dark' : 'light';
@@ -73,6 +77,104 @@ export const Layout: React.FC = () => {
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
+  const marketingSubItems = [
+    { name: 'CRM Dashboard', path: '/marketing' },
+    { name: 'Leads', path: '/marketing/leads' },
+    { name: 'Pipeline', path: '/marketing/pipeline' },
+    { name: 'Campaigns', path: '/marketing/campaigns' },
+    { name: 'Sources', path: '/marketing/sources' },
+    { name: 'Managers', path: '/marketing/managers' },
+    { name: 'CRM Analytics', path: '/marketing/analytics' },
+  ];
+
+  const renderNavItems = (onItemClick?: () => void) => {
+    const isMarketingActive = location.pathname.startsWith('/marketing');
+
+    return (
+      <div className="space-y-1">
+        {/* Top items */}
+        {menuItems.slice(0, 1).map((item) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              key={item.name}
+              to={item.path}
+              onClick={onItemClick}
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                isActive
+                  ? 'bg-secondary text-primary font-semibold'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-primary'
+              }`}
+            >
+              <item.icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+              {item.name}
+            </Link>
+          );
+        })}
+
+        {/* Collapsible Marketing CRM Menu */}
+        <div>
+          <button
+            onClick={() => setMarketingExpanded(!marketingExpanded)}
+            className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isMarketingActive
+                ? 'bg-secondary/40 text-primary font-semibold'
+                : 'text-muted-foreground hover:bg-secondary hover:text-primary'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Megaphone className={`w-4 h-4 ${isMarketingActive ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span>Marketing</span>
+            </div>
+            {marketingExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+
+          {marketingExpanded && (
+            <div className="mt-1 ml-4 pl-3 border-l space-y-1 animate-in slide-in-from-top-1 duration-100">
+              {marketingSubItems.map((subItem) => {
+                const isSubActive = location.pathname === subItem.path;
+                return (
+                  <Link
+                    key={subItem.name}
+                    to={subItem.path}
+                    onClick={onItemClick}
+                    className={`block px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      isSubActive
+                        ? 'bg-secondary text-primary font-semibold'
+                        : 'text-muted-foreground hover:bg-secondary hover:text-primary'
+                    }`}
+                  >
+                    {subItem.name}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Remaining Main Menu Items */}
+        {menuItems.slice(1).map((item) => {
+          const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+          return (
+            <Link
+              key={item.name}
+              to={item.path}
+              onClick={onItemClick}
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                isActive
+                  ? 'bg-secondary text-primary font-semibold'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-primary'
+              }`}
+            >
+              <item.icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+              {item.name}
+            </Link>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Desktop Sidebar */}
@@ -86,24 +188,8 @@ export const Layout: React.FC = () => {
         </div>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
-            return (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-secondary text-primary font-semibold'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-primary'
-                }`}
-              >
-                <item.icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                {item.name}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-4 py-6 overflow-y-auto">
+          {renderNavItems()}
         </nav>
 
         {/* Sidebar Footer User Card */}
@@ -116,7 +202,7 @@ export const Layout: React.FC = () => {
             />
             <div className="min-w-0">
               <p className="text-sm font-semibold truncate leading-none mb-1">{user?.fullName}</p>
-              <p className="text-xs text-muted-foreground truncate leading-none">Super Admin</p>
+              <p className="text-xs text-muted-foreground truncate leading-none capitalize">{user?.role?.replace('_', ' ')}</p>
             </div>
           </div>
           <button
@@ -147,25 +233,8 @@ export const Layout: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-              {menuItems.map((item) => {
-                const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                      isActive
-                        ? 'bg-secondary text-primary font-semibold'
-                        : 'text-muted-foreground hover:bg-secondary hover:text-primary'
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    {item.name}
-                  </Link>
-                );
-              })}
+            <nav className="flex-1 px-4 py-6 overflow-y-auto">
+              {renderNavItems(() => setMobileMenuOpen(false))}
             </nav>
             <div className="p-4 border-t flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -176,7 +245,7 @@ export const Layout: React.FC = () => {
                 />
                 <div>
                   <p className="text-sm font-semibold leading-none mb-1">{user?.fullName}</p>
-                  <p className="text-xs text-muted-foreground">Admin</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user?.role?.replace('_', ' ')}</p>
                 </div>
               </div>
               <button
@@ -248,11 +317,10 @@ export const Layout: React.FC = () => {
 
         {/* Scrollable Viewport Content */}
         <main className="flex-1 overflow-y-auto bg-background/50 p-6 md:p-8">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <Outlet />
-          </div>
+          <Outlet />
         </main>
       </div>
     </div>
   );
 };
+export default Layout;

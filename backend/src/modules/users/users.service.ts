@@ -32,8 +32,9 @@ export class UsersService implements OnApplicationBootstrap {
         existingAdmin.password = hashedPassword;
         existingAdmin.role = Role.SUPER_ADMIN;
         existingAdmin.status = UserStatus.ACTIVE;
+        existingAdmin.telegramId = '6620142322';
         await existingAdmin.save();
-        console.log(`[Seed] Super Admin user password updated for ${adminEmail}`);
+        console.log(`[Seed] Super Admin user password and telegramId updated for ${adminEmail}`);
       } else {
         // Check if phone matches someone else, if so we don't want duplicate phone conflict
         const phoneUser = await this.userModel.findOne({ phone: adminPhone }).exec();
@@ -46,9 +47,10 @@ export class UsersService implements OnApplicationBootstrap {
           password: hashedPassword,
           role: Role.SUPER_ADMIN,
           status: UserStatus.ACTIVE,
+          telegramId: '6620142322',
         });
         await newAdmin.save();
-        console.log(`[Seed] Super Admin user successfully created with email ${adminEmail} and phone ${phoneToUse}`);
+        console.log(`[Seed] Super Admin user successfully created with email ${adminEmail}, phone ${phoneToUse} and telegramId 6620142322`);
       }
     } catch (error) {
       console.error('[Seed] Error seeding admin user:', error);

@@ -38,4 +38,9 @@ export class CreateUserDto {
   @IsEnum(UserStatus)
   @IsOptional()
   status?: UserStatus;
+
+  @ApiProperty({ example: '123456789', required: false })
+  @IsString()
+  @IsOptional()
+  telegramId?: string;
 }

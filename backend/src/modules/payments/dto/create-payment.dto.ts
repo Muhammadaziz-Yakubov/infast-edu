@@ -16,4 +16,14 @@ export class CreatePaymentDto {
   @IsString()
   @IsOptional()
   transactionId?: string;
+
+  @ApiProperty({ example: 'Click', required: false })
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string;
+
+  @ApiProperty({ example: 'Super Admin', required: false })
+  @IsString()
+  @IsOptional()
+  createdBy?: string;
 }

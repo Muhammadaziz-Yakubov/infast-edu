@@ -36,6 +36,7 @@ import { RemindersModule } from './modules/reminders/reminders.module';
 import { ConversionsModule } from './modules/conversions/conversions.module';
 import { CrmAnalyticsModule } from './modules/crm-analytics/crm-analytics.module';
 import { AiAdvisorModule } from './modules/ai-advisor/ai-advisor.module';
+import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { AiAdvisorModule } from './modules/ai-advisor/ai-advisor.module';
     ConversionsModule,
     CrmAnalyticsModule,
     AiAdvisorModule,
+    TelegramBotModule,
   ],
   controllers: [AppController],
   providers: [

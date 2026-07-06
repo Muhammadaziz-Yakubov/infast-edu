@@ -51,6 +51,9 @@ export class User extends Document {
   @Prop({ type: String, enum: UserStatus, default: UserStatus.PENDING })
   status: UserStatus;
 
+  @Prop({ unique: true, sparse: true })
+  telegramId?: string;
+
   @Prop({ select: false })
   refreshToken?: string;
 }

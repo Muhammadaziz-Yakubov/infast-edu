@@ -29,6 +29,12 @@ export class Payment extends Document {
 
   @Prop()
   transactionId?: string;
+
+  @Prop({ type: String, default: 'Click' })
+  paymentMethod?: string;
+
+  @Prop({ type: String, default: 'Admin' })
+  createdBy?: string;
 }
 
 export type PaymentDocument = Payment & Document;

@@ -9,6 +9,7 @@ import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { Role } from '../../common/enums/roles.enum';
 import { UserStatus, PaymentStatus } from '../../common/enums/status.enum';
+import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -21,7 +22,8 @@ export class StudentsService implements OnModuleInit {
     @InjectModel(Group.name)
     private readonly groupModel: Model<GroupDocument>,
     @InjectModel(Payment.name)
-    private readonly paymentModel: Model<PaymentDocument>
+    private readonly paymentModel: Model<PaymentDocument>,
+    private readonly botService: TelegramBotService
   ) {}
 
   async onModuleInit() {
@@ -220,6 +222,9 @@ export class StudentsService implements OnModuleInit {
       ).exec();
     }
 
+    // Notify bot
+    this.botService.notifyStudentCreated(savedUser).catch(() => {});
+
     return {
       user: savedUser,
       profile: savedProfile,
@@ -361,6 +366,15 @@ export class StudentsService implements OnModuleInit {
 
     const updatedUser = await this.userModel.findById(userId).exec();
 
+    // Notify bot on status changes (Block / Unblock)
+    if (userExists && updatedUser && userExists.status !== updatedUser.status) {
+      if (updatedUser.status === UserStatus.BLOCKED) {
+        this.botService.notifyStudentBlocked(updatedUser).catch(() => {});
+      } else if (updatedUser.status === UserStatus.ACTIVE && userExists.status === UserStatus.BLOCKED) {
+        this.botService.notifyStudentUnblocked(updatedUser).catch(() => {});
+      }
+    }
+
     return {
       user: updatedUser,
       profile: updatedProfile,
@@ -372,6 +386,9 @@ export class StudentsService implements OnModuleInit {
     if (!user) {
       throw new NotFoundException('Student user not found');
     }
+
+    // Notify bot
+    this.botService.notifyStudentDeleted(user).catch(() => {});
 
     // Remove the student's ID from all groups' students arrays
     await this.groupModel.updateMany(

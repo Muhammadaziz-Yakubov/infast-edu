@@ -7,6 +7,7 @@ import { User, UserDocument } from '../users/schemas/user.schema';
 import { Notification, NotificationDocument } from '../notifications/schemas/notification.schema';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PaymentStatus, UserStatus, NotificationType } from '../../common/enums/status.enum';
+import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 
 @Injectable()
 export class PaymentsService implements OnModuleInit {
@@ -18,7 +19,8 @@ export class PaymentsService implements OnModuleInit {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     @InjectModel(Notification.name)
-    private readonly notificationModel: Model<NotificationDocument>
+    private readonly notificationModel: Model<NotificationDocument>,
+    private readonly botService: TelegramBotService
   ) { }
 
   onModuleInit() {
@@ -49,6 +51,15 @@ export class PaymentsService implements OnModuleInit {
       transactionId: dto.transactionId,
     });
     const savedPayment = await payment.save();
+
+    // Notify bot
+    this.botService.notifyPaymentCreated({
+      studentId: dto.studentId,
+      amount: dto.amount,
+      paymentMethod: dto.paymentMethod || 'Click',
+      paymentDate: paymentDate,
+      createdBy: dto.createdBy || 'Tizim',
+    }).catch((err) => console.error('Telegram payment notification failed:', err));
 
     // 1. Update Student Profile status to PAID
     await this.studentProfileModel.findOneAndUpdate(
@@ -276,7 +287,10 @@ export class PaymentsService implements OnModuleInit {
 
         // 3. Block student if payment is OVERDUE
         if (targetPaymentStatus === PaymentStatus.OVERDUE) {
-          await this.userModel.findByIdAndUpdate(studentId, { status: UserStatus.BLOCKED }).exec();
+          const blockedUser = await this.userModel.findByIdAndUpdate(studentId, { status: UserStatus.BLOCKED }, { new: true }).exec();
+          if (blockedUser) {
+            this.botService.notifyStudentBlocked(blockedUser).catch(() => {});
+          }
 
           // Create notification for blocking
           const alert = new this.notificationModel({

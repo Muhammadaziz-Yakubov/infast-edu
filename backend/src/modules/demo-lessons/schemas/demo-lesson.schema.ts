@@ -24,8 +24,8 @@ export class DemoLesson extends Document {
   @Prop({ type: Types.ObjectId, ref: 'Course', required: true })
   course: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  teacher: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Group', required: true })
+  group: Types.ObjectId;
 
   @Prop({ required: true, type: Date })
   date: Date;

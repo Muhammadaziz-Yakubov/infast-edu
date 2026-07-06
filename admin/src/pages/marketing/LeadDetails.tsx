@@ -77,7 +77,7 @@ export const LeadDetails: React.FC = () => {
   // Meeting form
   const [meetingForm, setMeetingForm] = useState({ date: '', time: '', teacher: '', location: '', meetingType: 'Introduction' });
   // Demo form
-  const [demoForm, setDemoForm] = useState({ course: '', teacher: '', date: '', attendance: true, feedback: '', result: 'THINKING' });
+  const [demoForm, setDemoForm] = useState({ course: '', group: '', date: '', attendance: true, feedback: '', result: 'THINKING' });
   // Task form
   const [taskForm, setTaskForm] = useState({ title: '', description: '', dueDate: '', priority: 'MEDIUM', reminder: false });
   // Follow Up form
@@ -199,7 +199,7 @@ export const LeadDetails: React.FC = () => {
     if (!id) return;
     try {
       await createDemoLesson({ leadId: id, ...demoForm });
-      setDemoForm({ course: '', teacher: '', date: '', attendance: true, feedback: '', result: 'THINKING' });
+      setDemoForm({ course: '', group: '', date: '', attendance: true, feedback: '', result: 'THINKING' });
       loadAll();
     } catch (err) {
       console.error(err);
@@ -729,15 +729,15 @@ export const LeadDetails: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold block mb-1">O'qituvchi</label>
+                  <label className="text-xs font-bold block mb-1">Guruh</label>
                   <select
-                    value={demoForm.teacher}
+                    value={demoForm.group}
                     required
-                    onChange={(e) => setDemoForm({ ...demoForm, teacher: e.target.value })}
+                    onChange={(e) => setDemoForm({ ...demoForm, group: e.target.value })}
                     className="w-full px-3 py-1.5 text-sm bg-card border rounded outline-none"
                   >
                     <option value="">Tanlang</option>
-                    {teachers.map(t => <option key={t._id} value={t._id}>{t.fullName}</option>)}
+                    {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
                   </select>
                 </div>
                 <div>
@@ -802,7 +802,7 @@ export const LeadDetails: React.FC = () => {
                         <span className="text-xs bg-secondary px-1.5 py-0.5 rounded">{d.result}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">Fikr: {d.feedback || 'izoh yo\'q'}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono mt-1">O'qituvchi: {d.teacher?.fullName} • {new Date(d.date).toLocaleDateString()}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono mt-1">Guruh: {d.group?.name} • {new Date(d.date).toLocaleDateString()}</p>
                     </div>
                   </div>
                 ))}

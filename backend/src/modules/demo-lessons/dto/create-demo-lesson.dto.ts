@@ -16,7 +16,7 @@ export class CreateDemoLessonDto {
   @ApiProperty({ example: '6a43c96705f2b4f8e0656db3' })
   @IsString()
   @IsNotEmpty()
-  teacher: string;
+  group: string;
 
   @ApiProperty({ example: '2026-07-07T00:00:00.000Z' })
   @IsDateString()

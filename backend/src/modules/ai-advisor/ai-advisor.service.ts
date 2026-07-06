@@ -70,7 +70,7 @@ export class AiAdvisorService {
       this.attendanceModel.find().exec(),
       this.leadModel.find({ isDeleted: { $ne: true } }).populate('source').populate('campaign').exec(),
       this.meetingModel.find().populate('teacher').exec(),
-      this.demoLessonModel.find().populate('teacher').exec(),
+      this.demoLessonModel.find().populate('group').exec(),
       this.homeworkModel.find().exec(),
       this.homeworkSubmissionModel.find().exec(),
       this.lessonProgressModel.find().exec(),
@@ -343,7 +343,7 @@ export class AiAdvisorService {
     } else {
       for (const teacher of activeTeachers) {
         const teacherMeetings = meetings.filter(m => m.teacher?.toString() === teacher._id.toString() || (m.teacher as any)?._id?.toString() === teacher._id.toString());
-        const teacherDemos = demoLessons.filter(d => d.teacher?.toString() === teacher._id.toString() || (d.teacher as any)?._id?.toString() === teacher._id.toString());
+        const teacherDemos = []; // Demo lessons are associated with groups, not teachers directly
 
         if (teacherMeetings.length === 0 && teacherDemos.length === 0) {
           teacherInsights.push({
@@ -498,8 +498,8 @@ export class AiAdvisorService {
 
       marketingInsights = {
         leadConversionRate: `${leadConvRatePct}%`,
-        bestTrafficSources: sortedSources.length > 0 ? sortedSources : "Ma'lumotlar yetarli emas",
-        campaignPerformance: campaignsPerf.length > 0 ? campaignsPerf : "Ma'lumotlar yetarli emas",
+        bestTrafficSources: sortedSources,
+        campaignPerformance: campaignsPerf,
       };
 
       // Opportunity alert: highlight top traffic source

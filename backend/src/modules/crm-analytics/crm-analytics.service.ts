@@ -180,7 +180,11 @@ export class CrmAnalyticsService {
 
       const calls = await callLogModel.countDocuments({ manager: m._id }).exec();
       const meetings = await meetingModel.countDocuments({ teacher: m._id }).exec();
-      const demos = await demoModel.countDocuments({ teacher: m._id }).exec();
+
+      // Count demos of the leads assigned to this manager
+      const assignedLeads = await this.leadModel.find({ assignedManager: m._id, isDeleted: { $ne: true } } as any, { _id: 1 }).exec();
+      const assignedLeadIds = assignedLeads.map(l => l._id);
+      const demos = await demoModel.countDocuments({ leadId: { $in: assignedLeadIds } }).exec();
 
       // Estimate revenue generated
       const leads = await this.leadModel.find({ assignedManager: m._id, status: 'CONVERTED' } as any, { phone: 1 }).exec();

@@ -23,7 +23,7 @@ export class DemoLessonsService {
       ...dto,
       leadId: new Types.ObjectId(dto.leadId),
       course: new Types.ObjectId(dto.course),
-      teacher: new Types.ObjectId(dto.teacher),
+      group: new Types.ObjectId(dto.group),
       date: new Date(dto.date),
     });
     const saved = await created.save();
@@ -58,7 +58,7 @@ export class DemoLessonsService {
     return this.demoLessonModel
       .find({ leadId: new Types.ObjectId(leadId) })
       .populate('course', 'name')
-      .populate('teacher', 'fullName avatar')
+      .populate('group', 'name')
       .sort({ date: -1 })
       .exec();
   }

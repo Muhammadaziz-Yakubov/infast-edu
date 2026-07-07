@@ -17,7 +17,7 @@ export class AnalyticsService {
     @InjectModel(Payment.name) private readonly paymentModel: Model<PaymentDocument>,
     @InjectModel(Course.name) private readonly courseModel: Model<CourseDocument>,
     @InjectModel(Attendance.name) private readonly attendanceModel: Model<AttendanceDocument>
-  ) {}
+  ) { }
 
   async getDashboardStats(user?: any, targetBranchId?: string): Promise<any> {
     let userFilter: any = { role: Role.STUDENT };
@@ -58,7 +58,7 @@ export class AnalyticsService {
       status: PaymentStatus.PAID,
       amount: { $gt: 0 },
     };
-    if (isBranchAdmin || isSuperAdmin) {
+    if (isBranchAdmin) {
       paymentFilter.studentId = { $in: studentIds };
     }
 
@@ -73,7 +73,7 @@ export class AnalyticsService {
 
     // 4. Attendance rate — real data, no fallback
     const attendanceFilter: any = {};
-    if (isBranchAdmin || isSuperAdmin) {
+    if (isBranchAdmin) {
       attendanceFilter.studentId = { $in: studentIds };
     }
     const totalAttendance = await this.attendanceModel.countDocuments(attendanceFilter).exec();
@@ -95,7 +95,7 @@ export class AnalyticsService {
         status: PaymentStatus.PAID,
         amount: { $gt: 0 },
       };
-      if (isBranchAdmin || isSuperAdmin) {
+      if (isBranchAdmin) {
         historyFilter.studentId = { $in: studentIds };
       }
 
@@ -117,9 +117,12 @@ export class AnalyticsService {
       const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
 
       const growthFilter: any = {
-        ...userFilter,
+        role: Role.STUDENT,
         createdAt: { $lte: endOfMonth },
       };
+      if (isBranchAdmin) {
+        growthFilter.branchId = new Types.ObjectId(user.branchId);
+      }
 
       const count = await this.userModel.countDocuments(growthFilter).exec();
 
@@ -134,7 +137,7 @@ export class AnalyticsService {
     const courseDistribution = await Promise.all(
       courses.map(async (course) => {
         const profileFilter: any = { courseId: course._id };
-        if (isBranchAdmin || isSuperAdmin) {
+        if (isBranchAdmin) {
           profileFilter.userId = { $in: studentIds };
         }
         const enrollmentCount = await this.studentProfileModel.countDocuments(profileFilter).exec();
@@ -145,10 +148,14 @@ export class AnalyticsService {
     // 8. Recent activities — only real DB events (no fake fallback)
     const recentActivities: any[] = [];
 
-    const latestUsers = await this.userModel.find(userFilter).sort({ createdAt: -1 }).limit(4).exec();
+    const userQuery: any = { role: Role.STUDENT };
+    if (isBranchAdmin) {
+      userQuery.branchId = new Types.ObjectId(user.branchId);
+    }
+    const latestUsers = await this.userModel.find(userQuery).sort({ createdAt: -1 }).limit(4).exec();
 
     const paymentQuery: any = { status: PaymentStatus.PAID, amount: { $gt: 0 } };
-    if (isBranchAdmin || isSuperAdmin) {
+    if (isBranchAdmin) {
       paymentQuery.studentId = { $in: studentIds };
     }
     const latestPayments = await this.paymentModel

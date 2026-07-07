@@ -19,8 +19,8 @@ export class StudentsController {
   @Get('leaderboard')
   @ApiOperation({ summary: 'Get student leaderboard (Available to all authenticated users)' })
   @ApiResponse({ status: 200, description: 'Leaderboard list.' })
-  getLeaderboard() {
-    return this.studentsService.getLeaderboard();
+  getLeaderboard(@CurrentUser() user: any, @Query('type') type?: 'all' | 'branch' | 'group') {
+    return this.studentsService.getLeaderboard(user, type || 'all');
   }
 
   @Get('me')

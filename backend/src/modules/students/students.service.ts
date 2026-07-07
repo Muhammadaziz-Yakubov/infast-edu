@@ -452,7 +452,13 @@ export class StudentsService implements OnModuleInit {
   async getProfile(userId: string, requestingUser?: any): Promise<any> {
     const profile = await this.studentProfileModel
       .findOne({ userId: new Types.ObjectId(userId) })
-      .populate('userId')
+      .populate({
+        path: 'userId',
+        populate: {
+          path: 'branchId',
+          model: 'Branch'
+        }
+      })
       .populate('groupId')
       .populate('courseId')
       .exec();
@@ -535,14 +541,30 @@ export class StudentsService implements OnModuleInit {
       profileObj.status = user.status;
       profileObj.avatar = user.avatar || '';
       profileObj.studentPhone = profileObj.studentPhone || user.studentPhone || user.phone || '';
+      profileObj.branchName = user.branchId?.name || "Asosiy filial";
     }
 
     return profileObj;
   }
 
-  async getLeaderboard(): Promise<any[]> {
+  async getLeaderboard(requestingUser?: any, type: 'all' | 'branch' | 'group' = 'all'): Promise<any[]> {
+    let filter = {};
+
+    if (requestingUser && requestingUser.role === Role.STUDENT) {
+      const studentUser = await this.userModel.findById(requestingUser.userId).exec();
+      const studentProfile = await this.studentProfileModel.findOne({ userId: new Types.ObjectId(requestingUser.userId) }).exec();
+
+      if (type === 'branch' && studentUser?.branchId) {
+        const branchUsers = await this.userModel.find({ branchId: studentUser.branchId }).select('_id').exec();
+        const userIds = branchUsers.map(u => u._id);
+        filter = { userId: { $in: userIds } };
+      } else if (type === 'group' && studentProfile?.groupId) {
+        filter = { groupId: studentProfile.groupId };
+      }
+    }
+
     const profiles = await this.studentProfileModel
-      .find()
+      .find(filter)
       .populate('userId', 'fullName avatar email phone label')
       .sort({ xp: -1 })
       .limit(100)

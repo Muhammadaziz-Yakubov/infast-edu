@@ -1,6 +1,5 @@
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
-import fs from "fs";
 import axios from "axios";
 import { config } from "../config";
 import { logger } from "../utils/logger";
@@ -19,18 +18,11 @@ export class TelegramProcessManager {
     }
 
     const scriptPath = path.join(process.cwd(), "src", "telegram", "client.py");
-    
-    // Check if local virtualenv exists
-    const venvPythonPath = process.platform === "win32"
-      ? path.join(process.cwd(), ".venv", "Scripts", "python.exe")
-      : path.join(process.cwd(), ".venv", "bin", "python");
-    
-    const pythonCommand = fs.existsSync(venvPythonPath) ? venvPythonPath : "python";
-    logger.info(`Spawning Telegram Python microservice: ${pythonCommand} "${scriptPath}"`);
+    logger.info(`Spawning Telegram Python microservice: python "${scriptPath}"`);
 
     // Spawn python process
     // We pipe stdin, stdout, and stderr so we can monitor output and write confirmation codes.
-    this.pythonProcess = spawn(pythonCommand, [scriptPath], {
+    this.pythonProcess = spawn("python", [scriptPath], {
       stdio: ["pipe", "pipe", "pipe"],
       env: process.env,
     });

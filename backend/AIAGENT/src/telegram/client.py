@@ -1,8 +1,14 @@
 import os
+import sys
+
+# Inject local dependencies folder if present (for environments where global installation is not preserved)
+_deps = os.path.join(os.path.dirname(__file__), 'dependencies')
+if os.path.isdir(_deps):
+    sys.path.insert(0, _deps)
+
 import asyncio
 import logging
 import random
-import sys
 from aiohttp import web
 import aiohttp
 from dotenv import load_dotenv

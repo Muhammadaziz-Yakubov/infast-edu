@@ -23,11 +23,17 @@ export class AnalyticsService {
     let userFilter: any = { role: Role.STUDENT };
     let studentIds: Types.ObjectId[] = [];
     const isBranchAdmin = user && user.role === Role.BRANCH_ADMIN;
+    const isSuperAdmin = user && user.role === Role.SUPER_ADMIN;
 
     if (isBranchAdmin) {
       userFilter.branchId = new Types.ObjectId(user.branchId);
       // Fetch all student user IDs for this branch
       const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
+      studentIds = branchUsers.map(u => u._id);
+    } else if (isSuperAdmin) {
+      userFilter.branchId = { $in: [null, undefined] };
+      // Fetch all student user IDs for main branch
+      const branchUsers = await this.userModel.find({ branchId: { $in: [null, undefined] } as any }).select('_id').exec();
       studentIds = branchUsers.map(u => u._id);
     }
 

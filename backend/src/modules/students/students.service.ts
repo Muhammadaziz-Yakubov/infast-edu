@@ -122,10 +122,16 @@ export class StudentsService implements OnModuleInit {
 
   async findAll(requestingUser?: any): Promise<any[]> {
     let filter = {};
-    if (requestingUser && requestingUser.role === Role.BRANCH_ADMIN) {
-      const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(requestingUser.branchId) }).select('_id').exec();
-      const userIds = branchUsers.map(u => u._id);
-      filter = { userId: { $in: userIds } };
+    if (requestingUser) {
+      if (requestingUser.role === Role.BRANCH_ADMIN) {
+        const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(requestingUser.branchId) }).select('_id').exec();
+        const userIds = branchUsers.map(u => u._id);
+        filter = { userId: { $in: userIds } };
+      } else if (requestingUser.role === Role.SUPER_ADMIN) {
+        const branchUsers = await this.userModel.find({ branchId: { $in: [null, undefined] } as any }).select('_id').exec();
+        const userIds = branchUsers.map(u => u._id);
+        filter = { userId: { $in: userIds } };
+      }
     }
 
     const profiles = await this.studentProfileModel
@@ -182,6 +188,8 @@ export class StudentsService implements OnModuleInit {
     let finalBranchId: Types.ObjectId | undefined = undefined;
     if (creator.role === Role.BRANCH_ADMIN) {
       finalBranchId = new Types.ObjectId(creator.branchId);
+    } else if (creator.role === Role.SUPER_ADMIN) {
+      finalBranchId = undefined; // Super Admin acts as main branch admin
     } else if (branchId) {
       finalBranchId = new Types.ObjectId(branchId);
     }
@@ -253,8 +261,12 @@ export class StudentsService implements OnModuleInit {
       throw new NotFoundException('Student user not found');
     }
 
-    if (requestingUser && requestingUser.role === Role.BRANCH_ADMIN && (!userExists.branchId || userExists.branchId.toString() !== requestingUser.branchId)) {
-      throw new ForbiddenException('You do not have access to this student');
+    if (requestingUser) {
+      if (requestingUser.role === Role.BRANCH_ADMIN && (!userExists.branchId || userExists.branchId.toString() !== requestingUser.branchId)) {
+        throw new ForbiddenException('You do not have access to this student');
+      } else if (requestingUser.role === Role.SUPER_ADMIN && userExists.branchId) {
+        throw new ForbiddenException('You do not have access to this student');
+      }
     }
 
     // Split updates into user and profile
@@ -409,8 +421,12 @@ export class StudentsService implements OnModuleInit {
       throw new NotFoundException('Student user not found');
     }
 
-    if (requestingUser && requestingUser.role === Role.BRANCH_ADMIN && (!userExists.branchId || userExists.branchId.toString() !== requestingUser.branchId)) {
-      throw new ForbiddenException('You do not have access to this student');
+    if (requestingUser) {
+      if (requestingUser.role === Role.BRANCH_ADMIN && (!userExists.branchId || userExists.branchId.toString() !== requestingUser.branchId)) {
+        throw new ForbiddenException('You do not have access to this student');
+      } else if (requestingUser.role === Role.SUPER_ADMIN && userExists.branchId) {
+        throw new ForbiddenException('You do not have access to this student');
+      }
     }
 
     const deletedUser = await this.userModel.findByIdAndDelete(userId).exec();
@@ -444,8 +460,12 @@ export class StudentsService implements OnModuleInit {
     }
 
     const studentUser = profile.userId as any;
-    if (requestingUser && requestingUser.role === Role.BRANCH_ADMIN && (!studentUser || !studentUser.branchId || studentUser.branchId.toString() !== requestingUser.branchId)) {
-      throw new ForbiddenException('You do not have access to this student');
+    if (requestingUser) {
+      if (requestingUser.role === Role.BRANCH_ADMIN && (!studentUser || !studentUser.branchId || studentUser.branchId.toString() !== requestingUser.branchId)) {
+        throw new ForbiddenException('You do not have access to this student');
+      } else if (requestingUser.role === Role.SUPER_ADMIN && studentUser && studentUser.branchId) {
+        throw new ForbiddenException('You do not have access to this student');
+      }
     }
 
     // Calculate ranking position dynamically

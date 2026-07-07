@@ -40,6 +40,8 @@ export class PaymentsService implements OnModuleInit {
 
     if (user.role === Role.BRANCH_ADMIN && (!student.branchId || student.branchId.toString() !== user.branchId)) {
       throw new ForbiddenException('You do not have access to this student');
+    } else if (user.role === Role.SUPER_ADMIN && student.branchId) {
+      throw new ForbiddenException('You do not have access to this student');
     }
 
     const paymentDate = new Date();
@@ -120,10 +122,17 @@ export class PaymentsService implements OnModuleInit {
   }
 
   async getStudentPaymentSummary(userId: string, user?: any): Promise<any> {
-    if (user && user.role === Role.BRANCH_ADMIN) {
-      const student = await this.userModel.findById(userId).exec();
-      if (!student || !student.branchId || student.branchId.toString() !== user.branchId) {
-        throw new ForbiddenException('You do not have access to this student');
+    if (user) {
+      if (user.role === Role.BRANCH_ADMIN) {
+        const student = await this.userModel.findById(userId).exec();
+        if (!student || !student.branchId || student.branchId.toString() !== user.branchId) {
+          throw new ForbiddenException('You do not have access to this student');
+        }
+      } else if (user.role === Role.SUPER_ADMIN) {
+        const student = await this.userModel.findById(userId).exec();
+        if (!student || student.branchId) {
+          throw new ForbiddenException('You do not have access to this student');
+        }
       }
     }
 
@@ -205,10 +214,17 @@ export class PaymentsService implements OnModuleInit {
   }
 
   async getStudentPaymentsFormatted(studentId: string, user?: any): Promise<any[]> {
-    if (user && user.role === Role.BRANCH_ADMIN) {
-      const student = await this.userModel.findById(studentId).exec();
-      if (!student || !student.branchId || student.branchId.toString() !== user.branchId) {
-        throw new ForbiddenException('You do not have access to this student');
+    if (user) {
+      if (user.role === Role.BRANCH_ADMIN) {
+        const student = await this.userModel.findById(studentId).exec();
+        if (!student || !student.branchId || student.branchId.toString() !== user.branchId) {
+          throw new ForbiddenException('You do not have access to this student');
+        }
+      } else if (user.role === Role.SUPER_ADMIN) {
+        const student = await this.userModel.findById(studentId).exec();
+        if (!student || student.branchId) {
+          throw new ForbiddenException('You do not have access to this student');
+        }
       }
     }
 
@@ -235,6 +251,10 @@ export class PaymentsService implements OnModuleInit {
     let filter = {};
     if (user.role === Role.BRANCH_ADMIN) {
       const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
+      const userIds = branchUsers.map(u => u._id);
+      filter = { studentId: { $in: userIds } };
+    } else if (user.role === Role.SUPER_ADMIN) {
+      const branchUsers = await this.userModel.find({ branchId: { $in: [null, undefined] } as any }).select('_id').exec();
       const userIds = branchUsers.map(u => u._id);
       filter = { studentId: { $in: userIds } };
     }
@@ -267,10 +287,16 @@ export class PaymentsService implements OnModuleInit {
   async checkPaymentStatuses(user?: any): Promise<void> {
     const now = new Date();
     let filter = {};
-    if (user && user.role === Role.BRANCH_ADMIN) {
-      const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
-      const userIds = branchUsers.map(u => u._id);
-      filter = { userId: { $in: userIds } };
+    if (user) {
+      if (user.role === Role.BRANCH_ADMIN) {
+        const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
+        const userIds = branchUsers.map(u => u._id);
+        filter = { userId: { $in: userIds } };
+      } else if (user.role === Role.SUPER_ADMIN) {
+        const branchUsers = await this.userModel.find({ branchId: { $in: [null, undefined] } as any }).select('_id').exec();
+        const userIds = branchUsers.map(u => u._id);
+        filter = { userId: { $in: userIds } };
+      }
     }
     const profiles = await this.studentProfileModel.find(filter).exec();
 
@@ -353,6 +379,10 @@ export class PaymentsService implements OnModuleInit {
     let filter: any = { status: PaymentStatus.OVERDUE };
     if (user.role === Role.BRANCH_ADMIN) {
       const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
+      const userIds = branchUsers.map(u => u._id);
+      filter.studentId = { $in: userIds };
+    } else if (user.role === Role.SUPER_ADMIN) {
+      const branchUsers = await this.userModel.find({ branchId: { $in: [null, undefined] } as any }).select('_id').exec();
       const userIds = branchUsers.map(u => u._id);
       filter.studentId = { $in: userIds };
     }

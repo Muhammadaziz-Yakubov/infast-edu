@@ -31,7 +31,7 @@ export class TelegramAiService implements OnApplicationBootstrap, OnApplicationS
       return;
     }
 
-    const isDev = fs.existsSync(path.join(process.cwd(), 'src'));
+    const isDev = process.env.NODE_ENV !== 'production';
     const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
     const args = isDev ? ['run', 'dev'] : ['run', 'start'];
 

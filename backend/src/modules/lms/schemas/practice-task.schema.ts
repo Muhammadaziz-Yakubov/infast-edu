@@ -41,4 +41,3 @@ export class PracticeTask extends Document {
 
 export type PracticeTaskDocument = PracticeTask & Document;
 export const PracticeTaskSchema = SchemaFactory.createForClass(PracticeTask);
-PracticeTaskSchema.index({ lessonId: 1 });

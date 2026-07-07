@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { telegramAiApi, TelegramAiStatus } from '../api/telegram-ai';
+import { telegramAiApi, type TelegramAiStatus } from '../api/telegram-ai';
 import { 
   Send, 
   RefreshCw, 
@@ -284,7 +284,7 @@ export const TelegramAi: React.FC = () => {
                   <Square className="w-4 h-4 fill-current" />
                   Clientni o'chirish
                 </button>
-                {status.authorized && (
+                {status?.authorized && (
                   <button
                     onClick={handleLogout}
                     disabled={actionLoading}

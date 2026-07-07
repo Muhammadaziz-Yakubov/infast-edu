@@ -24,6 +24,7 @@ import { Settings } from './pages/Settings';
 import { LmsCheck } from './pages/LmsCheck';
 import { Chat } from './pages/Chat';
 import { AiAdvisor } from './pages/AiAdvisor';
+import { TelegramAi } from './pages/TelegramAi';
 
 // Marketing CRM Pages
 import { MarketingDashboard } from './pages/marketing/MarketingDashboard';
@@ -99,6 +100,7 @@ export const App: React.FC = () => {
             {/* Reporting & Logs */}
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/ai-advisor" element={<AiAdvisor />} />
+            <Route path="/telegram-ai" element={<TelegramAi />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/chat" element={<Chat />} />
             

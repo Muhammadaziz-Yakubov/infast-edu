@@ -73,6 +73,23 @@ export class AIService {
             },
           },
         },
+        {
+          type: "function" as const,
+          function: {
+            name: "get_student_info",
+            description: "Fetches a student's active group name, schedule days, class time, payment history, and next payment due date from the CRM database using their phone number.",
+            parameters: {
+              type: "object",
+              properties: {
+                phone: {
+                  type: "string",
+                  description: "The student's phone number, e.g. +998901234567",
+                },
+              },
+              required: ["phone"],
+            },
+          },
+        },
       ];
 
       // 3. Request completion from Groq
@@ -120,6 +137,28 @@ export class AIService {
               });
             } catch (err) {
               logger.error(`Failed to parse or execute tool call: ${err}`);
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                name: toolCall.function.name,
+                content: JSON.stringify({ success: false, error: String(err) }),
+              });
+            }
+          } else if (toolCall.function.name === "get_student_info") {
+            try {
+              const args = JSON.parse(toolCall.function.arguments);
+              logger.info(`Executing get_student_info with args: ${JSON.stringify(args)}`);
+
+              const result = await this.crmService.getStudentDataByPhone(args.phone);
+
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                name: toolCall.function.name,
+                content: JSON.stringify(result),
+              });
+            } catch (err) {
+              logger.error(`Failed to execute get_student_info tool call: ${err}`);
               messages.push({
                 role: "tool",
                 tool_call_id: toolCall.id,

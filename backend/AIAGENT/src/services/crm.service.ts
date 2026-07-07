@@ -1,6 +1,9 @@
 import { LeadRepository } from "../database/lead.repository";
 import { CourseModel } from "../models/course.model";
 import { CrmLeadModel } from "../models/crmLead.model";
+import { UserModel } from "../models/user.model";
+import { GroupModel } from "../models/group.model";
+import { PaymentModel } from "../models/payment.model";
 import { logger } from "../utils/logger";
 import { Types } from "mongoose";
 
@@ -138,5 +141,110 @@ export class CRMService {
    */
   async getLeadsCount(): Promise<number> {
     return await this.leadRepository.count();
+  }
+
+  /**
+   * Fetches a student's profile, active group, schedule, and payment history using their phone number
+   */
+  async getStudentDataByPhone(phone: string): Promise<{
+    success: boolean;
+    studentName?: string;
+    phone?: string;
+    groupName?: string;
+    scheduleDays?: string[];
+    scheduleTime?: string;
+    nextPaymentDate?: string;
+    paymentHistory?: Array<{ amount: number; date: string; status: string; method: string }>;
+    message?: string;
+  }> {
+    try {
+      logger.info(`Searching CRM for student with phone: ${phone}`);
+      const cleanPhone = phone.replace(/[^\d+]/g, "");
+
+      const DAYS_UZ: Record<string, string> = {
+        monday: "Dushanba",
+        tuesday: "Seshanba",
+        wednesday: "Chorshanba",
+        thursday: "Payshanba",
+        friday: "Juma",
+        saturday: "Shanba",
+        sunday: "Yakshanba",
+      };
+
+      // 1. Find User
+      const user = await UserModel.findOne({
+        $or: [
+          { phone: cleanPhone },
+          { studentPhone: cleanPhone }
+        ],
+        role: "STUDENT"
+      });
+
+      if (!user) {
+        logger.warn(`No student found with phone ${cleanPhone}`);
+        return {
+          success: false,
+          message: "Ushbu telefon raqamiga tegishli faol o'quvchi topilmadi. Iltimos, raqamni to'g'ri yozganingizga ishonch hosil qiling."
+        };
+      }
+
+      // 2. Find their active Group
+      const group = await GroupModel.findOne({
+        students: user._id
+      });
+
+      let groupName = "Guruhga biriktirilmagan";
+      let scheduleDays: string[] = [];
+      let scheduleTime = "Noma'lum";
+
+      if (group) {
+        groupName = group.name;
+        scheduleTime = group.schedule.time;
+        scheduleDays = group.schedule.days.map(d => {
+          const lower = d.toLowerCase();
+          return DAYS_UZ[lower] || d;
+        });
+      }
+
+      // 3. Find Payment history
+      const payments = await PaymentModel.find({
+        studentId: user._id
+      }).sort({ paymentDate: -1 });
+
+      let nextPaymentDateStr = "Noma'lum";
+      const paymentHistory = payments.map((p) => {
+        return {
+          amount: p.amount,
+          date: p.paymentDate.toISOString().split("T")[0],
+          status: p.status,
+          method: p.paymentMethod || "Click",
+        };
+      });
+
+      if (payments.length > 0) {
+        const latestPayment = payments[0];
+        if (latestPayment.nextPaymentDate) {
+          nextPaymentDateStr = latestPayment.nextPaymentDate.toISOString().split("T")[0];
+        }
+      }
+
+      return {
+        success: true,
+        studentName: user.fullName,
+        phone: user.phone,
+        groupName,
+        scheduleDays,
+        scheduleTime,
+        nextPaymentDate: nextPaymentDateStr,
+        paymentHistory,
+      };
+
+    } catch (error) {
+      logger.error(`Error in CRMService.getStudentDataByPhone: ${error}`);
+      return {
+        success: false,
+        message: "Ma'lumotlarni olishda xatolik yuz berdi. Iltimos keyinroq qayta urinib ko'ring."
+      };
+    }
   }
 }

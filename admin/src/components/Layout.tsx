@@ -28,6 +28,7 @@ import {
   Megaphone,
   ChevronDown,
   ChevronRight,
+  Brain,
   Send,
   Building,
 } from 'lucide-react';

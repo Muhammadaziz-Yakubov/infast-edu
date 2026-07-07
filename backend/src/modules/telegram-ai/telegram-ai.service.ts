@@ -36,11 +36,14 @@ export class TelegramAiService implements OnApplicationBootstrap, OnApplicationS
     const args = isDev ? ['run', 'dev'] : ['run', 'start'];
 
     try {
+      const childEnv = { ...process.env };
+      delete childEnv.PORT;
+
       this.agentProcess = spawn(command, args, {
         cwd: agentDir,
         stdio: 'inherit',
         shell: true,
-        env: process.env,
+        env: childEnv,
       });
 
       this.agentProcess.on('error', (err) => {

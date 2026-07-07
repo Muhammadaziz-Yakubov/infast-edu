@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     rootDir: backend
-    buildCommand: npm install && npm run build && pip install -r AIAGENT/src/telegram/requirements.txt
+    buildCommand: npm install && npm run build && python -m venv AIAGENT/.venv && AIAGENT/.venv/bin/pip install -r AIAGENT/src/telegram/requirements.txt
     startCommand: npm start
     envVars:
       - key: NODE_ENV

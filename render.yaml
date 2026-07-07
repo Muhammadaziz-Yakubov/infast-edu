@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     rootDir: backend
-    buildCommand: npm install && npm run build && pip install -t AIAGENT/src/telegram/dependencies -r AIAGENT/src/telegram/requirements.txt
+    buildCommand: npm install && npm run build && (python -m ensurepip || curl -sS https://bootstrap.pypa.io/get-pip.py | python) && python -m pip install -t AIAGENT/src/telegram/dependencies -r AIAGENT/src/telegram/requirements.txt
     startCommand: npm start
     envVars:
       - key: NODE_ENV

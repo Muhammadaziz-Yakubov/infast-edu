@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, NotFoundException } from '@nestjs/common';
+import { Injectable, OnModuleInit, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Payment, PaymentDocument } from './schemas/payment.schema';
@@ -7,6 +7,7 @@ import { User, UserDocument } from '../users/schemas/user.schema';
 import { Notification, NotificationDocument } from '../notifications/schemas/notification.schema';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PaymentStatus, UserStatus, NotificationType } from '../../common/enums/status.enum';
+import { Role } from '../../common/enums/roles.enum';
 import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 
 @Injectable()
@@ -31,10 +32,14 @@ export class PaymentsService implements OnModuleInit {
     }, 12 * 60 * 60 * 1000);
   }
 
-  async createPayment(dto: CreatePaymentDto): Promise<PaymentDocument> {
+  async createPayment(dto: CreatePaymentDto, user: any): Promise<PaymentDocument> {
     const student = await this.userModel.findById(dto.studentId);
     if (!student) {
       throw new NotFoundException('Student user not found');
+    }
+
+    if (user.role === Role.BRANCH_ADMIN && (!student.branchId || student.branchId.toString() !== user.branchId)) {
+      throw new ForbiddenException('You do not have access to this student');
     }
 
     const paymentDate = new Date();
@@ -114,7 +119,14 @@ export class PaymentsService implements OnModuleInit {
     });
   }
 
-  async getStudentPaymentSummary(userId: string): Promise<any> {
+  async getStudentPaymentSummary(userId: string, user?: any): Promise<any> {
+    if (user && user.role === Role.BRANCH_ADMIN) {
+      const student = await this.userModel.findById(userId).exec();
+      if (!student || !student.branchId || student.branchId.toString() !== user.branchId) {
+        throw new ForbiddenException('You do not have access to this student');
+      }
+    }
+
     const MONTHS_UZ = [
       'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
       'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
@@ -192,7 +204,14 @@ export class PaymentsService implements OnModuleInit {
     };
   }
 
-  async getStudentPaymentsFormatted(studentId: string): Promise<any[]> {
+  async getStudentPaymentsFormatted(studentId: string, user?: any): Promise<any[]> {
+    if (user && user.role === Role.BRANCH_ADMIN) {
+      const student = await this.userModel.findById(studentId).exec();
+      if (!student || !student.branchId || student.branchId.toString() !== user.branchId) {
+        throw new ForbiddenException('You do not have access to this student');
+      }
+    }
+
     const payments = await this.paymentModel
       .find({ studentId: new Types.ObjectId(studentId) })
       .sort({ paymentDate: -1 })
@@ -212,9 +231,16 @@ export class PaymentsService implements OnModuleInit {
     });
   }
 
-  async getAllPayments(): Promise<any[]> {
+  async getAllPayments(user: any): Promise<any[]> {
+    let filter = {};
+    if (user.role === Role.BRANCH_ADMIN) {
+      const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
+      const userIds = branchUsers.map(u => u._id);
+      filter = { studentId: { $in: userIds } };
+    }
+
     const payments = await this.paymentModel
-      .find()
+      .find(filter)
       .populate('studentId')
       .sort({ paymentDate: -1 })
       .exec();
@@ -238,9 +264,15 @@ export class PaymentsService implements OnModuleInit {
   }
 
   // Automatic Background Payment Checker
-  async checkPaymentStatuses(): Promise<void> {
+  async checkPaymentStatuses(user?: any): Promise<void> {
     const now = new Date();
-    const profiles = await this.studentProfileModel.find().exec();
+    let filter = {};
+    if (user && user.role === Role.BRANCH_ADMIN) {
+      const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
+      const userIds = branchUsers.map(u => u._id);
+      filter = { userId: { $in: userIds } };
+    }
+    const profiles = await this.studentProfileModel.find(filter).exec();
 
     for (const profile of profiles) {
       const studentId = profile.userId;
@@ -317,9 +349,16 @@ export class PaymentsService implements OnModuleInit {
     }
   }
 
-  async getOverdueStudents(): Promise<any[]> {
+  async getOverdueStudents(user: any): Promise<any[]> {
+    let filter: any = { status: PaymentStatus.OVERDUE };
+    if (user.role === Role.BRANCH_ADMIN) {
+      const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
+      const userIds = branchUsers.map(u => u._id);
+      filter.studentId = { $in: userIds };
+    }
+
     const overduePayments = await this.paymentModel
-      .find({ status: PaymentStatus.OVERDUE })
+      .find(filter)
       .populate('studentId')
       .sort({ nextPaymentDate: 1 })
       .exec();

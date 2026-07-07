@@ -18,6 +18,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException('Session expired or user not found');
     }
-    return { userId: user._id.toString(), email: user.email, role: user.role };
+    return {
+      userId: user._id.toString(),
+      email: user.email,
+      role: user.role,
+      branchId: user.branchId ? user.branchId.toString() : undefined,
+    };
   }
 }

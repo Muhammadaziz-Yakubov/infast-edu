@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
+import { Branches } from './pages/Branches';
 import { Students } from './pages/Students';
 import { StudentProfile } from './pages/StudentProfile';
 import { Groups } from './pages/Groups';
@@ -63,6 +64,7 @@ export const App: React.FC = () => {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/branches" element={<Branches />} />
             
             {/* Student management */}
             <Route path="/students" element={<Students />} />

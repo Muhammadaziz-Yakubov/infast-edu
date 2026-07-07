@@ -42,8 +42,12 @@ export class Group extends Document {
 
   @Prop({ default: 1, min: 1 })
   startLessonOrder: number; // Guruh uchun qaysi dars tartib raqamidan boshlanishi (oldingilari lock)
+
+  @Prop({ type: Types.ObjectId, ref: 'Branch' })
+  branchId?: Types.ObjectId;
 }
 
 export type GroupDocument = Group & Document;
 export const GroupSchema = SchemaFactory.createForClass(Group);
 GroupSchema.index({ courseId: 1 });
+GroupSchema.index({ branchId: 1 });

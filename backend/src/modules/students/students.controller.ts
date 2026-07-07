@@ -51,43 +51,43 @@ export class StudentsController {
   }
 
   @Get()
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get all students profiles (Admin only)' })
   @ApiResponse({ status: 200, description: 'List of all student profiles.' })
-  findAll() {
-    return this.studentsService.findAll();
+  findAll(@CurrentUser() user: any) {
+    return this.studentsService.findAll(user);
   }
 
 
   @Post()
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Create a student (Admin only)' })
   @ApiResponse({ status: 201, description: 'Student created successfully.' })
-  create(@Body() createStudentDto: CreateStudentDto) {
-    return this.studentsService.createStudent(createStudentDto);
+  create(@Body() createStudentDto: CreateStudentDto, @CurrentUser() user: any) {
+    return this.studentsService.createStudent(createStudentDto, user);
   }
 
   @Patch(':id')
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Update a student profile/user (Admin only)' })
   @ApiResponse({ status: 200, description: 'Student updated successfully.' })
-  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
-    return this.studentsService.updateStudent(id, updateStudentDto);
+  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto, @CurrentUser() user: any) {
+    return this.studentsService.updateStudent(id, updateStudentDto, user);
   }
 
   @Delete(':id')
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Delete a student profile and user account (Admin only)' })
   @ApiResponse({ status: 200, description: 'Student deleted successfully.' })
-  remove(@Param('id') id: string) {
-    return this.studentsService.deleteStudent(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.studentsService.deleteStudent(id, user);
   }
 
   @Get(':id')
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get a student profile by user ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'Student profile details.' })
-  findOne(@Param('id') id: string) {
-    return this.studentsService.getProfile(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.studentsService.getProfile(id, user);
   }
 }

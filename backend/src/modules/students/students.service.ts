@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, Inject, forwardRef, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException, Inject, forwardRef, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { StudentProfile, StudentProfileDocument } from './schemas/student-profile.schema';
@@ -120,9 +120,16 @@ export class StudentsService implements OnModuleInit {
   }
 
 
-  async findAll(): Promise<any[]> {
+  async findAll(requestingUser?: any): Promise<any[]> {
+    let filter = {};
+    if (requestingUser && requestingUser.role === Role.BRANCH_ADMIN) {
+      const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(requestingUser.branchId) }).select('_id').exec();
+      const userIds = branchUsers.map(u => u._id);
+      filter = { userId: { $in: userIds } };
+    }
+
     const profiles = await this.studentProfileModel
-      .find()
+      .find(filter)
       .populate('userId')
       .populate('groupId')
       .populate('courseId')
@@ -155,8 +162,8 @@ export class StudentsService implements OnModuleInit {
   }
 
 
-  async createStudent(createStudentDto: CreateStudentDto): Promise<any> {
-    const { email, studentPhone, parentPhone, dateOfBirth, fullName, avatar, groupId, courseId, password } = createStudentDto;
+  async createStudent(createStudentDto: CreateStudentDto, creator: any): Promise<any> {
+    const { email, studentPhone, parentPhone, dateOfBirth, fullName, avatar, groupId, courseId, password, branchId } = createStudentDto;
 
     // Check existing by studentPhone or email
     const queryOr: any[] = [{ phone: studentPhone }, { studentPhone }];
@@ -172,6 +179,13 @@ export class StudentsService implements OnModuleInit {
     const defaultPassword = password || dateOfBirth.replace(/\./g, '');
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
+    let finalBranchId: Types.ObjectId | undefined = undefined;
+    if (creator.role === Role.BRANCH_ADMIN) {
+      finalBranchId = new Types.ObjectId(creator.branchId);
+    } else if (branchId) {
+      finalBranchId = new Types.ObjectId(branchId);
+    }
+
     const user = new this.userModel({
       fullName,
       email: email || undefined,
@@ -185,6 +199,7 @@ export class StudentsService implements OnModuleInit {
       role: Role.STUDENT,
       status: UserStatus.ACTIVE, // Default active for newly created student by admin
       label: createStudentDto.label || undefined,
+      branchId: finalBranchId,
     });
     const savedUser = await user.save();
 
@@ -232,10 +247,14 @@ export class StudentsService implements OnModuleInit {
     };
   }
 
-  async updateStudent(userId: string, updateStudentDto: UpdateStudentDto): Promise<any> {
+  async updateStudent(userId: string, updateStudentDto: UpdateStudentDto, requestingUser?: any): Promise<any> {
     const userExists = await this.userModel.findById(userId);
     if (!userExists) {
       throw new NotFoundException('Student user not found');
+    }
+
+    if (requestingUser && requestingUser.role === Role.BRANCH_ADMIN && (!userExists.branchId || userExists.branchId.toString() !== requestingUser.branchId)) {
+      throw new ForbiddenException('You do not have access to this student');
     }
 
     // Split updates into user and profile
@@ -253,6 +272,9 @@ export class StudentsService implements OnModuleInit {
     if (updateStudentDto.avatar !== undefined) userUpdates.avatar = updateStudentDto.avatar;
     if (updateStudentDto.status !== undefined) userUpdates.status = updateStudentDto.status;
     if (updateStudentDto.label !== undefined) userUpdates.label = updateStudentDto.label;
+    if (updateStudentDto.branchId !== undefined) {
+      userUpdates.branchId = updateStudentDto.branchId ? new Types.ObjectId(updateStudentDto.branchId) : null;
+    }
     if (updateStudentDto.password !== undefined) {
       userUpdates.password = await bcrypt.hash(updateStudentDto.password, 10);
     }
@@ -381,14 +403,23 @@ export class StudentsService implements OnModuleInit {
     };
   }
 
-  async deleteStudent(userId: string): Promise<any> {
-    const user = await this.userModel.findByIdAndDelete(userId).exec();
-    if (!user) {
+  async deleteStudent(userId: string, requestingUser?: any): Promise<any> {
+    const userExists = await this.userModel.findById(userId).exec();
+    if (!userExists) {
+      throw new NotFoundException('Student user not found');
+    }
+
+    if (requestingUser && requestingUser.role === Role.BRANCH_ADMIN && (!userExists.branchId || userExists.branchId.toString() !== requestingUser.branchId)) {
+      throw new ForbiddenException('You do not have access to this student');
+    }
+
+    const deletedUser = await this.userModel.findByIdAndDelete(userId).exec();
+    if (!deletedUser) {
       throw new NotFoundException('Student user not found');
     }
 
     // Notify bot
-    this.botService.notifyStudentDeleted(user).catch(() => {});
+    this.botService.notifyStudentDeleted(deletedUser).catch(() => {});
 
     // Remove the student's ID from all groups' students arrays
     await this.groupModel.updateMany(
@@ -397,10 +428,10 @@ export class StudentsService implements OnModuleInit {
     ).exec();
 
     const profile = await this.studentProfileModel.findOneAndDelete({ userId: new Types.ObjectId(userId) }).exec();
-    return { user, profile };
+    return { user: deletedUser, profile };
   }
 
-  async getProfile(userId: string): Promise<any> {
+  async getProfile(userId: string, requestingUser?: any): Promise<any> {
     const profile = await this.studentProfileModel
       .findOne({ userId: new Types.ObjectId(userId) })
       .populate('userId')
@@ -410,6 +441,11 @@ export class StudentsService implements OnModuleInit {
 
     if (!profile) {
       throw new NotFoundException('Student profile not found');
+    }
+
+    const studentUser = profile.userId as any;
+    if (requestingUser && requestingUser.role === Role.BRANCH_ADMIN && (!studentUser || !studentUser.branchId || studentUser.branchId.toString() !== requestingUser.branchId)) {
+      throw new ForbiddenException('You do not have access to this student');
     }
 
     // Calculate ranking position dynamically

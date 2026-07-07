@@ -16,19 +16,19 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post()
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Register a monthly payment for a student (Admin only)' })
   @ApiResponse({ status: 201, description: 'Payment registered. Student profile updated.' })
-  create(@Body() createPaymentDto: CreatePaymentDto) {
-    return this.paymentsService.createPayment(createPaymentDto);
+  create(@Body() createPaymentDto: CreatePaymentDto, @CurrentUser() user: any) {
+    return this.paymentsService.createPayment(createPaymentDto, user);
   }
 
   @Get()
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get all payments (Admin only)' })
   @ApiResponse({ status: 200, description: 'List of all payments.' })
-  findAll() {
-    return this.paymentsService.getAllPayments();
+  findAll(@CurrentUser() user: any) {
+    return this.paymentsService.getAllPayments(user);
   }
 
   @Get('my-history')
@@ -48,35 +48,35 @@ export class PaymentsController {
   }
 
   @Get('students/:studentId')
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get a student payment history by student ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'Student payment history.' })
-  findStudentHistory(@Param('studentId') studentId: string) {
-    return this.paymentsService.getStudentPaymentsFormatted(studentId);
+  findStudentHistory(@Param('studentId') studentId: string, @CurrentUser() user: any) {
+    return this.paymentsService.getStudentPaymentsFormatted(studentId, user);
   }
 
   @Get('students/:studentId/summary')
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get a student payment summary by student ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'Student payment summary with status and next date.' })
-  findStudentSummary(@Param('studentId') studentId: string) {
-    return this.paymentsService.getStudentPaymentSummary(studentId);
+  findStudentSummary(@Param('studentId') studentId: string, @CurrentUser() user: any) {
+    return this.paymentsService.getStudentPaymentSummary(studentId, user);
   }
 
   @Get('overdue')
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get all overdue student payments (Admin only)' })
   @ApiResponse({ status: 200, description: 'List of overdue payments.' })
-  findOverdue() {
-    return this.paymentsService.getOverdueStudents();
+  findOverdue(@CurrentUser() user: any) {
+    return this.paymentsService.getOverdueStudents(user);
   }
 
   @Post('check-statuses')
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Manually trigger payment status check for all students (Admin only)' })
   @ApiResponse({ status: 200, description: 'Payment statuses updated.' })
-  async checkStatuses() {
-    await this.paymentsService.checkPaymentStatuses();
+  async checkStatuses(@CurrentUser() user: any) {
+    await this.paymentsService.checkPaymentStatuses(user);
     return { success: true, message: 'Barcha tolov statuslari yangilandi.' };
   }
 }

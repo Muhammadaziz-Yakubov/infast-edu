@@ -24,8 +24,8 @@ export const Login: React.FC = () => {
 
     try {
       const data = await login({ identifier, password });
-      if (data.user.role !== 'SUPER_ADMIN') {
-        throw new Error('Ushbu panelga faqat Super Admin kira oladi');
+      if (data.user.role !== 'SUPER_ADMIN' && data.user.role !== 'BRANCH_ADMIN') {
+        throw new Error('Ushbu panelga kirish huquqingiz yo\'q');
       }
       setAuth(data.user, data.accessToken, data.refreshToken);
       navigate('/');

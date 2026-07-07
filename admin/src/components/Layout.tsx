@@ -28,8 +28,8 @@ import {
   Megaphone,
   ChevronDown,
   ChevronRight,
-  Brain,
   Send,
+  Building,
 } from 'lucide-react';
 
 export const Layout: React.FC = () => {
@@ -60,6 +60,7 @@ export const Layout: React.FC = () => {
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    ...(user?.role === 'SUPER_ADMIN' ? [{ name: 'Branches', path: '/branches', icon: Building }] : []),
     { name: 'AI Advisor', path: '/ai-advisor', icon: Brain },
     { name: 'Telegram AI', path: '/telegram-ai', icon: Send },
     { name: 'Students', path: '/students', icon: Users },

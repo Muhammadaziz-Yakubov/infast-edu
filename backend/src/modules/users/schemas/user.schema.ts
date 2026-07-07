@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Role } from '../../../common/enums/roles.enum';
 import { UserStatus } from '../../../common/enums/status.enum';
 
@@ -53,6 +53,9 @@ export class User extends Document {
 
   @Prop({ unique: true, sparse: true })
   telegramId?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'Branch' })
+  branchId?: Types.ObjectId;
 
   @Prop({ select: false })
   refreshToken?: string;

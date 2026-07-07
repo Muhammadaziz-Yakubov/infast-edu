@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { StudentProfile, StudentProfileDocument } from '../students/schemas/student-profile.schema';
 import { Payment, PaymentDocument } from '../payments/schemas/payment.schema';
@@ -19,24 +19,38 @@ export class AnalyticsService {
     @InjectModel(Attendance.name) private readonly attendanceModel: Model<AttendanceDocument>
   ) {}
 
-  async getDashboardStats(): Promise<any> {
+  async getDashboardStats(user?: any): Promise<any> {
+    let userFilter: any = { role: Role.STUDENT };
+    let studentIds: Types.ObjectId[] = [];
+    const isBranchAdmin = user && user.role === Role.BRANCH_ADMIN;
+
+    if (isBranchAdmin) {
+      userFilter.branchId = new Types.ObjectId(user.branchId);
+      // Fetch all student user IDs for this branch
+      const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
+      studentIds = branchUsers.map(u => u._id);
+    }
+
     // 1. Student counts — real DB
-    const totalStudents = await this.userModel.countDocuments({ role: Role.STUDENT }).exec();
-    const activeStudents = await this.userModel.countDocuments({ role: Role.STUDENT, status: UserStatus.ACTIVE }).exec();
-    const blockedStudents = await this.userModel.countDocuments({ role: Role.STUDENT, status: UserStatus.BLOCKED }).exec();
+    const totalStudents = await this.userModel.countDocuments(userFilter).exec();
+    const activeStudents = await this.userModel.countDocuments({ ...userFilter, status: UserStatus.ACTIVE }).exec();
+    const blockedStudents = await this.userModel.countDocuments({ ...userFilter, status: UserStatus.BLOCKED }).exec();
 
     // 2. Monthly revenue — real payments, sum of PAID with real amounts in last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    const paymentFilter: any = {
+      paymentDate: { $gte: thirtyDaysAgo },
+      status: PaymentStatus.PAID,
+      amount: { $gt: 0 },
+    };
+    if (isBranchAdmin) {
+      paymentFilter.studentId = { $in: studentIds };
+    }
+
     const revenueResult = await this.paymentModel.aggregate([
-      {
-        $match: {
-          paymentDate: { $gte: thirtyDaysAgo },
-          status: PaymentStatus.PAID,
-          amount: { $gt: 0 },
-        },
-      },
+      { $match: paymentFilter },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]).exec();
     const monthlyRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
@@ -45,8 +59,12 @@ export class AnalyticsService {
     const totalCourses = await this.courseModel.countDocuments().exec();
 
     // 4. Attendance rate — real data, no fallback
-    const totalAttendance = await this.attendanceModel.countDocuments().exec();
-    const presentAttendance = await this.attendanceModel.countDocuments({ status: AttendanceStatus.PRESENT }).exec();
+    const attendanceFilter: any = {};
+    if (isBranchAdmin) {
+      attendanceFilter.studentId = { $in: studentIds };
+    }
+    const totalAttendance = await this.attendanceModel.countDocuments(attendanceFilter).exec();
+    const presentAttendance = await this.attendanceModel.countDocuments({ ...attendanceFilter, status: AttendanceStatus.PRESENT }).exec();
     const attendanceRate = totalAttendance > 0 ? Math.round((presentAttendance / totalAttendance) * 100) : 0;
 
     // 5. Revenue history — last 6 months (real data, no mock fallback)
@@ -59,14 +77,17 @@ export class AnalyticsService {
       const startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
       const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
 
+      const historyFilter: any = {
+        paymentDate: { $gte: startOfMonth, $lte: endOfMonth },
+        status: PaymentStatus.PAID,
+        amount: { $gt: 0 },
+      };
+      if (isBranchAdmin) {
+        historyFilter.studentId = { $in: studentIds };
+      }
+
       const monthRevenue = await this.paymentModel.aggregate([
-        {
-          $match: {
-            paymentDate: { $gte: startOfMonth, $lte: endOfMonth },
-            status: PaymentStatus.PAID,
-            amount: { $gt: 0 },
-          },
-        },
+        { $match: historyFilter },
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ]).exec();
 
@@ -82,10 +103,15 @@ export class AnalyticsService {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
 
-      const count = await this.userModel.countDocuments({
+      const growthFilter: any = {
         role: Role.STUDENT,
         createdAt: { $lte: endOfMonth },
-      }).exec();
+      };
+      if (isBranchAdmin) {
+        growthFilter.branchId = new Types.ObjectId(user.branchId);
+      }
+
+      const count = await this.userModel.countDocuments(growthFilter).exec();
 
       studentGrowth.push({
         month: monthsUz[d.getMonth()],
@@ -97,16 +123,30 @@ export class AnalyticsService {
     const courses = await this.courseModel.find().exec();
     const courseDistribution = await Promise.all(
       courses.map(async (course) => {
-        const enrollmentCount = await this.studentProfileModel.countDocuments({ courseId: course._id }).exec();
+        const profileFilter: any = { courseId: course._id };
+        if (isBranchAdmin) {
+          profileFilter.userId = { $in: studentIds };
+        }
+        const enrollmentCount = await this.studentProfileModel.countDocuments(profileFilter).exec();
         return { name: course.title, students: enrollmentCount };
       })
     );
 
     // 8. Recent activities — only real DB events (no fake fallback)
     const recentActivities: any[] = [];
-    const latestUsers = await this.userModel.find({ role: Role.STUDENT }).sort({ createdAt: -1 }).limit(4).exec();
+
+    const userQuery: any = { role: Role.STUDENT };
+    if (isBranchAdmin) {
+      userQuery.branchId = new Types.ObjectId(user.branchId);
+    }
+    const latestUsers = await this.userModel.find(userQuery).sort({ createdAt: -1 }).limit(4).exec();
+
+    const paymentQuery: any = { status: PaymentStatus.PAID, amount: { $gt: 0 } };
+    if (isBranchAdmin) {
+      paymentQuery.studentId = { $in: studentIds };
+    }
     const latestPayments = await this.paymentModel
-      .find({ status: PaymentStatus.PAID, amount: { $gt: 0 } })
+      .find(paymentQuery)
       .sort({ paymentDate: -1 })
       .limit(4)
       .populate('studentId')

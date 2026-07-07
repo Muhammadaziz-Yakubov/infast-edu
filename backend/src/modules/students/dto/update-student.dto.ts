@@ -92,4 +92,9 @@ export class UpdateStudentDto {
   @IsString()
   @IsOptional()
   label?: string;
+
+  @ApiProperty({ example: '65f1a2b3c4d5e6f7a8b9c0d3', required: false })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
 }

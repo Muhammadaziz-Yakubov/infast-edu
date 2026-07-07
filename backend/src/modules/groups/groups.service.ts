@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException, ConflictException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import { Role } from '../../common/enums/roles.enum';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Group, GroupDocument } from './schemas/group.schema';
 import { GroupLessonSchedule, GroupLessonScheduleDocument } from './schemas/group-lesson-schedule.schema';
 import { CourseModule, CourseModuleDocument } from '../lms/schemas/module.schema';
 import { Lesson, LessonDocument } from '../lms/schemas/lesson.schema';
+import { User, UserDocument } from '../users/schemas/user.schema';
 import { StudentsService } from '../students/students.service';
 import { ChatService } from '../chat/chat.service';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -20,13 +22,15 @@ export class GroupsService {
     private readonly moduleModel: Model<CourseModuleDocument>,
     @InjectModel(Lesson.name)
     private readonly lessonModel: Model<LessonDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
     @Inject(forwardRef(() => StudentsService))
     private readonly studentsService: StudentsService,
     @Inject(forwardRef(() => ChatService))
     private readonly chatService: ChatService,
   ) {}
 
-  async createGroup(dto: CreateGroupDto): Promise<GroupDocument> {
+  async createGroup(dto: CreateGroupDto, user: any): Promise<GroupDocument> {
     let endDate: Date;
     if (dto.endDate) {
       endDate = new Date(dto.endDate);
@@ -39,11 +43,19 @@ export class GroupsService {
       endDate.setMonth(endDate.getMonth() + durationMonths);
     }
 
+    let finalBranchId: Types.ObjectId | undefined = undefined;
+    if (user.role === Role.BRANCH_ADMIN) {
+      finalBranchId = new Types.ObjectId(user.branchId);
+    } else if (dto.branchId) {
+      finalBranchId = new Types.ObjectId(dto.branchId);
+    }
+
     const group = new this.groupModel({
       ...dto,
       courseId: new Types.ObjectId(dto.courseId),
       startDate: new Date(dto.startDate),
       endDate: endDate,
+      branchId: finalBranchId,
     });
     const savedGroup = await group.save();
 
@@ -64,22 +76,47 @@ export class GroupsService {
     return savedGroup;
   }
 
-  async findAll(): Promise<GroupDocument[]> {
-    return this.groupModel.find().populate('courseId').exec();
+  async findAll(user: any): Promise<GroupDocument[]> {
+    let filter = {};
+    if (user.role === Role.BRANCH_ADMIN) {
+      filter = { branchId: new Types.ObjectId(user.branchId) };
+    }
+    return this.groupModel.find(filter).populate('courseId').exec();
   }
 
-  async findOne(id: string): Promise<GroupDocument> {
+  async findOne(id: string, user: any): Promise<GroupDocument> {
     const group = await this.groupModel.findById(id).populate('courseId').populate('students').exec();
     if (!group) {
       throw new NotFoundException('Group not found');
     }
+
+    if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
+      throw new ForbiddenException('You do not have access to this group');
+    }
+
     return group;
   }
 
-  async updateGroup(id: string, dto: any): Promise<GroupDocument> {
+  async updateGroup(id: string, dto: any, user: any): Promise<GroupDocument> {
+    const group = await this.groupModel.findById(id).exec();
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
+      throw new ForbiddenException('You do not have access to this group');
+    }
+
+    // If SUPER_ADMIN, allow changing branchId
+    const updateData = { ...dto };
+    if (dto.branchId !== undefined) {
+      updateData.branchId = dto.branchId ? new Types.ObjectId(dto.branchId) : null;
+    }
+
     const updated = await this.groupModel
-      .findByIdAndUpdate(id, dto, { new: true })
+      .findByIdAndUpdate(id, updateData, { new: true })
       .exec();
+
     if (!updated) {
       throw new NotFoundException('Group not found');
     }
@@ -92,7 +129,16 @@ export class GroupsService {
     return updated;
   }
 
-  async removeGroup(id: string): Promise<GroupDocument> {
+  async removeGroup(id: string, user: any): Promise<GroupDocument> {
+    const group = await this.groupModel.findById(id).exec();
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
+      throw new ForbiddenException('You do not have access to this group');
+    }
+
     const deleted = await this.groupModel.findByIdAndDelete(id).exec();
     if (!deleted) {
       throw new NotFoundException('Group not found');
@@ -102,19 +148,32 @@ export class GroupsService {
     return deleted;
   }
 
-  async addStudentToGroup(groupId: string, studentId: string): Promise<GroupDocument> {
-    const group = await this.groupModel.findByIdAndUpdate(
-      groupId,
-      { $addToSet: { students: new Types.ObjectId(studentId) } },
-      { new: true }
-    ).exec();
+  async addStudentToGroup(groupId: string, studentId: string, user: any): Promise<GroupDocument> {
+    const group = await this.groupModel.findById(groupId).exec();
     if (!group) throw new NotFoundException('Group not found');
+
+    if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
+      throw new ForbiddenException('You do not have access to this group');
+    }
+
+    // Check if student belongs to same branch
+    const student = await this.userModel.findById(studentId).exec();
+    if (!student) throw new NotFoundException('Student not found');
+    if (user.role === Role.BRANCH_ADMIN && student.branchId?.toString() !== user.branchId) {
+      throw new ForbiddenException('Student does not belong to your branch');
+    }
+
+    group.students = group.students || [];
+    if (!group.students.map(s => s.toString()).includes(studentId)) {
+      group.students.push(new Types.ObjectId(studentId));
+      await group.save();
+    }
 
     // Link student profile to group and course
     await this.studentsService.updateStudent(studentId, {
       groupId: group._id.toString(),
       courseId: group.courseId.toString(),
-    });
+    }, user);
 
     // Auto-add student to group chat room
     try {
@@ -126,19 +185,22 @@ export class GroupsService {
     return group;
   }
 
-  async removeStudentFromGroup(groupId: string, studentId: string): Promise<GroupDocument> {
-    const group = await this.groupModel.findByIdAndUpdate(
-      groupId,
-      { $pull: { students: new Types.ObjectId(studentId) } },
-      { new: true }
-    ).exec();
+  async removeStudentFromGroup(groupId: string, studentId: string, user: any): Promise<GroupDocument> {
+    const group = await this.groupModel.findById(groupId).exec();
     if (!group) throw new NotFoundException('Group not found');
+
+    if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
+      throw new ForbiddenException('You do not have access to this group');
+    }
+
+    group.students = (group.students || []).filter(s => s.toString() !== studentId);
+    await group.save();
 
     // Clear group and course from student profile
     await this.studentsService.updateStudent(studentId, {
       groupId: '',
       courseId: '',
-    });
+    }, user);
 
     // Remove student from group chat room
     try {
@@ -150,9 +212,13 @@ export class GroupsService {
     return group;
   }
 
-  async getGroupSchedule(groupId: string): Promise<any[]> {
+  async getGroupSchedule(groupId: string, user: any): Promise<any[]> {
     const group = await this.groupModel.findById(groupId).exec();
     if (!group) return [];
+
+    if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
+      throw new ForbiddenException('You do not have access to this group');
+    }
 
     // Find modules of this group (with fallback to course modules)
     let modules = await this.moduleModel.find({ groupId: group._id }).sort({ order: 1 }).exec();
@@ -218,9 +284,13 @@ export class GroupsService {
     });
   }
 
-  async getGroupProgress(groupId: string): Promise<any> {
+  async getGroupProgress(groupId: string, user: any): Promise<any> {
     const group = await this.groupModel.findById(groupId).populate('courseId').exec();
     if (!group) throw new NotFoundException('Group not found');
+
+    if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
+      throw new ForbiddenException('You do not have access to this group');
+    }
 
     const courseId = (group.courseId as any)?._id || group.courseId;
 

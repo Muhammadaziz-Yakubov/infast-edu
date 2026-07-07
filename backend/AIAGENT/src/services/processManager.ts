@@ -18,11 +18,12 @@ export class TelegramProcessManager {
     }
 
     const scriptPath = path.join(process.cwd(), "src", "telegram", "client.py");
-    logger.info(`Spawning Telegram Python microservice: python "${scriptPath}"`);
+    const pythonCmd = process.platform === "win32" ? "py" : "python";
+    logger.info(`Spawning Telegram Python microservice: ${pythonCmd} "${scriptPath}"`);
 
     // Spawn python process
     // We pipe stdin, stdout, and stderr so we can monitor output and write confirmation codes.
-    this.pythonProcess = spawn("python", [scriptPath], {
+    this.pythonProcess = spawn(pythonCmd, [scriptPath], {
       stdio: ["pipe", "pipe", "pipe"],
       env: process.env,
     });

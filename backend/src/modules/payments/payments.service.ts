@@ -40,8 +40,6 @@ export class PaymentsService implements OnModuleInit {
 
     if (user.role === Role.BRANCH_ADMIN && (!student.branchId || student.branchId.toString() !== user.branchId)) {
       throw new ForbiddenException('You do not have access to this student');
-    } else if (user.role === Role.SUPER_ADMIN && student.branchId) {
-      throw new ForbiddenException('You do not have access to this student');
     }
 
     const paymentDate = new Date();
@@ -126,11 +124,6 @@ export class PaymentsService implements OnModuleInit {
       if (user.role === Role.BRANCH_ADMIN) {
         const student = await this.userModel.findById(userId).exec();
         if (!student || !student.branchId || student.branchId.toString() !== user.branchId) {
-          throw new ForbiddenException('You do not have access to this student');
-        }
-      } else if (user.role === Role.SUPER_ADMIN) {
-        const student = await this.userModel.findById(userId).exec();
-        if (!student || student.branchId) {
           throw new ForbiddenException('You do not have access to this student');
         }
       }
@@ -218,11 +211,6 @@ export class PaymentsService implements OnModuleInit {
       if (user.role === Role.BRANCH_ADMIN) {
         const student = await this.userModel.findById(studentId).exec();
         if (!student || !student.branchId || student.branchId.toString() !== user.branchId) {
-          throw new ForbiddenException('You do not have access to this student');
-        }
-      } else if (user.role === Role.SUPER_ADMIN) {
-        const student = await this.userModel.findById(studentId).exec();
-        if (!student || student.branchId) {
           throw new ForbiddenException('You do not have access to this student');
         }
       }

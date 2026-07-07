@@ -410,24 +410,24 @@ export const BranchDetails: React.FC = () => {
                 </thead>
                 <tbody className="divide-y text-sm">
                   {students.map((s) => {
-                    const studentUser = s.userId as any;
+                    const group = groups.find(g => g._id === s.groupId);
                     return (
                       <tr key={s._id} className="hover:bg-muted/10 transition-colors">
                         <td className="px-6 py-4">
                           <div className="font-semibold text-primary">
-                            <Link to={`/students/${studentUser?._id}`} className="hover:underline">
-                              {studentUser?.fullName || 'Noma\'lum'}
+                            <Link to={`/students/${s._id}`} className="hover:underline">
+                              {s.fullName || 'Noma\'lum Talaba'}
                             </Link>
                           </div>
-                          <div className="text-xs text-muted-foreground">{studentUser?.email || ''}</div>
+                          <div className="text-xs text-muted-foreground">{s.email || ''}</div>
                         </td>
                         <td className="px-6 py-4 font-medium">
-                          {s.studentPhone || studentUser?.phone || ''}
+                          {s.studentPhone || ''}
                         </td>
                         <td className="px-6 py-4">
-                          {s.groupId?.name ? (
-                            <Link to={`/groups/${s.groupId._id}`} className="hover:underline font-medium text-primary">
-                              {s.groupId.name}
+                          {s.groupId ? (
+                            <Link to={`/groups/${s.groupId}`} className="hover:underline font-medium text-primary">
+                              {group?.name || 'Guruh'}
                             </Link>
                           ) : (
                             <span className="text-muted-foreground text-xs">Biriktirilmagan</span>
@@ -449,17 +449,17 @@ export const BranchDetails: React.FC = () => {
                         <td className="px-6 py-4 text-center">
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              studentUser?.status === 'ACTIVE'
+                              s.status === 'ACTIVE'
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                                 : 'bg-red-500/10 text-red-600 dark:text-red-400'
                             }`}
                           >
-                            {studentUser?.status === 'ACTIVE' ? 'Faol' : 'Bloklangan'}
+                            {s.status === 'ACTIVE' ? 'Faol' : 'Bloklangan'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <Link
-                            to={`/students/${studentUser?._id}`}
+                            to={`/students/${s._id}`}
                             className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-md border hover:bg-secondary transition-colors"
                           >
                             <Eye className="w-3.5 h-3.5" />

@@ -270,8 +270,6 @@ export class StudentsService implements OnModuleInit {
     if (requestingUser) {
       if (requestingUser.role === Role.BRANCH_ADMIN && (!userExists.branchId || userExists.branchId.toString() !== requestingUser.branchId)) {
         throw new ForbiddenException('You do not have access to this student');
-      } else if (requestingUser.role === Role.SUPER_ADMIN && userExists.branchId) {
-        throw new ForbiddenException('You do not have access to this student');
       }
     }
 
@@ -430,8 +428,6 @@ export class StudentsService implements OnModuleInit {
     if (requestingUser) {
       if (requestingUser.role === Role.BRANCH_ADMIN && (!userExists.branchId || userExists.branchId.toString() !== requestingUser.branchId)) {
         throw new ForbiddenException('You do not have access to this student');
-      } else if (requestingUser.role === Role.SUPER_ADMIN && userExists.branchId) {
-        throw new ForbiddenException('You do not have access to this student');
       }
     }
 
@@ -468,8 +464,6 @@ export class StudentsService implements OnModuleInit {
     const studentUser = profile.userId as any;
     if (requestingUser) {
       if (requestingUser.role === Role.BRANCH_ADMIN && (!studentUser || !studentUser.branchId || studentUser.branchId.toString() !== requestingUser.branchId)) {
-        throw new ForbiddenException('You do not have access to this student');
-      } else if (requestingUser.role === Role.SUPER_ADMIN && studentUser && studentUser.branchId) {
         throw new ForbiddenException('You do not have access to this student');
       }
     }

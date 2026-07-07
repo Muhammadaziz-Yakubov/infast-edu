@@ -100,8 +100,6 @@ export class GroupsService {
 
     if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
       throw new ForbiddenException('You do not have access to this group');
-    } else if (user.role === Role.SUPER_ADMIN && group.branchId) {
-      throw new ForbiddenException('You do not have access to this group');
     }
 
     return group;
@@ -114,8 +112,6 @@ export class GroupsService {
     }
 
     if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
-      throw new ForbiddenException('You do not have access to this group');
-    } else if (user.role === Role.SUPER_ADMIN && group.branchId) {
       throw new ForbiddenException('You do not have access to this group');
     }
 
@@ -149,8 +145,6 @@ export class GroupsService {
 
     if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
       throw new ForbiddenException('You do not have access to this group');
-    } else if (user.role === Role.SUPER_ADMIN && group.branchId) {
-      throw new ForbiddenException('You do not have access to this group');
     }
 
     const deleted = await this.groupModel.findByIdAndDelete(id).exec();
@@ -168,8 +162,6 @@ export class GroupsService {
 
     if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
       throw new ForbiddenException('You do not have access to this group');
-    } else if (user.role === Role.SUPER_ADMIN && group.branchId) {
-      throw new ForbiddenException('You do not have access to this group');
     }
 
     // Check if student belongs to same branch
@@ -177,8 +169,6 @@ export class GroupsService {
     if (!student) throw new NotFoundException('Student not found');
     if (user.role === Role.BRANCH_ADMIN && student.branchId?.toString() !== user.branchId) {
       throw new ForbiddenException('Student does not belong to your branch');
-    } else if (user.role === Role.SUPER_ADMIN && student.branchId) {
-      throw new ForbiddenException('Student does not belong to the main branch');
     }
 
     group.students = group.students || [];
@@ -209,8 +199,6 @@ export class GroupsService {
 
     if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
       throw new ForbiddenException('You do not have access to this group');
-    } else if (user.role === Role.SUPER_ADMIN && group.branchId) {
-      throw new ForbiddenException('You do not have access to this group');
     }
 
     group.students = (group.students || []).filter(s => s.toString() !== studentId);
@@ -237,8 +225,6 @@ export class GroupsService {
     if (!group) return [];
 
     if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
-      throw new ForbiddenException('You do not have access to this group');
-    } else if (user.role === Role.SUPER_ADMIN && group.branchId) {
       throw new ForbiddenException('You do not have access to this group');
     }
 
@@ -311,8 +297,6 @@ export class GroupsService {
     if (!group) throw new NotFoundException('Group not found');
 
     if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
-      throw new ForbiddenException('You do not have access to this group');
-    } else if (user.role === Role.SUPER_ADMIN && group.branchId) {
       throw new ForbiddenException('You do not have access to this group');
     }
 

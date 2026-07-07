@@ -37,6 +37,7 @@ import { ConversionsModule } from './modules/conversions/conversions.module';
 import { CrmAnalyticsModule } from './modules/crm-analytics/crm-analytics.module';
 import { AiAdvisorModule } from './modules/ai-advisor/ai-advisor.module';
 import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module';
+import { TelegramAiModule } from './modules/telegram-ai/telegram-ai.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module';
     CrmAnalyticsModule,
     AiAdvisorModule,
     TelegramBotModule,
+    TelegramAiModule,
   ],
   controllers: [AppController],
   providers: [

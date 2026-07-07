@@ -1,0 +1,78 @@
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: assistant-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - assistant-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: assistant-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/telegram_assistant
+      - TELEGRAM_CLIENT_HOST=telegram-client
+      - TELEGRAM_CLIENT_PORT=5001
+      - API_ID=${API_ID}
+      - API_HASH=${API_HASH}
+      - PHONE=${PHONE}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL}
+      - AUTO_REPLY_CONTACTS=${AUTO_REPLY_CONTACTS}
+      - AUTO_REPLY_UNKNOWN=${AUTO_REPLY_UNKNOWN}
+      - MIN_DELAY=${MIN_DELAY}
+      - MAX_DELAY=${MAX_DELAY}
+    volumes:
+      - ./logs:/app/logs
+      - ./sessions:/app/sessions
+    depends_on:
+      - mongodb
+    networks:
+      - assistant-network
+
+  telegram-client:
+    build:
+      context: .
+      dockerfile: Dockerfile.telegram
+    container_name: assistant-telegram-client
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      - TELEGRAM_CLIENT_PORT=5001
+      - TELEGRAM_CLIENT_HOST=0.0.0.0
+      - BACKEND_URL=http://backend:5000
+      - API_ID=${API_ID}
+      - API_HASH=${API_HASH}
+      - PHONE=${PHONE}
+      - MIN_DELAY=${MIN_DELAY}
+      - MAX_DELAY=${MAX_DELAY}
+    volumes:
+      - ./sessions:/app/sessions
+      - ./logs:/app/logs
+    stdin_open: true
+    tty: true
+    depends_on:
+      - backend
+    networks:
+      - assistant-network
+
+networks:
+  assistant-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

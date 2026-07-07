@@ -29,6 +29,7 @@ import {
   ChevronDown,
   ChevronRight,
   Brain,
+  Send,
 } from 'lucide-react';
 
 export const Layout: React.FC = () => {
@@ -60,6 +61,7 @@ export const Layout: React.FC = () => {
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'AI Advisor', path: '/ai-advisor', icon: Brain },
+    { name: 'Telegram AI', path: '/telegram-ai', icon: Send },
     { name: 'Students', path: '/students', icon: Users },
     { name: 'Groups', path: '/groups', icon: FolderKanban },
     { name: 'Courses', path: '/courses', icon: BookOpen },

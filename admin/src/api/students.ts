@@ -1,7 +1,7 @@
 import { apiClient } from './client';
 
-export async function getStudents(): Promise<any[]> {
-  const res = await apiClient.get('/students');
+export async function getStudents(params?: any): Promise<any[]> {
+  const res = await apiClient.get('/students', { params });
   return res.data.data;
 }
 

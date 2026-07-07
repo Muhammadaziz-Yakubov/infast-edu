@@ -1,7 +1,7 @@
 import { apiClient } from './client';
 
-export async function getGroups(): Promise<any[]> {
-  const res = await apiClient.get('/groups');
+export async function getGroups(params?: any): Promise<any[]> {
+  const res = await apiClient.get('/groups', { params });
   return res.data.data;
 }
 

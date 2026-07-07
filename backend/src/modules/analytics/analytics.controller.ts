@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -18,7 +18,7 @@ export class AnalyticsController {
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get administrative dashboard statistics (Admin only)' })
   @ApiResponse({ status: 200, description: 'Dashboard metrics payload.' })
-  getDashboard(@CurrentUser() user: any) {
-    return this.analyticsService.getDashboardStats(user);
+  getDashboard(@CurrentUser() user: any, @Query('branchId') branchId?: string) {
+    return this.analyticsService.getDashboardStats(user, branchId);
   }
 }

@@ -19,7 +19,7 @@ export class AnalyticsService {
     @InjectModel(Attendance.name) private readonly attendanceModel: Model<AttendanceDocument>
   ) {}
 
-  async getDashboardStats(user?: any): Promise<any> {
+  async getDashboardStats(user?: any, targetBranchId?: string): Promise<any> {
     let userFilter: any = { role: Role.STUDENT };
     let studentIds: Types.ObjectId[] = [];
     const isBranchAdmin = user && user.role === Role.BRANCH_ADMIN;
@@ -31,10 +31,17 @@ export class AnalyticsService {
       const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(user.branchId) }).select('_id').exec();
       studentIds = branchUsers.map(u => u._id);
     } else if (isSuperAdmin) {
-      userFilter.branchId = { $in: [null, undefined] };
-      // Fetch all student user IDs for main branch
-      const branchUsers = await this.userModel.find({ branchId: { $in: [null, undefined] } as any }).select('_id').exec();
-      studentIds = branchUsers.map(u => u._id);
+      if (targetBranchId) {
+        userFilter.branchId = new Types.ObjectId(targetBranchId);
+        // Fetch all student user IDs for target branch
+        const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(targetBranchId) }).select('_id').exec();
+        studentIds = branchUsers.map(u => u._id);
+      } else {
+        userFilter.branchId = { $in: [null, undefined] };
+        // Fetch all student user IDs for main branch
+        const branchUsers = await this.userModel.find({ branchId: { $in: [null, undefined] } as any }).select('_id').exec();
+        studentIds = branchUsers.map(u => u._id);
+      }
     }
 
     // 1. Student counts — real DB

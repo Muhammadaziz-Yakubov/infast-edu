@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   getBranches,
   createBranch,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react';
 
 export const Branches: React.FC = () => {
+  const navigate = useNavigate();
   const [branches, setBranches] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -299,7 +301,7 @@ export const Branches: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right space-x-1 whitespace-nowrap">
                       <button
-                        onClick={() => setViewBranch(b)}
+                        onClick={() => navigate(`/branches/${b._id}`)}
                         className="p-1.5 text-muted-foreground hover:text-primary rounded-md hover:bg-secondary transition-colors"
                         title="Batafsil ko'rish"
                       >

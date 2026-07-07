@@ -120,7 +120,7 @@ export class StudentsService implements OnModuleInit {
   }
 
 
-  async findAll(requestingUser?: any): Promise<any[]> {
+  async findAll(requestingUser?: any, targetBranchId?: string): Promise<any[]> {
     let filter = {};
     if (requestingUser) {
       if (requestingUser.role === Role.BRANCH_ADMIN) {
@@ -128,9 +128,15 @@ export class StudentsService implements OnModuleInit {
         const userIds = branchUsers.map(u => u._id);
         filter = { userId: { $in: userIds } };
       } else if (requestingUser.role === Role.SUPER_ADMIN) {
-        const branchUsers = await this.userModel.find({ branchId: { $in: [null, undefined] } as any }).select('_id').exec();
-        const userIds = branchUsers.map(u => u._id);
-        filter = { userId: { $in: userIds } };
+        if (targetBranchId) {
+          const branchUsers = await this.userModel.find({ branchId: new Types.ObjectId(targetBranchId) }).select('_id').exec();
+          const userIds = branchUsers.map(u => u._id);
+          filter = { userId: { $in: userIds } };
+        } else {
+          const branchUsers = await this.userModel.find({ branchId: { $in: [null, undefined] } as any }).select('_id').exec();
+          const userIds = branchUsers.map(u => u._id);
+          filter = { userId: { $in: userIds } };
+        }
       }
     }
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -27,8 +27,8 @@ export class GroupsController {
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get all groups' })
   @ApiResponse({ status: 200, description: 'List of groups.' })
-  findAll(@CurrentUser() user: any) {
-    return this.groupsService.findAll(user);
+  findAll(@CurrentUser() user: any, @Query('branchId') branchId?: string) {
+    return this.groupsService.findAll(user, branchId);
   }
 
   @Get(':id')

@@ -78,12 +78,16 @@ export class GroupsService {
     return savedGroup;
   }
 
-  async findAll(user: any): Promise<GroupDocument[]> {
+  async findAll(user: any, targetBranchId?: string): Promise<GroupDocument[]> {
     let filter = {};
     if (user.role === Role.BRANCH_ADMIN) {
       filter = { branchId: new Types.ObjectId(user.branchId) };
     } else if (user.role === Role.SUPER_ADMIN) {
-      filter = { branchId: { $in: [null, undefined] } };
+      if (targetBranchId) {
+        filter = { branchId: new Types.ObjectId(targetBranchId) };
+      } else {
+        filter = { branchId: { $in: [null, undefined] } };
+      }
     }
     return this.groupModel.find(filter).populate('courseId').exec();
   }

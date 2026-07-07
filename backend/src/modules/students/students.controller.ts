@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Query } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
@@ -54,8 +54,8 @@ export class StudentsController {
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get all students profiles (Admin only)' })
   @ApiResponse({ status: 200, description: 'List of all student profiles.' })
-  findAll(@CurrentUser() user: any) {
-    return this.studentsService.findAll(user);
+  findAll(@CurrentUser() user: any, @Query('branchId') branchId?: string) {
+    return this.studentsService.findAll(user, branchId);
   }
 
 

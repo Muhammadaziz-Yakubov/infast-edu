@@ -58,7 +58,7 @@ export class AnalyticsService {
       status: PaymentStatus.PAID,
       amount: { $gt: 0 },
     };
-    if (isBranchAdmin) {
+    if (isBranchAdmin || isSuperAdmin) {
       paymentFilter.studentId = { $in: studentIds };
     }
 
@@ -73,7 +73,7 @@ export class AnalyticsService {
 
     // 4. Attendance rate — real data, no fallback
     const attendanceFilter: any = {};
-    if (isBranchAdmin) {
+    if (isBranchAdmin || isSuperAdmin) {
       attendanceFilter.studentId = { $in: studentIds };
     }
     const totalAttendance = await this.attendanceModel.countDocuments(attendanceFilter).exec();
@@ -95,7 +95,7 @@ export class AnalyticsService {
         status: PaymentStatus.PAID,
         amount: { $gt: 0 },
       };
-      if (isBranchAdmin) {
+      if (isBranchAdmin || isSuperAdmin) {
         historyFilter.studentId = { $in: studentIds };
       }
 
@@ -117,12 +117,9 @@ export class AnalyticsService {
       const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
 
       const growthFilter: any = {
-        role: Role.STUDENT,
+        ...userFilter,
         createdAt: { $lte: endOfMonth },
       };
-      if (isBranchAdmin) {
-        growthFilter.branchId = new Types.ObjectId(user.branchId);
-      }
 
       const count = await this.userModel.countDocuments(growthFilter).exec();
 
@@ -137,7 +134,7 @@ export class AnalyticsService {
     const courseDistribution = await Promise.all(
       courses.map(async (course) => {
         const profileFilter: any = { courseId: course._id };
-        if (isBranchAdmin) {
+        if (isBranchAdmin || isSuperAdmin) {
           profileFilter.userId = { $in: studentIds };
         }
         const enrollmentCount = await this.studentProfileModel.countDocuments(profileFilter).exec();
@@ -148,14 +145,10 @@ export class AnalyticsService {
     // 8. Recent activities — only real DB events (no fake fallback)
     const recentActivities: any[] = [];
 
-    const userQuery: any = { role: Role.STUDENT };
-    if (isBranchAdmin) {
-      userQuery.branchId = new Types.ObjectId(user.branchId);
-    }
-    const latestUsers = await this.userModel.find(userQuery).sort({ createdAt: -1 }).limit(4).exec();
+    const latestUsers = await this.userModel.find(userFilter).sort({ createdAt: -1 }).limit(4).exec();
 
     const paymentQuery: any = { status: PaymentStatus.PAID, amount: { $gt: 0 } };
-    if (isBranchAdmin) {
+    if (isBranchAdmin || isSuperAdmin) {
       paymentQuery.studentId = { $in: studentIds };
     }
     const latestPayments = await this.paymentModel

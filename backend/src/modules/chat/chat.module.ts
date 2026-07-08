@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
 import { ChatController } from './chat.controller';
+import { CloudStorageService } from '../../common/services/cloud-storage.service';
 
 import { ChatRoom, ChatRoomSchema } from './schemas/chat-room.schema';
 import { ChatMessage, ChatMessageSchema } from './schemas/chat-message.schema';
@@ -30,7 +31,7 @@ import { Group, GroupSchema } from '../groups/schemas/group.schema';
       }),
     }),
   ],
-  providers: [ChatService, ChatGateway],
+  providers: [ChatService, ChatGateway, CloudStorageService],
   controllers: [ChatController],
   exports: [ChatService],
 })

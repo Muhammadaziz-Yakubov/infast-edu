@@ -252,7 +252,16 @@ export const Chat: React.FC = () => {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
-                      {room.lastMessage || 'Xabarlar yo\'q'}
+                       {room.lastMessage
+                         ? room.lastMessage.startsWith('[image:')
+                           ? '🖼️ Rasm'
+                           : room.lastMessage.startsWith('[voice:')
+                           ? '🎤 Ovozli xabar'
+                           : room.lastMessage.startsWith('[sticker:')
+                           ? '✨ Sticker'
+                           : room.lastMessage
+                         : 'Xabarlar yo\'q'
+                       }
                     </p>
                   </div>
                 </button>
@@ -301,6 +310,62 @@ export const Chat: React.FC = () => {
                 messages.map((message) => {
                   const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
                   const isCurrentAdmin = message.senderId === adminUser._id;
+                  const text = message.text;
+
+                  const isImage = text.startsWith('[image:') && text.endsWith(']');
+                  const isVoice = text.startsWith('[voice:') && text.endsWith(']');
+                  const isSticker = text.startsWith('[sticker:') && text.endsWith(']');
+
+                  const timeStr = new Date(message.createdAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+
+                  const renderContent = () => {
+                    if (isImage) {
+                      const uri = text.substring(7, text.length - 1);
+                      return (
+                        <div>
+                          <img src={uri} alt="rasm" className="rounded-lg max-w-[240px] max-h-[180px] object-cover" />
+                          <span className={`text-[9px] block text-right mt-1 ${isCurrentAdmin ? 'text-primary-foreground/75' : 'text-muted-foreground'}`}>{timeStr}</span>
+                        </div>
+                      );
+                    }
+                    if (isSticker) {
+                      const emoji = text.substring(9, text.length - 1);
+                      return (
+                        <div>
+                          <span style={{ fontSize: 48 }}>{emoji}</span>
+                          <span className="text-[9px] block text-muted-foreground mt-1">{timeStr}</span>
+                        </div>
+                      );
+                    }
+                    if (isVoice) {
+                      const inner = text.substring(7, text.length - 1);
+                      const firstColon = inner.indexOf(':');
+                      const duration = firstColon !== -1 ? inner.substring(0, firstColon) : inner;
+                      const voiceUri = firstColon !== -1 ? inner.substring(firstColon + 1) : '';
+                      return (
+                        <div className="flex items-center gap-3 min-w-[180px]">
+                          {voiceUri ? (
+                            <audio controls src={voiceUri} className="h-8" style={{ maxWidth: 180 }} />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span>🎤</span>
+                              <span className="text-sm">Ovozli xabar • {duration} soniya</span>
+                            </div>
+                          )}
+                          <span className={`text-[9px] ${isCurrentAdmin ? 'text-primary-foreground/75' : 'text-muted-foreground'}`}>{timeStr}</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div>
+                        <p className="whitespace-pre-wrap break-words">{text}</p>
+                        <span className={`text-[9px] block text-right mt-1 ${isCurrentAdmin ? 'text-primary-foreground/75' : 'text-muted-foreground'}`}>{timeStr}</span>
+                      </div>
+                    );
+                  };
 
                   return (
                     <div
@@ -315,22 +380,14 @@ export const Chat: React.FC = () => {
                         )}
                         <div
                           className={`rounded-lg px-4 py-2 text-sm ${
-                            isCurrentAdmin
+                            isSticker
+                              ? 'bg-transparent p-0'
+                              : isCurrentAdmin
                               ? 'bg-primary text-primary-foreground rounded-tr-none'
                               : 'bg-card text-card-foreground rounded-tl-none border'
                           }`}
                         >
-                          <p className="whitespace-pre-wrap break-words">{message.text}</p>
-                          <span
-                            className={`text-[9px] block text-right mt-1 ${
-                              isCurrentAdmin ? 'text-primary-foreground/75' : 'text-muted-foreground'
-                            }`}
-                          >
-                            {new Date(message.createdAt).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
+                          {renderContent()}
                         </div>
                       </div>
                     </div>

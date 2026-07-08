@@ -32,7 +32,7 @@ export class UsersService implements OnApplicationBootstrap {
         existingAdmin.password = hashedPassword;
         existingAdmin.role = Role.SUPER_ADMIN;
         existingAdmin.status = UserStatus.ACTIVE;
-        existingAdmin.telegramId = '6620142322';
+        existingAdmin.telegramId = '8473698126';
         await existingAdmin.save();
         console.log(`[Seed] Super Admin user password and telegramId updated for ${adminEmail}`);
       } else {
@@ -47,10 +47,10 @@ export class UsersService implements OnApplicationBootstrap {
           password: hashedPassword,
           role: Role.SUPER_ADMIN,
           status: UserStatus.ACTIVE,
-          telegramId: '6620142322',
+          telegramId: '8473698126',
         });
         await newAdmin.save();
-        console.log(`[Seed] Super Admin user successfully created with email ${adminEmail}, phone ${phoneToUse} and telegramId 6620142322`);
+        console.log(`[Seed] Super Admin user successfully created with email ${adminEmail}, phone ${phoneToUse} and telegramId 8473698126`);
       }
     } catch (error) {
       console.error('[Seed] Error seeding admin user:', error);

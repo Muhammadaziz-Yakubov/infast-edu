@@ -1,6 +1,10 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
+import { CloudStorageService } from '../../common/services/cloud-storage.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -19,6 +23,7 @@ export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly chatGateway: ChatGateway,
+    private readonly cloudStorage: CloudStorageService,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
@@ -100,5 +105,55 @@ export class ChatController {
   async markRead(@Param('roomId') roomId: string, @CurrentUser() user: any) {
     await this.chatService.markRead(roomId, user.userId);
     return { success: true };
+  }
+
+  /** Upload an image to Cloudflare R2 */
+  @Post('upload-image')
+  @ApiOperation({ summary: 'Upload an image for chat messages (stored in Cloudflare R2)' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
+      fileFilter: (req, file, cb) => {
+        const allowed = /image\/(jpeg|jpg|png|gif|webp)/;
+        if (allowed.test(file.mimetype)) cb(null, true);
+        else cb(new Error('Only image files are allowed'), false);
+      },
+    }),
+  )
+  async uploadChatImage(@UploadedFile() file: any) {
+    if (!file) throw new Error('No file uploaded');
+    const url = await this.cloudStorage.uploadFile(
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+      'images',
+    );
+    return { url };
+  }
+
+  /** Upload a voice note to Cloudflare R2 */
+  @Post('upload-voice')
+  @ApiOperation({ summary: 'Upload a voice note for chat messages (stored in Cloudflare R2)' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 16 * 1024 * 1024 }, // 16MB
+      fileFilter: (req, file, cb) => {
+        const allowed = /audio\/(mp4|mpeg|webm|ogg|x-m4a|aac|mp3|wav)/;
+        if (allowed.test(file.mimetype)) cb(null, true);
+        else cb(null, true); // Accept any audio for compatibility
+      },
+    }),
+  )
+  async uploadChatVoice(@UploadedFile() file: any) {
+    if (!file) throw new Error('No file uploaded');
+    const url = await this.cloudStorage.uploadFile(
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+      'voice',
+    );
+    return { url };
   }
 }

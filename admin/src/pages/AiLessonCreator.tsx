@@ -139,7 +139,7 @@ export const AiLessonCreator: React.FC = () => {
   const loadChatHistory = async () => {
     try {
       const res = await apiClient.get('/ai/history');
-      setHistory(res.data || []);
+      setHistory(res.data.data || res.data || []);
     } catch (err: any) {
       console.error("Failed to load AI history", err);
     }
@@ -158,7 +158,7 @@ export const AiLessonCreator: React.FC = () => {
     try {
       setActiveChatId(chatId);
       const res = await apiClient.get(`/ai/history/${chatId}`);
-      const chat: ChatHistoryItem = res.data;
+      const chat: ChatHistoryItem = res.data.data || res.data;
       
       // Restore states
       setMessages(chat.messages || []);
@@ -346,7 +346,7 @@ export const AiLessonCreator: React.FC = () => {
       // If it was a new chat, find the newly created chatId
       if (isNewChat) {
         const historyRes = await apiClient.get('/ai/history');
-        const latestChats = historyRes.data || [];
+        const latestChats = historyRes.data.data || historyRes.data || [];
         setHistory(latestChats);
         if (latestChats.length > 0) {
           setActiveChatId(latestChats[0]._id);

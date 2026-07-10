@@ -3,12 +3,15 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Referral, ReferralDocument } from './schemas/referral.schema';
 import { StudentsService } from '../students/students.service';
+import { StudentProfile, StudentProfileDocument } from '../students/schemas/student-profile.schema';
 
 @Injectable()
 export class ReferralsService {
   constructor(
     @InjectModel(Referral.name)
     private readonly referralModel: Model<ReferralDocument>,
+    @InjectModel(StudentProfile.name)
+    private readonly studentProfileModel: Model<StudentProfileDocument>,
     private readonly studentsService: StudentsService,
   ) {}
 
@@ -35,14 +38,32 @@ export class ReferralsService {
 
   /** Admin uchun barcha referrallarni olish */
   async findAll(): Promise<any[]> {
-    return this.referralModel
+    const referrals = await this.referralModel
       .find()
       .populate({
         path: 'referrerId',
-        select: 'fullName studentPhone avatar',
+        populate: {
+          path: 'userId',
+          select: 'fullName avatar',
+        },
       })
       .sort({ createdAt: -1 })
       .exec();
+
+    return referrals.map((ref) => {
+      const refObj = ref.toObject();
+      if (refObj.referrerId && typeof refObj.referrerId === 'object') {
+        const studentProfile = refObj.referrerId as any;
+        const userObj = studentProfile.userId || {};
+        refObj.referrerId = {
+          _id: studentProfile._id,
+          studentPhone: studentProfile.studentPhone,
+          fullName: userObj.fullName || "Noma'lum",
+          avatar: userObj.avatar || null,
+        };
+      }
+      return refObj;
+    });
   }
 
   /** Admin tasdiqlaydiya */
@@ -57,8 +78,13 @@ export class ReferralsService {
 
     // Taklif qilgan studentga +2000 coin berish
     if (!referral.coinsAwarded) {
+      const profile = await this.studentProfileModel.findById(referral.referrerId);
+      if (!profile) {
+        throw new NotFoundException('Taklif qiluvchi talaba profili topilmadi');
+      }
+
       await this.studentsService.addXpAndCoins(
-        referral.referrerId.toString(),
+        profile.userId.toString(),
         0,
         2000,
       );

@@ -63,6 +63,7 @@ export const Layout: React.FC = () => {
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     ...(user?.role === 'SUPER_ADMIN' ? [{ name: 'Branches', path: '/branches', icon: Building }] : []),
     { name: 'AI Advisor', path: '/ai-advisor', icon: Brain },
+    { name: 'AI Lesson Creator', path: '/ai-lesson-creator', icon: Sparkles },
     { name: 'Telegram AI', path: '/telegram-ai', icon: Send },
     { name: 'Students', path: '/students', icon: Users },
     { name: 'Groups', path: '/groups', icon: FolderKanban },

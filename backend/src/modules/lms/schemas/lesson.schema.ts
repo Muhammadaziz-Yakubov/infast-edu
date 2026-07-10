@@ -70,6 +70,12 @@ export class Lesson extends Document {
 
   @Prop({ default: 80 })
   passingScore?: number;
+
+  @Prop()
+  lessonSummary?: string;
+
+  @Prop({ type: [String], default: [] })
+  learningObjectives?: string[];
 }
 
 export type LessonDocument = Lesson & Document;

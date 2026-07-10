@@ -51,7 +51,7 @@ export class ReferralsService {
       .exec();
 
     return referrals.map((ref) => {
-      const refObj = ref.toObject();
+      const refObj = ref.toObject() as any;
       if (refObj.referrerId && typeof refObj.referrerId === 'object') {
         const studentProfile = refObj.referrerId as any;
         const userObj = studentProfile.userId || {};

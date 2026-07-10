@@ -6,7 +6,7 @@ import { ChatService } from './chat.service';
 import { GenerateLessonDto } from './dto/generate-lesson.dto';
 import { ChatDto } from './dto/chat.dto';
 import { SaveMaterialsDto } from './dto/save-materials.dto';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { GroqService } from './groq.service';
 
 @ApiTags('AI Lesson Creator')

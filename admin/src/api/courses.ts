@@ -34,6 +34,11 @@ export async function updateLesson(id: string, dto: any): Promise<any> {
   return res.data.data;
 }
 
+export async function deleteLesson(id: string): Promise<any> {
+  const res = await apiClient.delete(`/lms/lessons/${id}`);
+  return res.data.data;
+}
+
 export async function duplicateLesson(id: string, targetModuleId: string): Promise<any> {
   const res = await apiClient.post(`/lms/lessons/${id}/duplicate`, { targetModuleId });
   return res.data.data;

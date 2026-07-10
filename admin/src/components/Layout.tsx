@@ -29,6 +29,7 @@ import {
   ChevronDown,
   ChevronRight,
   Brain,
+  Sparkles,
   Send,
   Building,
 } from 'lucide-react';

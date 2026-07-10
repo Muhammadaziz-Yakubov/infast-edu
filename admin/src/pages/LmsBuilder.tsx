@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getCourses, createModule, createLesson, updateCourseModules, importCourse, updateLesson, duplicateLesson } from '../api/courses';
+import { getCourses, createModule, createLesson, updateCourseModules, importCourse, updateLesson, duplicateLesson, deleteLesson } from '../api/courses';
 import { getGroups, getGroupModules, cloneCourseLmsToGroup } from '../api/groups';
 import type { Course } from '../utils/mockDb';
 import {
@@ -14,6 +14,7 @@ import {
   Upload,
   Edit2,
   Copy,
+  Trash2,
 } from 'lucide-react';
 
 export const LmsBuilder: React.FC = () => {
@@ -232,6 +233,27 @@ export const LmsBuilder: React.FC = () => {
       setActiveLesson(newLesson);
     } catch (err: any) {
       alert(err.message);
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const confirmDelete = window.confirm("Haqiqatan ham ushbu darsni o'chirib tashlamoqchimisiz? Bu dars bilan bog'liq barcha ma'lumotlar o'chib ketadi.");
+    if (!confirmDelete) return;
+
+    setLoading(true);
+    try {
+      await deleteLesson(lessonId);
+      alert("Dars muvaffaqiyatli o'chirildi!");
+      if (activeLesson?._id === lessonId) {
+        setActiveLesson(null);
+      }
+      await refreshBuilderData();
+    } catch (err: any) {
+      console.error(err);
+      alert("Darsni o'chirishda xatolik yuz berdi: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -592,13 +614,22 @@ export const LmsBuilder: React.FC = () => {
                             }
                             setDraggedLessonId(null);
                           }}
-                          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors border border-transparent ${
+                          className={`group/lesson flex items-center justify-between px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors border border-transparent ${
                             isSelected ? 'bg-secondary text-primary font-semibold border-border' : 'text-muted-foreground hover:bg-secondary/30 hover:text-foreground'
                           }`}
                         >
-                          <GripVertical className="w-3 h-3 text-muted-foreground/60 shrink-0 cursor-grab" />
-                          <Code className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{les.title}</span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <GripVertical className="w-3 h-3 text-muted-foreground/60 shrink-0 cursor-grab" />
+                            <Code className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{les.title}</span>
+                          </div>
+                          <button
+                            onClick={(e) => handleDeleteLesson(les._id, e)}
+                            className="opacity-0 group-hover/lesson:opacity-100 p-0.5 hover:text-destructive rounded transition-all shrink-0"
+                            title="Darsni o'chirish"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                       );
                     })}

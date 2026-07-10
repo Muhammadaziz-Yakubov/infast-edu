@@ -90,21 +90,56 @@ export const AiLessonCreator: React.FC = () => {
     loadChatHistory();
   }, []);
 
+  // Sync course selection with selected group
   useEffect(() => {
-    if (selectedCourseId) {
-      const course = courses.find((c) => c._id === selectedCourseId);
-      if (course && course.modules) {
-        setModules(course.modules);
-        setLessons([]);
-        setSelectedModuleId('');
-        setSelectedLessonId('');
+    if (selectedGroupId && groups.length > 0) {
+      const group = groups.find((g) => g._id === selectedGroupId);
+      if (group && group.courseId) {
+        const courseId = typeof group.courseId === 'object' ? group.courseId._id : group.courseId;
+        setSelectedCourseId(courseId);
+      }
+    }
+  }, [selectedGroupId, groups]);
+
+  // Load modules based on selected group or course
+  useEffect(() => {
+    const loadModulesForSelection = async () => {
+      if (selectedGroupId) {
+        try {
+          const res = await apiClient.get(`/lms/groups/${selectedGroupId}/modules`);
+          const mods = res.data.data || res.data || [];
+          setModules(mods);
+          setLessons([]);
+          setSelectedModuleId('');
+          setSelectedLessonId('');
+        } catch (err) {
+          console.error("Failed to load group modules", err);
+          setModules([]);
+          setLessons([]);
+        }
+      } else if (selectedCourseId) {
+        const course = courses.find((c) => c._id === selectedCourseId);
+        if (course && course.modules) {
+          setModules(course.modules);
+          setLessons([]);
+          setSelectedModuleId('');
+          setSelectedLessonId('');
+        } else {
+          setModules([]);
+          setLessons([]);
+        }
       } else {
         setModules([]);
         setLessons([]);
+        setSelectedModuleId('');
+        setSelectedLessonId('');
       }
-    }
-  }, [selectedCourseId, courses]);
+    };
 
+    loadModulesForSelection();
+  }, [selectedGroupId, selectedCourseId, courses]);
+
+  // Load lessons based on selected module
   useEffect(() => {
     if (selectedModuleId && modules.length > 0) {
       const mod = modules.find((m) => m._id === selectedModuleId);
@@ -114,6 +149,9 @@ export const AiLessonCreator: React.FC = () => {
       } else {
         setLessons([]);
       }
+    } else {
+      setLessons([]);
+      setSelectedLessonId('');
     }
   }, [selectedModuleId, modules]);
 

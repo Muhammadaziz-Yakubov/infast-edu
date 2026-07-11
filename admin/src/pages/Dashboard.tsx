@@ -27,6 +27,12 @@ export const Dashboard: React.FC = () => {
   ]);
   const [isTyping, setIsTyping] = useState(false);
 
+  const chatEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isTyping]);
+
   useEffect(() => {
     Promise.all([getDashboardAnalytics(), getGroups()])
       .then(([analyticsRes, groupsRes]) => {
@@ -80,12 +86,6 @@ export const Dashboard: React.FC = () => {
   };
 
   const todayLessons = getTodayLessons();
-
-  const chatEndRef = React.useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, isTyping]);
 
   const submitMessage = async (userText: string) => {
     if (!userText.trim() || isTyping) return;

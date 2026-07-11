@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { CommandCenter } from './CommandCenter';
 import {
   LayoutDashboard,
   Users,
@@ -19,6 +20,7 @@ import {
   X,
   Sun,
   Moon,
+  Search,
   Tv,
   Calendar,
   Gift,
@@ -197,10 +199,22 @@ export const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [commandCenterOpen, setCommandCenterOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const isDark = document.documentElement.classList.contains('dark');
     return isDark ? 'dark' : 'light';
   });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandCenterOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const [expandedSection, setExpandedSection] = useState<string | null>(() => {
     const currentPath = location.pathname;
@@ -468,6 +482,19 @@ export const Layout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Command Center Button */}
+            <button
+              onClick={() => setCommandCenterOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold border rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-sm"
+              title="Qidiruv va buyruqlar paneli (Ctrl+K)"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">⌘ Command Center</span>
+              <kbd className="hidden md:inline-flex items-center gap-0.5 text-[9px] bg-secondary/80 border px-1.5 py-0.5 rounded text-muted-foreground font-bold font-sans">
+                Ctrl K
+              </kbd>
+            </button>
+
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
@@ -506,6 +533,7 @@ export const Layout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+      <CommandCenter isOpen={commandCenterOpen} onClose={() => setCommandCenterOpen(false)} />
     </div>
   );
 };

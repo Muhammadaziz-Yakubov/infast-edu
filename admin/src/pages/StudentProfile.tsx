@@ -22,7 +22,6 @@ import {
   Eye,
   RefreshCw,
 } from 'lucide-react';
-
 export const StudentProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

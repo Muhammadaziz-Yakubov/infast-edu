@@ -40,6 +40,7 @@ import { AiAdvisorModule } from './modules/ai-advisor/ai-advisor.module';
 import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module';
 import { TelegramAiModule } from './modules/telegram-ai/telegram-ai.module';
 import { AiModule } from './modules/ai/ai.module';
+import { TypingBattleModule } from './modules/typing/typing-battle.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { AiModule } from './modules/ai/ai.module';
     TelegramBotModule,
     TelegramAiModule,
     AiModule,
+    TypingBattleModule,
   ],
   controllers: [AppController],
   providers: [

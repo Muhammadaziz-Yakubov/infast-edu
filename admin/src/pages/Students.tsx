@@ -65,6 +65,8 @@ export const Students: React.FC = () => {
   const [credentials, setCredentials] = useState<{ phone: string; pass: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
+
+
   useEffect(() => {
     loadData();
   }, []);
@@ -425,6 +427,7 @@ export const Students: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+
                           <button
                             onClick={() => navigate(`/students/${student._id}`)}
                             className="p-1.5 text-muted-foreground hover:text-primary rounded-md hover:bg-secondary transition-colors"
@@ -676,6 +679,8 @@ export const Students: React.FC = () => {
           </div>
         </div>
       )}
+
+
 
     </div>
   );

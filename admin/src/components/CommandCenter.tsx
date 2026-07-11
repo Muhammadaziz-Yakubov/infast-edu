@@ -13,17 +13,11 @@ import {
   Command,
   ArrowRight,
   Sun,
-  Moon,
   Home,
   BookOpen,
-  FileCode,
-  CheckSquare,
   MessageSquare,
   Brain,
-  Send,
-  Gift,
   Settings,
-  Activity,
   Layers,
 } from 'lucide-react';
 

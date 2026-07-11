@@ -29,3 +29,13 @@ export async function getLeaderboard(): Promise<any[]> {
   const res = await apiClient.get('/students/leaderboard');
   return res.data.data;
 }
+
+export async function getStudentContract(id: string): Promise<any> {
+  const res = await apiClient.get(`/students/${id}/contract`);
+  return res.data.data;
+}
+
+export async function generateStudentContract(id: string, dto: any): Promise<any> {
+  const res = await apiClient.post(`/students/${id}/contract/generate`, dto);
+  return res.data.data;
+}

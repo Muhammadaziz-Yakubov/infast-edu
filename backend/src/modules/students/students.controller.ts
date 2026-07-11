@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, 
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { GenerateContractDto } from './dto/generate-contract.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -89,5 +90,22 @@ export class StudentsController {
   @ApiResponse({ status: 200, description: 'Student profile details.' })
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.studentsService.getProfile(id, user);
+  }
+
+  @Get(':id/contract')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Get student contract details' })
+  getContract(@Param('id') id: string) {
+    return this.studentsService.getContract(id);
+  }
+
+  @Post(':id/contract/generate')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Generate or regenerate student contract' })
+  generateContract(
+    @Param('id') id: string,
+    @Body() generateContractDto: GenerateContractDto,
+  ) {
+    return this.studentsService.generateContract(id, generateContractDto);
   }
 }

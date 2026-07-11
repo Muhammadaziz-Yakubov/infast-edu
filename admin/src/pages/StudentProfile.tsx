@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getStudentProfile } from '../api/students';
+import { getStudentProfile, getStudentContract, generateStudentContract } from '../api/students';
 import { getStudentPayments, getStudentPaymentSummary } from '../api/payments';
 import type { Payment } from '../utils/mockDb';
 import {
@@ -17,6 +17,10 @@ import {
   Bookmark,
   CalendarDays,
   CreditCard,
+  X,
+  Download,
+  Eye,
+  RefreshCw,
 } from 'lucide-react';
 
 export const StudentProfile: React.FC = () => {
@@ -25,7 +29,18 @@ export const StudentProfile: React.FC = () => {
   const [profile, setProfile] = useState<any>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
+  const [contract, setContract] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Modal & Form States
+  const [showModal, setShowModal] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [address, setAddress] = useState('');
+  const [passportOrJshshir, setPassportOrJshshir] = useState('');
+  const [monthlyPayment, setMonthlyPayment] = useState<number | ''>('');
+  const [parentName, setParentName] = useState('');
+  const [parentPhone, setParentPhone] = useState('');
+  const [contractDate, setContractDate] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -33,16 +48,87 @@ export const StudentProfile: React.FC = () => {
       getStudentProfile(id),
       getStudentPayments(id),
       getStudentPaymentSummary(id),
-    ]).then(([profileRes, paymentsRes, summaryRes]) => {
+      getStudentContract(id).catch(() => null),
+    ]).then(([profileRes, paymentsRes, summaryRes, contractRes]) => {
       setProfile(profileRes);
       setPayments(paymentsRes || []);
       setPaymentSummary(summaryRes);
+      setContract(contractRes);
       setLoading(false);
     }).catch((err) => {
       alert(err.message || 'Xatolik yuz berdi');
       navigate('/students');
     });
   }, [id, navigate]);
+
+  const getAge = (dobString: string): number => {
+    if (!dobString) return 18;
+    let birthDate: Date;
+    if (dobString.includes('.')) {
+      const parts = dobString.split('.');
+      birthDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    } else {
+      birthDate = new Date(dobString);
+    }
+    if (isNaN(birthDate.getTime())) return 18;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const isUnder18 = profile ? getAge(profile.dateOfBirth) < 18 : false;
+
+  const openGenerateModal = () => {
+    if (contract) {
+      setAddress(contract.address || '');
+      setPassportOrJshshir(contract.passportOrJshshir || '');
+      setMonthlyPayment(contract.monthlyPayment || '');
+      setParentName(contract.parentName || '');
+      setParentPhone(contract.parentPhone || profile?.parentPhone || '');
+      setContractDate(contract.contractDate ? new Date(contract.contractDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+    } else {
+      setAddress('');
+      setPassportOrJshshir('');
+      setMonthlyPayment(profile?.courseId?.price || 500000);
+      setParentName('');
+      setParentPhone(profile?.parentPhone || '');
+      setContractDate(new Date().toISOString().split('T')[0]);
+    }
+    setShowModal(true);
+  };
+
+  const handleGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    setGenerating(true);
+    try {
+      const res = await generateStudentContract(id, {
+        address,
+        passportOrJshshir,
+        monthlyPayment: monthlyPayment === '' ? undefined : Number(monthlyPayment),
+        parentName,
+        parentPhone,
+        contractDate,
+      });
+      setContract(res);
+      setShowModal(false);
+      alert('Shartnoma muvaffaqiyatli yaratildi!');
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Xatolik yuz berdi');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const getFileUrl = (path: string) => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const rootUrl = baseUrl.replace(/\/api$/, '');
+    return `${rootUrl}${path}`;
+  };
 
   if (loading) {
     return (
@@ -271,9 +357,275 @@ export const StudentProfile: React.FC = () => {
             </div>
           </div>
 
+          {/* Contract Management Card */}
+          <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
+            <h3 className="font-bold text-base border-b pb-2 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              Shartnoma (Contract)
+            </h3>
+            
+            {!contract ? (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-secondary/20 border border-dashed rounded-lg">
+                <div>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase block">Holat:</span>
+                  <span className="text-sm font-bold text-yellow-600 dark:text-yellow-500">Generatsiya qilinmagan</span>
+                </div>
+                <button
+                  onClick={openGenerateModal}
+                  className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Shartnoma yaratish
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-green-500/5 border border-green-500/10 rounded-lg">
+                  <div>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase block">Holat:</span>
+                    <span className="text-sm font-bold text-green-500 flex items-center gap-1.5 mt-0.5">
+                      <CheckCircle className="w-4 h-4" />
+                      Yaratilgan
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase block">Shartnoma raqami:</span>
+                    <span className="text-sm font-mono font-bold text-foreground mt-0.5 block">
+                      {contract.contractNumber}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase block">Yaratilgan sana:</span>
+                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
+                      {new Date(contract.generatedDate).toLocaleDateString('uz-UZ', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase block">Kurs / Guruh:</span>
+                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
+                      {contract.courseName} / {contract.groupName}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => window.open(getFileUrl(contract.pdfUrl), '_blank')}
+                    className="px-4 py-2 border hover:bg-secondary text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Ko'rish
+                  </button>
+                  
+                  <a
+                    href={getFileUrl(contract.pdfUrl)}
+                    download={`${contract.contractNumber}.pdf`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 border hover:bg-secondary text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Yuklab olish
+                  </a>
+
+                  <button
+                    onClick={openGenerateModal}
+                    className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Qayta yaratish (Regenerate)
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
 
       </div>
+
+      {/* Generate Contract Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card border w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-bold text-lg">
+                {contract ? 'Shartnomani qayta yaratish' : 'Yangi shartnoma yaratish'}
+              </h3>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleGenerate} className="p-6 space-y-4 overflow-y-auto flex-1 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
+                    Student F.I.SH.
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={profile?.fullName || ''}
+                    className="w-full px-3 py-2 border rounded-lg bg-secondary/50 text-muted-foreground cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
+                    Kurs nomi
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={profile?.courseId?.title || 'Kiritilmagan'}
+                    className="w-full px-3 py-2 border rounded-lg bg-secondary/50 text-muted-foreground cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
+                    Guruh nomi
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={profile?.groupId?.name || 'Kiritilmagan'}
+                    className="w-full px-3 py-2 border rounded-lg bg-secondary/50 text-muted-foreground cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
+                    Yashash manzili
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Toshkent sh., Chilonzor tumani..."
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
+                    Pasport yoki JSHSHIR
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="AA1234567 yoki 3010190..."
+                    value={passportOrJshshir}
+                    onChange={(e) => setPassportOrJshshir(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
+                    Oylik to'lov summasi (UZS)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={monthlyPayment}
+                    onChange={(e) => setMonthlyPayment(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary font-bold"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
+                    Shartnoma sanasi
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={contractDate}
+                    onChange={(e) => setContractDate(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  />
+                </div>
+
+                {isUnder18 && (
+                  <div className="col-span-2 border-t pt-4 mt-2 space-y-4">
+                    <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 text-xs text-primary font-medium">
+                      O'quvchi 18 yoshga to'lmaganligi sababli ota-ona yoki vasiy ma'lumotlari kiritilishi shart.
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2 sm:col-span-1">
+                        <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
+                          Vasiyning to'liq ismi (F.I.SH.)
+                        </label>
+                        <input
+                          type="text"
+                          required={isUnder18}
+                          placeholder="Aliyev Vali..."
+                          value={parentName}
+                          onChange={(e) => setParentName(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        />
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
+                          Vasiy telefoni
+                        </label>
+                        <input
+                          type="text"
+                          required={isUnder18}
+                          placeholder="+998901234567"
+                          value={parentPhone}
+                          onChange={(e) => setParentPhone(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 border hover:bg-secondary text-sm font-semibold rounded-lg transition-colors"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="submit"
+                  disabled={generating}
+                  className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {generating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
+                      Generatsiya qilinmoqda...
+                    </>
+                  ) : (
+                    <>Shartnomani tasdiqlash</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

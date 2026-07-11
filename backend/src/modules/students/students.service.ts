@@ -12,6 +12,13 @@ import { UserStatus, PaymentStatus } from '../../common/enums/status.enum';
 import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 import * as bcrypt from 'bcrypt';
 
+import { Contract, ContractDocument } from './schemas/contract.schema';
+import { Course, CourseDocument } from '../courses/schemas/course.schema';
+import { GenerateContractDto } from './dto/generate-contract.dto';
+import * as fs from 'fs';
+import * as path from 'path';
+import PDFDocument from 'pdfkit';
+
 @Injectable()
 export class StudentsService implements OnModuleInit {
   constructor(
@@ -23,6 +30,10 @@ export class StudentsService implements OnModuleInit {
     private readonly groupModel: Model<GroupDocument>,
     @InjectModel(Payment.name)
     private readonly paymentModel: Model<PaymentDocument>,
+    @InjectModel(Contract.name)
+    private readonly contractModel: Model<ContractDocument>,
+    @InjectModel(Course.name)
+    private readonly courseModel: Model<CourseDocument>,
     private readonly botService: TelegramBotService
   ) {}
 
@@ -650,5 +661,310 @@ export class StudentsService implements OnModuleInit {
 
     const updatedUser = await this.userModel.findById(userId).exec();
     return { success: true, fullName: updatedUser?.fullName, dateOfBirth: data.dateOfBirth };
+  }
+
+  async getContract(studentId: string): Promise<any> {
+    return this.contractModel.findOne({ studentId: new Types.ObjectId(studentId) }).exec();
+  }
+
+  async generateContract(studentId: string, dto: GenerateContractDto): Promise<any> {
+    const studentUser = await this.userModel.findById(studentId).exec();
+    if (!studentUser) {
+      throw new NotFoundException('Student user not found');
+    }
+
+    const profile = await this.studentProfileModel
+      .findOne({ userId: new Types.ObjectId(studentId) })
+      .populate('groupId')
+      .populate('courseId')
+      .exec();
+
+    if (!profile) {
+      throw new NotFoundException('Student profile not found');
+    }
+
+    const course = profile.courseId as any;
+    const group = profile.groupId as any;
+
+    const courseName = course?.title || 'Noma\'lum Kurs';
+    const groupName = group?.name || 'Noma\'lum Guruh';
+    const monthlyPayment = dto.monthlyPayment !== undefined ? dto.monthlyPayment : (course?.price || 500000);
+
+    // Calculate age to see if they're under 18
+    const dateOfBirth = studentUser.dateOfBirth || profile.dateOfBirth || '';
+    const age = this.calculateAge(dateOfBirth);
+    const isUnder18 = age < 18;
+
+    let contract = await this.contractModel.findOne({ studentId: new Types.ObjectId(studentId) }).exec();
+    let contractNumber = contract?.contractNumber;
+
+    if (!contractNumber) {
+      const year = new Date().getFullYear();
+      const count = await this.contractModel.countDocuments({ contractNumber: new RegExp(`CN-${year}-`) }).exec();
+      const nextNum = String(count + 1).padStart(6, '0');
+      contractNumber = `CN-${year}-${nextNum}`;
+    }
+
+    const uploadsDir = path.join(__dirname, '..', '..', '..', 'uploads');
+    const contractsDir = path.join(uploadsDir, 'contracts');
+    if (!fs.existsSync(contractsDir)) {
+      fs.mkdirSync(contractsDir, { recursive: true });
+    }
+
+    const filename = `${contractNumber}.pdf`;
+    const filePath = path.join(contractsDir, filename);
+    const pdfUrl = `/uploads/contracts/${filename}`;
+
+    const contractDate = dto.contractDate ? new Date(dto.contractDate) : new Date();
+
+    const pdfData = {
+      contractNumber,
+      contractDate,
+      fullName: studentUser.fullName,
+      phone: studentUser.phone || studentUser.studentPhone || '',
+      address: dto.address || '',
+      passportOrJshshir: dto.passportOrJshshir || '',
+      isUnder18,
+      parentName: dto.parentName || studentUser.parentPhone || '',
+      parentPhone: dto.parentPhone || '',
+      courseName,
+      groupName,
+      monthlyPayment,
+    };
+
+    // Generate the PDF
+    await this.generatePdfFile(filePath, pdfData);
+
+    const contractData = {
+      studentId: new Types.ObjectId(studentId),
+      contractNumber,
+      status: 'GENERATED',
+      generatedDate: new Date(),
+      fullName: studentUser.fullName,
+      phone: studentUser.phone || studentUser.studentPhone || '',
+      address: dto.address,
+      passportOrJshshir: dto.passportOrJshshir,
+      parentName: dto.parentName,
+      parentPhone: dto.parentPhone,
+      courseName,
+      groupName,
+      monthlyPayment,
+      contractDate,
+      pdfUrl,
+    };
+
+    if (contract) {
+      // Update existing
+      contract = await this.contractModel.findByIdAndUpdate(contract._id, contractData, { new: true }).exec();
+    } else {
+      // Create new
+      contract = new this.contractModel(contractData);
+      await contract.save();
+    }
+
+    return contract;
+  }
+
+  private calculateAge(dateOfBirth: string): number {
+    if (!dateOfBirth) return 18;
+    let birthDate: Date;
+    if (dateOfBirth.includes('.')) {
+      const parts = dateOfBirth.split('.');
+      birthDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    } else {
+      birthDate = new Date(dateOfBirth);
+    }
+    
+    if (isNaN(birthDate.getTime())) return 18;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+
+  private generatePdfFile(filePath: string, data: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: 'A4', margin: 40 });
+        const writeStream = fs.createWriteStream(filePath);
+        doc.pipe(writeStream);
+
+        // Register Arial or standard system font if available, to support Uzbek characters
+        const regularPaths = [
+          'C:\\Windows\\Fonts\\arial.ttf',
+          'C:\\Windows\\Fonts\\segoeui.ttf',
+          '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+          '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+        ];
+        const boldPaths = [
+          'C:\\Windows\\Fonts\\arialbd.ttf',
+          'C:\\Windows\\Fonts\\segoeuib.ttf',
+          '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+          '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+        ];
+
+        let regularFont = 'Helvetica';
+        let boldFont = 'Helvetica-Bold';
+
+        for (const p of regularPaths) {
+          if (fs.existsSync(p)) {
+            regularFont = p;
+            break;
+          }
+        }
+        for (const p of boldPaths) {
+          if (fs.existsSync(p)) {
+            boldFont = p;
+            break;
+          }
+        }
+
+        doc.font(regularFont);
+
+        // PAGE 1: Professional legal header
+        doc.fillColor('#000000');
+        doc.font(boldFont).fontSize(12).text('O\'QUV XIZMATLARINI KO\'RSATISH BO\'YICHA', 40, 50, { align: 'center' });
+        doc.font(boldFont).fontSize(14).text(`SHARTNOMA № ${data.contractNumber}`, 40, 68, { align: 'center' });
+        
+        doc.moveDown(1.5);
+        const headerY = doc.y;
+        doc.font(regularFont).fontSize(10).text('Toshkent shahri', 40, headerY);
+        doc.font(regularFont).fontSize(10).text(new Date(data.contractDate).toLocaleDateString('uz-UZ'), 40, headerY, { align: 'right' });
+        
+        doc.moveDown(1.5);
+        doc.font(regularFont).fontSize(9.5).text(
+          `INFAST26 XK (bundan buyon matnda "Tashkilot" deb yuritiladi), o'z Ustavi asosida ish yurituvchi rahbari nomidan bir tomondan, va voyaga yetgan jismoniy shaxs (yoki voyaga yetmagan jismoniy shaxsning qonuniy vakili) ${data.fullName} (bundan buyon matnda "Mijoz" deb yuritiladi) ikkinchi tomondan, birgalikda "Tomonlar" deb ataluvchilar, quyidagilar to'g'risida ushbu shartnomani imzoladilar:`,
+          40,
+          doc.y,
+          { align: 'justify', lineGap: 3, width: 515 }
+        );
+
+        doc.moveDown(1.5);
+
+        // Clause 1: Shartnoma Predmeti
+        doc.font(boldFont).fontSize(10).text('1. SHARTNOMA PREDMETI', 40, doc.y, { lineGap: 3 });
+        doc.font(regularFont).fontSize(9.5);
+        doc.text(
+          `1.1. Mazkur shartnoma shartlariga muvofiq, Tashkilot Mijozga shartnomada belgilangan o'quv kursi doirasida ta'lim xizmatlarini ko'rsatish, Mijoz esa o'z navbatida belgilangan to'lovlarni o'z vaqtida to'lash va o'quv tartib-qoidalariga rioya qilish majburiyatini oladi.`,
+          40,
+          doc.y + 4,
+          { align: 'justify', lineGap: 2, width: 515 }
+        );
+        doc.text(`1.2. O'quv kursi nomi: ${data.courseName}`, 40, doc.y + 4, { width: 515 });
+        doc.text(`1.3. O'quv guruhi: ${data.groupName}`, 40, doc.y + 4, { width: 515 });
+        doc.text(`1.4. Oylik to'lov summasi: ${data.monthlyPayment.toLocaleString('uz-UZ')} UZS.`, 40, doc.y + 4, { width: 515 });
+
+        doc.moveDown(1.5);
+
+        // Clause 2: Tomonlarning huquq va majburiyatlari
+        doc.font(boldFont).fontSize(10).text('2. TOMONLARNING HUQUQ VA MAJBURIYATLARI', 40, doc.y, { lineGap: 3 });
+        
+        doc.font(boldFont).fontSize(9.5).text('2.1. Tashkilotning majburiyatlari:', 40, doc.y + 4);
+        doc.font(regularFont);
+        doc.text('2.1.1. Mashg\'ulotlarni tasdiqlangan o\'quv dasturiga muvofiq yuqori saviyada tashkil etish.', 50, doc.y + 3, { width: 505 });
+        doc.text('2.1.2. Mijoz uchun xavfsiz va shinam dars xonalari hamda LMS platformasidan foydalanish imkoniyatini taqdim etish.', 50, doc.y + 3, { width: 505 });
+        doc.text('2.1.3. O\'quv dasturi muvaffaqiyatli yakunlanganda Mijozga sertifikat taqdim etish.', 50, doc.y + 3, { width: 505 });
+
+        doc.font(boldFont).text('2.2. Tashkilotning huquqlari:', 40, doc.y + 6);
+        doc.font(regularFont);
+        doc.text('2.2.1. To\'lovlar muddati kechiktirilganda Mijozni darslardan va platformadan chetlashtirish.', 50, doc.y + 3, { width: 505 });
+        doc.text('2.2.2. Mijoz o\'quv markazining ichki tartib-qoidalarini buzgan taqdirda, shartnomani bir tomonlama bekor qilish.', 50, doc.y + 3, { width: 505 });
+
+        doc.font(boldFont).text('2.3. Mijozning majburiyatlari:', 40, doc.y + 6);
+        doc.font(regularFont);
+        doc.text('2.3.1. Mashg\'ulotlarda muntazam qatnashish, kechikmaslik va o\'quv vazifalarini o\'z vaqtida bajarish.', 50, doc.y + 3, { width: 505 });
+        doc.text(`2.3.2. Har oy boshlanishidan kamida 5 kun oldin ${data.monthlyPayment.toLocaleString('uz-UZ')} UZS miqdoridagi to\'lovni to\'liq to'lash.`, 50, doc.y + 3, { width: 505 });
+        doc.text('2.3.3. O\'quv markazi jihozlarini asrash, zarar yetkazilganda uni to\'liq qoplab berish.', 50, doc.y + 3, { width: 505 });
+
+        doc.font(boldFont).text('2.4. Mijozning huquqlari:', 40, doc.y + 6);
+        doc.font(regularFont);
+        doc.text('2.4.1. Tashkilotdan shartnomaga muvofiq sifatli ta\'lim va sharoitlarni talab qilish.', 50, doc.y + 3, { width: 505 });
+
+        // Footer of Page 1
+        doc.fontSize(8).fillColor('#9ca3af').text('InFast Academy OS • Rasmiy Shartnoma • Sahifa 1 / 2', 40, 790, { align: 'center' });
+
+        // PAGE 2
+        doc.addPage();
+        doc.fillColor('#000000');
+        
+        // Clause 3: To'lov tartibi
+        doc.font(boldFont).fontSize(10).text('3. TO\'LOV TARTIBI VA HISOB-KITOBLAR', 40, 50, { lineGap: 3 });
+        doc.font(regularFont).fontSize(9.5);
+        doc.text(`3.1. O'quv kursi uchun to'lov miqdori har bir kalendar oyi uchun ${data.monthlyPayment.toLocaleString('uz-UZ')} UZS qilib belgilanadi.`, 40, doc.y + 4, { align: 'justify', lineGap: 2, width: 515 });
+        doc.text('3.2. Mijoz oylik to\'lovni keyingi o\'quv oyi boshlanishidan kamida 5 (besh) ish kuni oldin amalga oshirishi shart.', 40, doc.y + 4, { align: 'justify', lineGap: 2, width: 515 });
+        doc.text('3.3. Kursdan voz kechilganda, o\'sha oy uchun amalga oshirilgan to\'lov qaytarilmaydi hamda keyingi oylarga o\'tkazilmaydi.', 40, doc.y + 4, { align: 'justify', lineGap: 2, width: 515 });
+
+        doc.moveDown(1.5);
+
+        // Clause 4: Fors-major va Nizolarni hal etish
+        doc.font(boldFont).fontSize(10).text('4. TOMONLARNING JAVOBGARLIGI VA NIZOLARNI HAL ETISH', 40, doc.y, { lineGap: 3 });
+        doc.font(regularFont).fontSize(9.5);
+        doc.text('4.1. Shartnoma yuzasidan kelib chiqadigan nizolar va kelishmovchiliklar Tomonlar o\'rtasida muzokaralar o\'tkazish yo\'li bilan hal etiladi.', 40, doc.y + 4, { align: 'justify', lineGap: 2, width: 515 });
+        doc.text('4.2. Muzokaralar yo\'li bilan kelishuvga erishilmagan taqdirda, nizolar O\'zbekiston Respublikasining amaldagi qonunchiligiga muvofiq sud tartibida ko\'rib chiqiladi.', 40, doc.y + 4, { align: 'justify', lineGap: 2, width: 515 });
+        doc.text('4.3. Tomonlar yengib bo\'lmas kuch (fors-major) holatlari tufayli majburiyatlarni bajara olmaganlik uchun javobgarlikdan ozod etiladilar.', 40, doc.y + 4, { align: 'justify', lineGap: 2, width: 515 });
+
+        doc.moveDown(1.5);
+
+        // Clause 5: Shartnomaning amal qilish muddati
+        doc.font(boldFont).fontSize(10).text('5. SHARTNOMANING AMAL QILISH MUDDATI', 40, doc.y, { lineGap: 3 });
+        doc.font(regularFont).fontSize(9.5);
+        doc.text('5.1. Mazkur shartnoma Tomonlar tomonidan imzolangan kundan boshlab kuchga kiradi va o\'quv kursi to\'liq yakunlangunga qadar amal qiladi.', 40, doc.y + 4, { align: 'justify', lineGap: 2, width: 515 });
+
+        doc.moveDown(2);
+
+        // Clause 6: Tomonlarning rekvizitlari va imzolari
+        doc.font(boldFont).fontSize(10).text('6. TOMONLARNING REKVIZITLARI VA IMZOLARI', 40, doc.y, { lineGap: 3 });
+        
+        const signY = doc.y + 15;
+
+        // Tashkilot rekvizitlari
+        doc.font(boldFont).fontSize(9.5).text('TASHKILOT:', 40, signY);
+        doc.font(regularFont).fontSize(9);
+        doc.text('INFAST26 XK', 40, doc.y + 5, { width: 230 });
+        doc.text('INN: 312 956 346', 40, doc.y + 3, { width: 230 });
+        doc.text('Manzil: Toshkent sh., Chilonzor tumani', 40, doc.y + 3, { width: 230 });
+        doc.text('Telefon: +998 90 271 00 27', 40, doc.y + 3, { width: 230 });
+        doc.text('Rahbar: ________________________', 40, doc.y + 15, { width: 230 });
+
+        // Mijoz rekvizitlari
+        doc.font(boldFont).fontSize(9.5).text('MIJOZ:', 300, signY);
+        doc.font(regularFont).fontSize(9);
+        doc.text(`F.I.SH.: ${data.fullName}`, 300, doc.y + 5, { width: 230 });
+        doc.text(`Pasport / JSHSHIR: ${data.passportOrJshshir || '___________________'}`, 300, doc.y + 3, { width: 230 });
+        doc.text(`Manzil: ${data.address || '___________________'}`, 300, doc.y + 3, { width: 230 });
+        doc.text(`Telefon: ${data.phone}`, 300, doc.y + 3, { width: 230 });
+        doc.text('Imzo: ________________________', 300, doc.y + 15, { width: 230 });
+
+        if (data.isUnder18) {
+          // Parent Signature Box
+          doc.moveDown(2);
+          const parentY = doc.y;
+          doc.font(boldFont).fontSize(9.5).text('OTA-ONA / QONUNIY VAKIY NOMIDAN:', 40, parentY);
+          doc.font(regularFont).fontSize(9);
+          doc.text(`F.I.SH.: ${data.parentName || '_________________________' }`, 40, doc.y + 5, { width: 515 });
+          doc.text(`Telefon: ${data.parentPhone || '_________________________' }`, 40, doc.y + 3, { width: 515 });
+          doc.text('Imzo: ________________________', 40, doc.y + 10, { width: 515 });
+        }
+
+        // Footer of Page 2
+        doc.fontSize(8).fillColor('#9ca3af').text('InFast Academy OS • Rasmiy Shartnoma • Sahifa 2 / 2', 40, 790, { align: 'center' });
+
+        doc.end();
+
+        writeStream.on('finish', () => {
+          resolve();
+        });
+        writeStream.on('error', (err) => {
+          reject(err);
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
   }
 }

@@ -81,33 +81,104 @@ export const Dashboard: React.FC = () => {
 
   const todayLessons = getTodayLessons();
 
+  const chatEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isTyping]);
+
+  const submitMessage = async (userText: string) => {
+    if (!userText.trim() || isTyping) return;
+
+    setIsTyping(true);
+
+    const updatedMessages = [...chatMessages, { role: 'user' as const, text: userText }];
+    const withPlaceholder = [...updatedMessages, { role: 'assistant' as const, text: '' }];
+    setChatMessages(withPlaceholder);
+
+    try {
+      const token = localStorage.getItem('admin_access_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      
+      const response = await fetch(`${API_URL}/ai/dashboard-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message: userText,
+          history: chatMessages.map(m => ({ role: m.role, content: m.text })),
+          systemContext: `Total students: ${data?.totalStudents || 0}, Active students: ${data?.activeStudents || 0}, Monthly revenue: ${data?.monthlyRevenue || 0} UZS, Attendance rate: ${data?.attendanceRate || 0}%`
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Aloqa xatosi");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder('utf-8');
+      if (!reader) throw new Error("Stream read error");
+
+      let accumulated = '';
+      let buffer = '';
+      setIsTyping(false);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          if (trimmed.startsWith('data: ')) {
+            const dataStr = trimmed.slice(6);
+            if (dataStr === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.content) {
+                accumulated += parsed.content;
+                setChatMessages(prev => {
+                  const copy = [...prev];
+                  if (copy.length > 0) {
+                    copy[copy.length - 1] = { role: 'assistant', text: accumulated };
+                  }
+                  return copy;
+                });
+              }
+            } catch (err) {
+              // Ignore partial chunk parse error
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setIsTyping(false);
+      setChatMessages(prev => {
+        const copy = [...prev];
+        if (copy.length > 0 && copy[copy.length - 1].role === 'assistant' && copy[copy.length - 1].text === '') {
+          copy[copy.length - 1] = { role: 'assistant', text: "Kechirasiz, Groq AI tizimi bilan bog'lanishda xatolik yuz berdi." };
+        }
+        return copy;
+      });
+    }
+  };
+
   const handleAskAI = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-
     const userText = chatInput;
-    setChatMessages(prev => [...prev, { role: 'user', text: userText }]);
     setChatInput('');
-    setIsTyping(true);
-
-    // Simulate AI response based on current metrics
-    setTimeout(() => {
-      let reply = "Savolingiz uchun rahmat. O'quv markazining ko'rsatkichlari barqaror. ";
-      const textLower = userText.toLowerCase();
-
-      if (textLower.includes('davomat') || textLower.includes('attendance')) {
-        reply = `Markaz bo'yicha o'rtacha davomat ko'rsatkichi hozirda ${data?.attendanceRate ?? 92}% ni tashkil etadi. Bu optimal ko'rsatkich hisoblanadi. Batafsil guruhlar kesimidagi davomatni ko'rish uchun "AI Advisor" sahifasiga o'tishingiz mumkin.`;
-      } else if (textLower.includes('to\'lov') || textLower.includes('payment') || textLower.includes('daromad') || textLower.includes('pul')) {
-        reply = `Joriy oylik tushum ${(data?.monthlyRevenue ?? 0).toLocaleString()} so'mni tashkil etadi. Ba'zi o'quvchilarda to'lov kechikishi kuzatilmoqda, ularning ro'yxatini moliya bo'limidan tekshirishingizni tavsiya qilaman.`;
-      } else if (textLower.includes('student') || textLower.includes('o\'quvchi') || textLower.includes('talaba')) {
-        reply = `Hozirda jami talabalar soni ${data?.totalStudents ?? 0} nafar bo'lib, shundan ${data?.activeStudents ?? 0} nafari faol. Bloklangan yoki muzlatilgan talabalar soni ${data?.blockedStudents ?? 0} ta.`;
-      } else {
-        reply = `InFast AI Advisor ma'lumotlariga ko'ra: jami talabalar ${data?.totalStudents ?? 0} ta, oylik to'lovlar tushumi esa ${(data?.monthlyRevenue ?? 0).toLocaleString()} so'm. O'quv jarayonini yaxshilash va risklarni boshqarish bo'yicha to'liq tahlilni ko'rishni xohlaysizmi?`;
-      }
-
-      setChatMessages(prev => [...prev, { role: 'assistant', text: reply }]);
-      setIsTyping(false);
-    }, 1000);
+    submitMessage(userText);
   };
 
   return (
@@ -236,14 +307,14 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            {/* Chat Body */}
+             {/* Chat Body */}
             <div className="flex-1 overflow-y-auto max-h-56 space-y-3 pr-1 text-xs">
               {chatMessages.map((msg, idx) => (
                 <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] rounded-xl px-3 py-2 leading-relaxed ${
                     msg.role === 'user' 
-                      ? 'bg-primary text-primary-foreground font-semibold rounded-tr-none' 
-                      : 'bg-secondary/60 text-foreground border rounded-tl-none'
+                      ? 'bg-primary text-primary-foreground font-semibold rounded-br-none' 
+                      : 'bg-secondary/60 text-foreground border rounded-bl-none'
                   }`}>
                     {msg.text}
                   </div>
@@ -258,6 +329,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </div>
               )}
+              <div ref={chatEndRef} />
             </div>
 
             {/* Suggested Chips */}
@@ -265,22 +337,22 @@ export const Dashboard: React.FC = () => {
               <span className="self-center">Tezkor savollar:</span>
               <button 
                 type="button"
-                onClick={() => { setChatInput("Davomat qanday?"); }}
-                className="px-2.5 py-1 rounded bg-secondary hover:bg-secondary/80 hover:text-foreground transition-colors"
+                onClick={() => submitMessage("Bugungi davomat ko'rsatkichlari qanday?")}
+                className="px-2.5 py-1 rounded bg-secondary hover:bg-secondary/80 hover:text-foreground transition-colors cursor-pointer"
               >
                 📊 Davomat tahlili
               </button>
               <button 
                 type="button"
-                onClick={() => { setChatInput("Tushumlar qancha?"); }}
-                className="px-2.5 py-1 rounded bg-secondary hover:bg-secondary/80 hover:text-foreground transition-colors"
+                onClick={() => submitMessage("Oylik tushumlar hisoboti qanday?")}
+                className="px-2.5 py-1 rounded bg-secondary hover:bg-secondary/80 hover:text-foreground transition-colors cursor-pointer"
               >
                 💰 Oylik tushum
               </button>
               <button 
                 type="button"
-                onClick={() => { setChatInput("O'quvchilar soni?"); }}
-                className="px-2.5 py-1 rounded bg-secondary hover:bg-secondary/80 hover:text-foreground transition-colors"
+                onClick={() => submitMessage("O'quvchilar soni va ularning joriy holati qanday?")}
+                className="px-2.5 py-1 rounded bg-secondary hover:bg-secondary/80 hover:text-foreground transition-colors cursor-pointer"
               >
                 👥 Talabalar statistikasi
               </button>

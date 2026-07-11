@@ -101,4 +101,34 @@ Foydalanuvchi so'ragan mavzuni tushuntiring, materiallarni o'zgartiring yoki sav
     const teacherId = req.user.userId;
     return this.chatService.deleteChat(id, teacherId);
   }
+
+  @ApiOperation({ summary: 'Dashboard AI Assistant Chat (Streaming)' })
+  @Post('dashboard-chat')
+  async dashboardChat(
+    @Body() dto: { message: string; history?: { role: 'user' | 'assistant'; content: string }[]; systemContext?: string },
+    @Res() res: Response,
+  ) {
+    const history = dto.history || [];
+    const systemContext = dto.systemContext || '';
+
+    const systemPrompt = `Siz InFast IT-Academy boshqaruv panelining aqlli AI maslahatchisisiz.
+Foydalanuvchining o'quv markazi faoliyati haqidagi savollariga javob bering.
+Agar sizga tizim ko'rsatkichlari (systemContext) taqdim etilsa, javob berishda ulardan foydalaning.
+Tizim ko'rsatkichlari: ${systemContext}
+Javobingiz professional, aniq va uzoq bo'lmagan (qisqa va lo'nda) bo'lsin. Til: O'zbek tili.`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...history.map((h) => ({ role: h.role as string, content: h.content })),
+      { role: 'user', content: dto.message },
+    ];
+
+    await this.groqService.getChatCompletionStream(
+      messages,
+      res,
+      'llama-3.3-70b-versatile',
+      undefined,
+      false,
+    );
+  }
 }

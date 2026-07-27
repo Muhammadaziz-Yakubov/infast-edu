@@ -704,4 +704,72 @@ export class LmsService implements OnModuleInit {
     if (!deleted) throw new NotFoundException('Story not found');
     return deleted;
   }
+
+  // ── 3-Way Lesson Unlock Engine ──
+
+  // 1. Unlock Individual Student Lesson
+  async unlockIndividualStudentLesson(studentProfileId: string, lessonId: string): Promise<any> {
+    const profile = await this.progressModel.db.model('StudentProfile').findById(studentProfileId).exec();
+    if (!profile) throw new NotFoundException('Student profile not found');
+
+    const lessonObjId = new Types.ObjectId(lessonId);
+    if (!profile.unlockedLessonIds) profile.unlockedLessonIds = [];
+
+    if (!profile.unlockedLessonIds.some((id: any) => id.toString() === lessonId)) {
+      profile.unlockedLessonIds.push(lessonObjId);
+      profile.currentLessonId = lessonObjId;
+      await profile.save();
+    }
+
+    return {
+      success: true,
+      message: 'Lesson unlocked for student successfully',
+      studentProfileId,
+      lessonId,
+      unlockedLessonIdsCount: profile.unlockedLessonIds.length,
+    };
+  }
+
+  // 2. Unlock Topic Group (Batch unlock for all students studying a specific topic/order)
+  async unlockTopicGroup(studentProfileIds: string[], lessonId: string): Promise<any> {
+    const lessonObjId = new Types.ObjectId(lessonId);
+    const result = await this.progressModel.db.model('StudentProfile').updateMany(
+      { _id: { $in: studentProfileIds.map((id) => new Types.ObjectId(id)) } },
+      {
+        $addToSet: { unlockedLessonIds: lessonObjId },
+        $set: { currentLessonId: lessonObjId },
+      }
+    ).exec();
+
+    return {
+      success: true,
+      unlockedCount: result.modifiedCount,
+      lessonId,
+    };
+  }
+
+  // 3. Manual Admin Override (Lock / Unlock multiple lessons for a student)
+  async manualOverrideLessonStatus(studentProfileId: string, lessonIds: string[], action: 'unlock' | 'lock'): Promise<any> {
+    const profile = await this.progressModel.db.model('StudentProfile').findById(studentProfileId).exec();
+    if (!profile) throw new NotFoundException('Student profile not found');
+
+    const lessonObjIds = lessonIds.map((id) => new Types.ObjectId(id));
+    if (action === 'unlock') {
+      await this.progressModel.db.model('StudentProfile').findByIdAndUpdate(studentProfileId, {
+        $addToSet: { unlockedLessonIds: { $each: lessonObjIds } },
+      }).exec();
+    } else {
+      await this.progressModel.db.model('StudentProfile').findByIdAndUpdate(studentProfileId, {
+        $pull: { unlockedLessonIds: { $in: lessonObjIds } },
+      }).exec();
+    }
+
+    const updatedProfile = await this.progressModel.db.model('StudentProfile').findById(studentProfileId).exec();
+    return {
+      success: true,
+      action,
+      unlockedLessonIdsCount: updatedProfile?.unlockedLessonIds?.length || 0,
+    };
+  }
 }
+

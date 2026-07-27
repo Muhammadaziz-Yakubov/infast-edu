@@ -178,4 +178,38 @@ export class LmsController {
   deleteStory(@Param('id') id: string) {
     return this.lmsService.deleteStory(id);
   }
+
+  // ── 3-Way Lesson Unlock Engine Routes ──
+
+  @Post('unlock/individual')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Unlock a specific lesson for an individual student profile (Admin only)' })
+  unlockIndividual(
+    @Body('studentProfileId') studentProfileId: string,
+    @Body('lessonId') lessonId: string,
+  ) {
+    return this.lmsService.unlockIndividualStudentLesson(studentProfileId, lessonId);
+  }
+
+  @Post('unlock/topic-group')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Unlock a specific lesson for a list of student profiles studying a topic (Admin only)' })
+  unlockTopicGroup(
+    @Body('studentProfileIds') studentProfileIds: string[],
+    @Body('lessonId') lessonId: string,
+  ) {
+    return this.lmsService.unlockTopicGroup(studentProfileIds, lessonId);
+  }
+
+  @Post('unlock/manual-override')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Manually lock or unlock lessons for a student profile (Admin override)' })
+  manualOverride(
+    @Body('studentProfileId') studentProfileId: string,
+    @Body('lessonIds') lessonIds: string[],
+    @Body('action') action: 'unlock' | 'lock',
+  ) {
+    return this.lmsService.manualOverrideLessonStatus(studentProfileId, lessonIds, action || 'unlock');
+  }
 }
+

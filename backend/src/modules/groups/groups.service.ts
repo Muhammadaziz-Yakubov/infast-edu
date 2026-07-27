@@ -180,7 +180,7 @@ export class GroupsService {
     // Link student profile to group and course
     await this.studentsService.updateStudent(studentId, {
       groupId: group._id.toString(),
-      courseId: group.courseId ? group.courseId.toString() : '',
+      courseId: group.courseId.toString(),
     }, user);
 
     // Auto-add student to group chat room
@@ -426,7 +426,7 @@ export class GroupsService {
     });
 
     // 2. Map lessons to schedule days
-    let currentDate = new Date(group.startDate || new Date());
+    let currentDate = new Date(group.startDate);
     let lessonIndex = 0;
     // Normalize stored day names to lowercase for comparison
     const daysOfWeek = group.schedule.days.map((d) => d.trim().toLowerCase());
@@ -457,80 +457,4 @@ export class GroupsService {
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }
   }
-
-  // ── Classroom Mode Command Center Endpoint ──
-  async getClassroomData(groupId: string, user: any): Promise<any> {
-    const group = await this.groupModel
-      .findById(groupId)
-      .populate('primaryTeacherId', 'fullName avatar email')
-      .exec();
-
-    if (!group) {
-      throw new NotFoundException('Group schedule not found');
-    }
-
-    if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
-      throw new ForbiddenException('You do not have access to this group schedule');
-    }
-
-    // 1. Fetch student profiles in this group
-    const StudentProfileModel = this.groupModel.db.model('StudentProfile');
-    const AttendanceModel = this.groupModel.db.model('Attendance');
-    const TodayDateStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-    const studentProfiles = await StudentProfileModel.find({ groupId: new Types.ObjectId(groupId) })
-      .populate('userId', 'fullName avatar studentPhone parentPhone email')
-      .populate('courseId', 'title techTrack')
-      .populate('currentLessonId', 'title order difficulty videoUrl homeworkDescription')
-      .exec();
-
-    const studentDataList = await Promise.all(
-      studentProfiles.map(async (sp: any) => {
-        const spObj = sp.toObject();
-        const userId = spObj.userId?._id || spObj.userId;
-        
-        // Calculate dynamic payment status based on joining date
-        const currentPaymentStatus = await this.studentsService.calculateStudentPaymentStatus(userId);
-
-        // Fetch today's attendance if logged
-        const todayAttendance = await AttendanceModel.findOne({
-          studentId: spObj._id,
-          date: TodayDateStr,
-        }).exec();
-
-        return {
-          _id: spObj._id,
-          userId: spObj.userId,
-          joiningDate: spObj.joiningDate || spObj.createdAt,
-          nextPaymentDate: spObj.nextPaymentDate,
-          monthlyFee: spObj.monthlyFee || 500000,
-          paymentStatus: currentPaymentStatus,
-          course: spObj.courseId || { title: 'General Course', techTrack: 'General' },
-          currentLesson: spObj.currentLessonId || { title: 'Introduction', order: 1, difficulty: 'EASY' },
-          progressPercentage: spObj.progressPercentage || 0,
-          homeworkProgress: spObj.homeworkProgress || 0,
-          xp: spObj.xp || 0,
-          coins: spObj.coins || 0,
-          rank: spObj.rank || 'NOVICE',
-          streakDays: spObj.streakDays || 0,
-          todayAttendance: todayAttendance ? todayAttendance.status : 'PENDING',
-        };
-      })
-    );
-
-    return {
-      groupSchedule: {
-        _id: group._id,
-        name: group.name,
-        schedule: group.schedule,
-        primaryTeacher: group.primaryTeacherId,
-        roomId: group.roomId || 'Main Room',
-        capacity: group.capacity || 20,
-        activeStudentCount: studentProfiles.length,
-      },
-      sessionDate: TodayDateStr,
-      students: studentDataList,
-    };
-  }
 }
-

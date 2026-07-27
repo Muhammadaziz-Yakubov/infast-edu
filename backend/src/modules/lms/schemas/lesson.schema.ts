@@ -65,45 +65,6 @@ export class Lesson extends Document {
   @Prop({ type: Types.ObjectId, ref: 'CourseModule', required: true })
   moduleId: Types.ObjectId;
 
-  @Prop()
-  videoUrl?: string;
-
-  @Prop()
-  pdfUrl?: string;
-
-  @Prop({ type: [String], default: [] })
-  resources?: string[];
-
-  @Prop({ type: [String], default: [] })
-  starterFiles?: string[];
-
-  @Prop()
-  homeworkDescription?: string;
-
-  @Prop({ default: 45 })
-  estDurationMinutes?: number;
-
-  @Prop({ default: 'MEDIUM' })
-  difficulty?: string; // EASY, MEDIUM, HARD
-
-  @Prop({ default: 100 })
-  xpReward?: number;
-
-  @Prop({ default: 25 })
-  coinReward?: number;
-
-  @Prop()
-  teacherNotes?: string;
-
-  @Prop()
-  studentNotes?: string;
-
-  @Prop({ type: [String], default: [] })
-  attachments?: string[];
-
-  @Prop({ type: [String], default: [] })
-  tags?: string[];
-
   @Prop({ type: [QuizQuestion], default: [] })
   quiz?: QuizQuestion[];
 
@@ -120,4 +81,3 @@ export class Lesson extends Document {
 export type LessonDocument = Lesson & Document;
 export const LessonSchema = SchemaFactory.createForClass(Lesson);
 LessonSchema.index({ moduleId: 1, order: 1 });
-

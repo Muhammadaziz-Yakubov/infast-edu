@@ -84,13 +84,4 @@ export class GroupsController {
   getProgress(@Param('id') id: string, @CurrentUser() user: any) {
     return this.groupsService.getGroupProgress(id, user);
   }
-
-  @Get(':id/classroom')
-  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN, Role.TEACHER)
-  @ApiOperation({ summary: 'Single-screen Classroom Mode command center data for today session' })
-  @ApiResponse({ status: 200, description: 'Classroom session data.' })
-  getClassroom(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.groupsService.getClassroomData(id, user);
-  }
 }
-

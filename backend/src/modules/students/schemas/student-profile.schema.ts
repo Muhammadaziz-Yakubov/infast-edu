@@ -42,29 +42,6 @@ export class StudentProfile extends Document {
   @Prop({ type: Types.ObjectId, ref: 'Course' })
   courseId?: Types.ObjectId;
 
-  // Independent Student Learning Progress Engine
-  @Prop({ type: Types.ObjectId, ref: 'Lesson' })
-  currentLessonId?: Types.ObjectId;
-
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Lesson' }], default: [] })
-  completedLessonIds: Types.ObjectId[];
-
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Lesson' }], default: [] })
-  unlockedLessonIds: Types.ObjectId[];
-
-  @Prop({ default: 0 })
-  progressPercentage: number; // e.g. 45%
-
-  // Dynamic Payment Cycle Engine
-  @Prop({ default: Date.now })
-  joiningDate: Date;
-
-  @Prop()
-  nextPaymentDate?: Date;
-
-  @Prop({ default: 500000 })
-  monthlyFee: number;
-
   @Prop({ type: String, enum: PaymentStatus, default: PaymentStatus.UPCOMING })
   paymentStatus: PaymentStatus;
 
@@ -72,19 +49,10 @@ export class StudentProfile extends Document {
   attendancePercentage: number; // e.g. 95%
 
   @Prop({ default: 0 })
-  homeworkProgress: number; // e.g. 80%
-
-  // Gamification Engine
-  @Prop({ default: 'NOVICE' })
-  rank: string;
-
-  @Prop({ default: 0 })
-  streakDays: number;
+  homeworkProgress: number; // e.g. 80% (homeworks completed / total homeworks)
 }
 
 export type StudentProfileDocument = StudentProfile & Document;
 export const StudentProfileSchema = SchemaFactory.createForClass(StudentProfile);
 StudentProfileSchema.index({ groupId: 1 });
 StudentProfileSchema.index({ courseId: 1 });
-StudentProfileSchema.index({ userId: 1 });
-

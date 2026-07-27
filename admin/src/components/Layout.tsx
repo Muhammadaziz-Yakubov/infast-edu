@@ -57,30 +57,35 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
     path: '/',
   },
   {
-    name: 'Classroom Mode',
-    key: 'classroom',
-    icon: Tv,
-    path: '/classroom',
-  },
-  {
     name: 'Academy',
     key: 'academy',
     icon: GraduationCap,
     items: [
+      ...(userRole === 'SUPER_ADMIN' ? [{ name: 'Branches', path: '/branches', icon: Building }] : []),
       { name: 'Students', path: '/students', icon: Users },
-      { name: 'Groups (Schedules)', path: '/groups', icon: FolderKanban },
+      { name: 'Groups', path: '/groups', icon: FolderKanban },
       { name: 'Attendance', path: '/attendance', icon: CheckSquare },
     ],
   },
   {
-    name: 'Learning Engine',
+    name: 'Learning',
     key: 'learning',
     icon: BookOpen,
     items: [
-      { name: 'Course Builder', path: '/courses', icon: BookOpen },
+      { name: 'Courses', path: '/courses', icon: BookOpen },
       { name: 'LMS Builder', path: '/lms', icon: GraduationCap },
       { name: 'Homework', path: '/homework', icon: FileCode },
       { name: 'Review Center', path: '/lms-check', icon: ClipboardCheck },
+    ],
+  },
+  {
+    name: 'CRM',
+    key: 'crm',
+    icon: Megaphone,
+    items: [
+      { name: 'Leads', path: '/marketing/leads', icon: Users },
+      { name: 'Pipeline', path: '/marketing/pipeline', icon: FolderKanban },
+      { name: 'Campaigns', path: '/marketing/campaigns', icon: Megaphone },
     ],
   },
   {
@@ -103,11 +108,11 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
     ],
   },
   {
-    name: 'Gamification',
-    key: 'gamification',
+    name: 'Engagement',
+    key: 'engagement',
     icon: Gift,
     items: [
-      { name: 'Market (Store)', path: '/market', icon: ShoppingBag },
+      { name: 'Market', path: '/market', icon: ShoppingBag },
       { name: 'Events', path: '/events', icon: Calendar },
       { name: 'Stories', path: '/stories', icon: Tv },
       { name: 'Referrals', path: '/referrals', icon: Gift },
@@ -126,7 +131,6 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
     path: '/settings',
   },
 ];
-
 
 const getBreadcrumbs = (pathname: string): string[] => {
   if (pathname === '/') return ['Dashboard'];

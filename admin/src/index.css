@@ -3,7 +3,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 99%;
     --foreground: 240 10% 4%;
 
     --card: 0 0% 100%;
@@ -12,8 +12,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 4%;
 
-    --primary: 20 100% 50%; /* InFast Signature Vivid Orange #FF5500 */
-    --primary-foreground: 0 0% 100%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
 
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
@@ -21,31 +21,31 @@
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 20 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
     --destructive: 346.8 77.2% 49.8%;
     --destructive-foreground: 355.7 100% 97.3%;
 
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 20 100% 50%;
+    --ring: 240 5% 64.9%;
 
-    --radius: 1.25rem; /* 20px Apple / Linear Radius */
+    --radius: 0.5rem;
   }
 
   .dark {
-    --background: 240 10% 3.9%; /* #09090B Obsidian Dark */
+    --background: 240 10% 4%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 7%; /* #18181B High Quality Surface */
+    --card: 240 10% 4%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 7%;
+    --popover: 240 10% 4%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 20 100% 50%; /* #FF5500 Vivid Orange */
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
 
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
@@ -53,15 +53,15 @@
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 20 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 355.7 100% 47.3%;
     --destructive-foreground: 355.7 100% 97.3%;
 
-    --border: 240 3.7% 15.9%; /* #27272A Subtle Hairline */
+    --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 20 100% 50%;
+    --ring: 240 4.9% 83.9%;
   }
 }
 
@@ -70,62 +70,36 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased font-sans selection:bg-[#FF5500]/20 selection:text-[#FF5500];
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    @apply bg-background text-foreground antialiased font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
-}
-
-/* InFast OS Signature Utility Classes */
-.bg-obsidian {
-  background-color: #09090b;
-}
-
-.bg-surface {
-  background-color: #18181b;
-}
-
-.border-subtle {
-  border-color: #27272a;
-}
-
-.text-orange-accent {
-  color: #ff5500;
-}
-
-.bg-orange-accent {
-  background-color: #ff5500;
-}
-
-.border-orange-accent {
-  border-color: #ff5500;
-}
-
-.card-20 {
-  border-radius: 20px;
-  background-color: #18181b;
-  border: 1px solid #27272a;
 }
 
 /* Glassmorphism utilities */
 .glass {
-  background: rgba(24, 24, 27, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dark .glass {
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 9999px;
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #ff5500;
+  background: hsl(var(--muted-foreground) / 0.5);
 }
-

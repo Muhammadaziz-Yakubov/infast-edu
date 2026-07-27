@@ -27,7 +27,7 @@ import { LmsCheck } from './pages/LmsCheck';
 import { Chat } from './pages/Chat';
 import { AiAdvisor } from './pages/AiAdvisor';
 import { TelegramAi } from './pages/TelegramAi';
-import { ClassroomMode } from './pages/ClassroomMode';
+import { AiLessonCreator } from './pages/AiLessonCreator';
 
 // Marketing CRM Pages
 import { MarketingDashboard } from './pages/marketing/MarketingDashboard';
@@ -66,7 +66,6 @@ export const App: React.FC = () => {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/classroom" element={<ClassroomMode />} />
             <Route path="/branches" element={<Branches />} />
             <Route path="/branches/:id" element={<BranchDetails />} />
             

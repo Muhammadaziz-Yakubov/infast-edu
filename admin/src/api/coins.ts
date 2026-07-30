@@ -14,7 +14,7 @@ export interface StudentCoinInfo {
 
 export const getStudentsCoins = async (): Promise<StudentCoinInfo[]> => {
   const res = await api.get('/students');
-  return res.data;
+  return Array.isArray(res.data) ? res.data : (res.data?.data || []);
 };
 
 export const adjustStudentCoins = async (

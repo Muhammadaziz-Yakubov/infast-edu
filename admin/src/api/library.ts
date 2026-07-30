@@ -14,7 +14,7 @@ export interface LibraryItem {
 
 export const getLibraryItems = async (type?: string): Promise<LibraryItem[]> => {
   const res = await api.get('/library', { params: { type } });
-  return res.data;
+  return Array.isArray(res.data) ? res.data : (res.data?.data || []);
 };
 
 export const createLibraryItem = async (dto: Partial<LibraryItem>): Promise<LibraryItem> => {

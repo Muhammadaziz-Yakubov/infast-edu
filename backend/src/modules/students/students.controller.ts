@@ -108,4 +108,15 @@ export class StudentsController {
   ) {
     return this.studentsService.generateContract(id, generateContractDto);
   }
+
+  @Post(':id/coins')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Add or deduct coins from student balance (Admin only)' })
+  adjustCoins(
+    @Param('id') id: string,
+    @Body() body: { amount: number; type: 'ADD' | 'DEDUCT'; reason: string },
+    @CurrentUser() user: any,
+  ) {
+    return this.studentsService.adjustCoins(id, body.amount, body.type, body.reason, user);
+  }
 }

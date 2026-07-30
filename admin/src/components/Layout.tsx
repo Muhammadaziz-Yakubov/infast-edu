@@ -33,6 +33,8 @@ import {
   Sparkles,
   Send,
   Building,
+  Library as LibraryIcon,
+  Coins as CoinsIcon,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -74,6 +76,7 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
     items: [
       { name: 'Courses', path: '/courses', icon: BookOpen },
       { name: 'LMS Builder', path: '/lms', icon: GraduationCap },
+      { name: 'Kutubxona', path: '/library', icon: LibraryIcon },
       { name: 'Homework', path: '/homework', icon: FileCode },
       { name: 'Review Center', path: '/lms-check', icon: ClipboardCheck },
     ],
@@ -94,6 +97,7 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
     icon: CreditCard,
     items: [
       { name: 'Payments', path: '/payments', icon: CreditCard },
+      { name: 'Coinlar Boshqaruvi', path: '/coins', icon: CoinsIcon },
     ],
   },
   {
@@ -159,15 +163,17 @@ const getBreadcrumbs = (pathname: string): string[] => {
   if (pathname.startsWith('/courses/')) return ['Learning', 'Courses', 'Course Details'];
   if (pathname.startsWith('/courses')) return ['Learning', 'Courses'];
   
-  // LMS Builder
+  // LMS Builder & Library
   if (pathname.startsWith('/lms-check')) return ['Learning', 'Review Center'];
   if (pathname.startsWith('/lms')) return ['Learning', 'LMS Builder'];
+  if (pathname.startsWith('/library')) return ['Learning', 'Kutubxona'];
   
   // Homework
   if (pathname.startsWith('/homework')) return ['Learning', 'Homework'];
   
-  // Payments
+  // Payments & Coins
   if (pathname.startsWith('/payments')) return ['Finance', 'Payments'];
+  if (pathname.startsWith('/coins')) return ['Finance', 'Coinlar Boshqaruvi'];
   
   // CRM / Marketing
   if (pathname.startsWith('/marketing/leads/')) return ['CRM', 'Leads', 'Lead Details'];

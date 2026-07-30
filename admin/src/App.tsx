@@ -28,6 +28,8 @@ import { Chat } from './pages/Chat';
 import { AiAdvisor } from './pages/AiAdvisor';
 import { TelegramAi } from './pages/TelegramAi';
 import { AiLessonCreator } from './pages/AiLessonCreator';
+import { Library } from './pages/Library';
+import { Coins } from './pages/Coins';
 
 // Marketing CRM Pages
 import { MarketingDashboard } from './pages/marketing/MarketingDashboard';
@@ -82,9 +84,11 @@ export const App: React.FC = () => {
             <Route path="/lms-check" element={<LmsCheck />} />
             <Route path="/homework" element={<Homework />} />
             
-            {/* Operations */}
+            {/* Operations & Finance */}
             <Route path="/payments" element={<Payments />} />
+            <Route path="/coins" element={<Coins />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/library" element={<Library />} />
             
             {/* Gamification Market */}
             <Route path="/market" element={<Market />} />

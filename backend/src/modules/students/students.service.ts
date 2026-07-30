@@ -603,6 +603,45 @@ export class StudentsService implements OnModuleInit {
     return profile.save();
   }
 
+  async adjustCoins(studentId: string, amount: number, type: 'ADD' | 'DEDUCT', reason: string, requestingUser?: any): Promise<any> {
+    const profile = await this.studentProfileModel.findOne({ userId: new Types.ObjectId(studentId) }).exec();
+    if (!profile) {
+      throw new NotFoundException('Student profile not found');
+    }
+
+    const diff = type === 'ADD' ? Math.abs(amount) : -Math.abs(amount);
+    profile.coins = Math.max(0, (profile.coins || 0) + diff);
+    await profile.save();
+
+    // Create Notification for Student
+    try {
+      const notificationModel = this.studentProfileModel.db.model('Notification');
+      const title = type === 'ADD' ? '💰 Tangalar qo\'shildi!' : '⚠️ Tangalar ayirildi';
+      const message = type === 'ADD'
+        ? `Admin sizga +${Math.abs(amount)} coin taqdim etdi. Sabab: ${reason || 'Faollik uchun'}`
+        : `Admin hisobingizdan ${Math.abs(amount)} coin ayirdi. Sabab: ${reason || 'Jarima'}`;
+      
+      const notif = new notificationModel({
+        userId: new Types.ObjectId(studentId),
+        title,
+        message,
+        type: 'SYSTEM',
+        read: false,
+      });
+      await notif.save();
+    } catch (err) {
+      console.error('Failed to create coin notification:', err);
+    }
+
+    return {
+      success: true,
+      studentId,
+      newCoins: profile.coins,
+      amount: diff,
+      reason,
+    };
+  }
+
   async updateHomeworkProgress(userId: string | Types.ObjectId, progress: number): Promise<StudentProfileDocument> {
     const profile = await this.studentProfileModel.findOne({ userId: new Types.ObjectId(userId) });
     if (!profile) {

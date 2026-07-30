@@ -66,3 +66,5 @@ function clearAuth() {
     window.location.href = '/login';
   }
 }
+
+export default apiClient;

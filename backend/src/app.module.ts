@@ -41,6 +41,7 @@ import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module';
 import { TelegramAiModule } from './modules/telegram-ai/telegram-ai.module';
 import { AiModule } from './modules/ai/ai.module';
 import { TypingBattleModule } from './modules/typing/typing-battle.module';
+import { LibraryModule } from './modules/library/library.module';
 
 @Module({
   imports: [
@@ -94,6 +95,7 @@ import { TypingBattleModule } from './modules/typing/typing-battle.module';
     TelegramAiModule,
     AiModule,
     TypingBattleModule,
+    LibraryModule,
   ],
   controllers: [AppController],
   providers: [

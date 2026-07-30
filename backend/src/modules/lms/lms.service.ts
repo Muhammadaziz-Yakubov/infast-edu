@@ -552,11 +552,16 @@ export class LmsService implements OnModuleInit {
   }
 
   async getCourseProgress(studentId: string, courseId: string): Promise<any> {
-    // 1. Get student profile to determine their group
+    // 1. Get student profile to determine their group and course
     const profile = await this.studentsService.getStudentProfileForAuth(studentId);
     let modules = [];
-    if (profile && profile.groupId) {
+    const targetCourseId = profile?.courseId?._id?.toString() || profile?.courseId?.toString() || courseId;
+    const groupCourseId = profile?.groupId?.courseId?._id?.toString() || profile?.groupId?.courseId?.toString();
+
+    if (profile && profile.groupId && (!groupCourseId || groupCourseId === targetCourseId)) {
       modules = await this.findModulesByGroup(profile.groupId._id.toString());
+    } else if (targetCourseId) {
+      modules = await this.findModulesByCourse(targetCourseId);
     } else {
       modules = await this.findModulesByCourse(courseId);
     }

@@ -20,10 +20,10 @@ import {
 } from 'lucide-react';
 
 const BRAND_STATS = [
-  { value: '5000+', label: "O'quvchilar" },
+  { value: '100+', label: "O'quvchilar" },
   { value: '98%', label: 'Muvaffaqiyat' },
-  { value: '50+', label: 'Kurslar' },
-  { value: '12+', label: 'Yillik tajriba' },
+  { value: '10+', label: 'Kurslar' },
+  { value: '1+', label: 'Yillik tajriba' },
 ];
 
 const TRUST_BADGES = [

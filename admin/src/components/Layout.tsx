@@ -36,6 +36,7 @@ import {
   Library as LibraryIcon,
   Coins as CoinsIcon,
   FileText,
+  Tag,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -90,6 +91,7 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
       { name: 'Leads', path: '/marketing/leads', icon: Users },
       { name: 'Pipeline', path: '/marketing/pipeline', icon: FolderKanban },
       { name: 'Campaigns', path: '/marketing/campaigns', icon: Megaphone },
+      { name: 'Lead Manbalar', path: '/marketing/sources', icon: Tag },
       { name: 'Lead Formlar', path: '/marketing/forms', icon: FileText },
     ],
   },

@@ -63,13 +63,22 @@ export const LeadSources: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight">Lead Manbalari (Lead Sources)</h1>
           <p className="text-muted-foreground text-sm">Mijozlar biz haqimizda eshitgan asosiy axborot kanallari.</p>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/95 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          Yangi Manba
-        </button>
+        <div className="flex gap-2">
+          <a
+            href="/marketing/forms"
+            className="flex items-center gap-2 px-4 py-2 bg-secondary text-foreground text-sm font-semibold rounded-md border hover:bg-secondary/80 transition-all"
+          >
+            <Plus className="w-4 h-4 text-primary" />
+            Lead Form Yaratish
+          </a>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/95 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Yangi Manba
+          </button>
+        </div>
       </div>
 
       {/* Grid List */}

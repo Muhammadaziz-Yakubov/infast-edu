@@ -35,6 +35,7 @@ import {
   Building,
   Library as LibraryIcon,
   Coins as CoinsIcon,
+  FileText,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -89,6 +90,7 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
       { name: 'Leads', path: '/marketing/leads', icon: Users },
       { name: 'Pipeline', path: '/marketing/pipeline', icon: FolderKanban },
       { name: 'Campaigns', path: '/marketing/campaigns', icon: Megaphone },
+      { name: 'Lead Formlar', path: '/marketing/forms', icon: FileText },
     ],
   },
   {
@@ -181,6 +183,7 @@ const getBreadcrumbs = (pathname: string): string[] => {
   if (pathname.startsWith('/marketing/pipeline')) return ['CRM', 'Pipeline'];
   if (pathname.startsWith('/marketing/campaigns')) return ['CRM', 'Campaigns'];
   if (pathname.startsWith('/marketing/sources')) return ['CRM', 'Sources'];
+  if (pathname.startsWith('/marketing/forms')) return ['CRM', 'Lead Formlar'];
   if (pathname.startsWith('/marketing/managers')) return ['CRM', 'Managers'];
   if (pathname.startsWith('/marketing/analytics')) return ['CRM', 'CRM Analytics'];
   if (pathname.startsWith('/marketing')) return ['CRM', 'CRM Dashboard'];

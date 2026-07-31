@@ -37,6 +37,8 @@ import { LeadsList } from './pages/marketing/LeadsList';
 import { PipelineView } from './pages/marketing/PipelineView';
 import { Campaigns } from './pages/marketing/Campaigns';
 import { LeadSources } from './pages/marketing/LeadSources';
+import { LeadForms } from './pages/marketing/LeadForms';
+import { PublicLeadForm } from './pages/PublicLeadForm';
 import { ManagersPerformance } from './pages/marketing/ManagersPerformance';
 import { MarketingAnalytics } from './pages/marketing/MarketingAnalytics';
 import { LeadDetails } from './pages/marketing/LeadDetails';
@@ -61,8 +63,9 @@ export const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <Routes>
-        {/* Public Login Route */}
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/form/:id" element={<PublicLeadForm />} />
 
         {/* Protected Dashboard Routes */}
         <Route element={<ProtectedRoute />}>
@@ -103,6 +106,7 @@ export const App: React.FC = () => {
             <Route path="/marketing/pipeline" element={<PipelineView />} />
             <Route path="/marketing/campaigns" element={<Campaigns />} />
             <Route path="/marketing/sources" element={<LeadSources />} />
+            <Route path="/marketing/forms" element={<LeadForms />} />
             <Route path="/marketing/managers" element={<ManagersPerformance />} />
             <Route path="/marketing/analytics" element={<MarketingAnalytics />} />
 

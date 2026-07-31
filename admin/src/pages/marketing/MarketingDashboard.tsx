@@ -75,6 +75,13 @@ export const MarketingDashboard: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <Link
+            to="/marketing/forms"
+            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-semibold rounded-md border transition-all"
+          >
+            <Plus className="w-4 h-4 text-primary" />
+            Form Yaratish
+          </Link>
+          <Link
             to="/marketing/leads"
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md shadow-lg hover:bg-primary/95 transition-all"
           >

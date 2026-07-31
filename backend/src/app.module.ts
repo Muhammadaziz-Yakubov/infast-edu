@@ -23,6 +23,7 @@ import { ReferralsModule } from './modules/referrals/referrals.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { CustomFieldsModule } from './modules/custom-fields/custom-fields.module';
 import { LeadSourcesModule } from './modules/lead-sources/lead-sources.module';
+import { LeadFormsModule } from './modules/lead-forms/lead-forms.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { ActivitiesModule } from './modules/activities/activities.module';
 import { LeadsModule } from './modules/leads/leads.module';
@@ -77,6 +78,7 @@ import { LibraryModule } from './modules/library/library.module';
     ChatModule,
     CustomFieldsModule,
     LeadSourcesModule,
+    LeadFormsModule,
     CampaignsModule,
     ActivitiesModule,
     LeadsModule,

@@ -154,7 +154,7 @@ export const Students: React.FC = () => {
     e.preventDefault();
     if (!editStudent) return;
     try {
-      await updateStudent(editStudent._id, {
+      const payload: any = {
         fullName,
         studentPhone,
         parentPhone,
@@ -164,10 +164,15 @@ export const Students: React.FC = () => {
         groupId: groupId || undefined,
         nextPaymentDate: nextPaymentDate || undefined,
         label: label || undefined,
-      });
+      };
+      if (password && password.trim().length > 0) {
+        payload.password = password;
+      }
+      await updateStudent(editStudent._id, payload);
       setEditStudent(null);
       setNextPaymentDate('');
       setLabel('');
+      setPassword('');
       await loadData();
     } catch (err: any) {
       const errMsg = err.response?.data?.message
@@ -194,6 +199,7 @@ export const Students: React.FC = () => {
     setCourseId(student.courseId || '');
     setGroupId(student.groupId || '');
     setLabel(student.label || '');
+    setPassword('');
     setNextPaymentDate('');
   };
 
@@ -593,19 +599,25 @@ export const Students: React.FC = () => {
                   />
                 </div>
 
-                {!editStudent && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Tizimga Kirish Paroli</label>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    {editStudent ? 'Yangi Parol (ixtiyoriy)' : 'Tizimga Kirish Paroli'}
+                  </label>
+                  <div className="relative">
+                    <Key className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="text"
-                      required
+                      required={!editStudent}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Kamida 6 ta belgi"
-                      className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                      placeholder={editStudent ? 'Bo\'sh qolsa o\'zgarmaydi' : 'Kamida 6 ta belgi'}
+                      className="w-full pl-9 border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
-                )}
+                  {editStudent && password.length > 0 && password.length < 6 && (
+                    <p className="text-xs text-red-500">Parol kamida 6 ta belgidan iborat bo'lishi kerak</p>
+                  )}
+                </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-muted-foreground">Kursga Biriktirish</label>

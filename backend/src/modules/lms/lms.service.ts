@@ -92,16 +92,14 @@ export class LmsService implements OnModuleInit {
   }
 
   async findModulesByGroup(groupId: string): Promise<any[]> {
+    if (!groupId || !Types.ObjectId.isValid(groupId)) return [];
     const group = await this.groupModel.findById(groupId).exec();
-    if (!group) {
-      throw new NotFoundException('Group not found');
-    }
 
     // Try finding modules specifically created for this group
     let modules = await this.moduleModel.find({ groupId: new Types.ObjectId(groupId) }).sort({ order: 1 }).exec();
 
     // If no custom modules for this group, fallback to course modules
-    if (modules.length === 0 && group.courseId) {
+    if (modules.length === 0 && group && group.courseId) {
       const courseObjId = (group.courseId as any)?._id || group.courseId;
       const validCourseId = typeof courseObjId === 'string' ? new Types.ObjectId(courseObjId) : courseObjId;
       modules = await this.moduleModel.find({ courseId: validCourseId, $or: [{ groupId: { $exists: false } }, { groupId: null }] }).sort({ order: 1 }).exec();
@@ -562,12 +560,15 @@ export class LmsService implements OnModuleInit {
     let modules = [];
     const targetCourseId = profile?.courseId?._id?.toString() || profile?.courseId?.toString() || courseId;
     const groupCourseId = profile?.groupId?.courseId?._id?.toString() || profile?.groupId?.courseId?.toString();
+    const gIdStr = profile?.groupId?._id?.toString() || profile?.groupId?.toString();
 
-    if (profile && profile.groupId && (!groupCourseId || groupCourseId === targetCourseId)) {
-      modules = await this.findModulesByGroup(profile.groupId._id.toString());
-    } else if (targetCourseId) {
+    if (profile && gIdStr && (!groupCourseId || groupCourseId === targetCourseId)) {
+      modules = await this.findModulesByGroup(gIdStr);
+    }
+    if (modules.length === 0 && targetCourseId) {
       modules = await this.findModulesByCourse(targetCourseId);
-    } else {
+    }
+    if (modules.length === 0 && courseId) {
       modules = await this.findModulesByCourse(courseId);
     }
     const moduleIds = modules.map((m) => m._id);

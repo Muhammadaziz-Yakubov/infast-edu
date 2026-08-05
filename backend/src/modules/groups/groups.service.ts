@@ -229,11 +229,11 @@ export class GroupsService {
       return [];
     }
 
-    const effectiveStudentId = studentId || (user.role === 'STUDENT' ? user.sub : null);
+    const effectiveStudentId = studentId || (user?.role === 'STUDENT' ? (user.userId || user._id || user.sub) : null);
     let targetCourseId = group.courseId;
     let completedLessonIds = new Set<string>();
 
-    if (effectiveStudentId) {
+    if (effectiveStudentId && Types.ObjectId.isValid(effectiveStudentId)) {
       const StudentProfileModel = this.moduleModel.db.model('StudentProfile');
       const profile = await StudentProfileModel.findOne({ userId: new Types.ObjectId(effectiveStudentId) }).exec();
 

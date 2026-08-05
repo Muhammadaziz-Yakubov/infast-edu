@@ -27,8 +27,7 @@ export class ReferralsController {
     @Body() body: { friendName: string; friendPhone: string },
     @Request() req: any,
   ) {
-    // req.user.profileId yoki req.user.sub
-    const referrerId = req.user.profileId || req.user.sub;
+    const referrerId = req.user.profileId || req.user.userId || req.user._id || req.user.sub;
     return this.referralsService.create({
       referrerId,
       friendName: body.friendName,
@@ -73,7 +72,7 @@ export class ReferralsController {
   @Roles(Role.STUDENT)
   @UseGuards(RolesGuard)
   async myReferrals(@Request() req: any) {
-    const referrerId = req.user.profileId || req.user.sub;
+    const referrerId = req.user.profileId || req.user.userId || req.user._id || req.user.sub;
     return this.referralsService.findByStudent(referrerId);
   }
 }

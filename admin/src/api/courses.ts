@@ -48,6 +48,16 @@ export async function deleteLesson(id: string): Promise<any> {
   return unwrapObject(res);
 }
 
+export async function updateCourse(id: string, dto: any): Promise<any> {
+  const res = await apiClient.patch(`/courses/${id}`, dto);
+  return unwrapObject(res);
+}
+
+export async function deleteCourse(id: string): Promise<any> {
+  const res = await apiClient.delete(`/courses/${id}`);
+  return unwrapObject(res);
+}
+
 export async function duplicateLesson(id: string, targetModuleId: string): Promise<any> {
   const res = await apiClient.post(`/lms/lessons/${id}/duplicate`, { targetModuleId });
   return unwrapObject(res);

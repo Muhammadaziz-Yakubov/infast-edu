@@ -128,6 +128,27 @@ export class CoursesService {
     if (!deleted) {
       throw new NotFoundException('Course not found');
     }
+
+    // Clean up associated modules, lessons, and practice tasks
+    try {
+      const courseObjId = new Types.ObjectId(id);
+      const modules = await this.moduleModel.find({ courseId: courseObjId }).exec();
+      const moduleIds = modules.map((m) => m._id);
+      
+      if (moduleIds.length > 0) {
+        await this.moduleModel.deleteMany({ courseId: courseObjId }).exec();
+        const lessons = await this.lessonModel.find({ moduleId: { $in: moduleIds } }).exec();
+        const lessonIds = lessons.map((l) => l._id);
+        
+        if (lessonIds.length > 0) {
+          await this.lessonModel.deleteMany({ moduleId: { $in: moduleIds } }).exec();
+          await this.practiceModel.deleteMany({ lessonId: { $in: lessonIds } }).exec();
+        }
+      }
+    } catch (e) {
+      console.error('Error cleaning up course sub-resources:', e);
+    }
+
     return deleted;
   }
 

@@ -9,6 +9,8 @@ import { Payment, PaymentSchema } from '../payments/schemas/payment.schema';
 import { Contract, ContractSchema } from './schemas/contract.schema';
 import { Course, CourseSchema } from '../courses/schemas/course.schema';
 
+import { CloudStorageService } from '../../common/services/cloud-storage.service';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -21,7 +23,7 @@ import { Course, CourseSchema } from '../courses/schemas/course.schema';
     ]),
   ],
   controllers: [StudentsController],
-  providers: [StudentsService],
+  providers: [StudentsService, CloudStorageService],
   exports: [StudentsService, MongooseModule],
 })
 export class StudentsModule {}

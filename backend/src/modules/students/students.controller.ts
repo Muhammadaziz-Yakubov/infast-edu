@@ -1,4 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Query, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { CloudStorageService } from '../../common/services/cloud-storage.service';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
@@ -15,7 +18,10 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagg
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('students')
 export class StudentsController {
-  constructor(private readonly studentsService: StudentsService) {}
+  constructor(
+    private readonly studentsService: StudentsService,
+    private readonly cloudStorage: CloudStorageService,
+  ) {}
 
   @Get('leaderboard')
   @ApiOperation({ summary: 'Get student leaderboard (Available to all authenticated users)' })
@@ -38,6 +44,32 @@ export class StudentsController {
   @ApiResponse({ status: 200, description: 'Avatar updated successfully.' })
   updateOwnAvatar(@CurrentUser() user: any, @Body() body: { avatar: string }) {
     return this.studentsService.updateOwnAvatar(user.userId, body.avatar);
+  }
+
+  @Post('me/avatar/upload')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Upload profile image to Cloudflare R2 and set as student avatar' })
+  @ApiResponse({ status: 201, description: 'Avatar uploaded and updated successfully.' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+      fileFilter: (req, file, cb) => {
+        const allowed = /image\/(jpeg|jpg|png|gif|webp)/;
+        if (allowed.test(file.mimetype)) cb(null, true);
+        else cb(new Error('Faqat rasm fayllari (JPEG, PNG, GIF, WEBP) yuklash mumkin'), false);
+      },
+    }),
+  )
+  async uploadOwnAvatarFile(@CurrentUser() user: any, @UploadedFile() file: any) {
+    if (!file) throw new Error('Rasm fayli yuklanmadi');
+    const avatarUrl = await this.cloudStorage.uploadFile(
+      file.buffer,
+      file.originalname || 'avatar.jpg',
+      file.mimetype || 'image/jpeg',
+      'avatars',
+    );
+    return this.studentsService.updateOwnAvatar(user.userId, avatarUrl);
   }
 
   @Patch('me/profile')

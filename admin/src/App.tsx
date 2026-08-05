@@ -24,6 +24,7 @@ import { Events } from './pages/Events';
 import { Referrals } from './pages/Referrals';
 import { Settings } from './pages/Settings';
 import { LmsCheck } from './pages/LmsCheck';
+import { CourseTemplates } from './pages/CourseTemplates';
 import { Chat } from './pages/Chat';
 import { AiAdvisor } from './pages/AiAdvisor';
 import { TelegramAi } from './pages/TelegramAi';
@@ -83,6 +84,7 @@ export const App: React.FC = () => {
             
             {/* LMS Syllabus */}
             <Route path="/courses" element={<Courses />} />
+            <Route path="/course-templates" element={<CourseTemplates />} />
             <Route path="/lms" element={<LmsBuilder />} />
             <Route path="/lms-check" element={<LmsCheck />} />
             <Route path="/homework" element={<Homework />} />

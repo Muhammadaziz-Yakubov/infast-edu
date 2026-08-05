@@ -14,7 +14,11 @@ export class CloudStorageService {
   constructor(private readonly config: ConfigService) {
     const accountId = config.get<string>('R2_ACCOUNT_ID', '');
     this.bucket = config.get<string>('R2_BUCKET', 'infast-chat');
-    this.publicUrl = config.get<string>('R2_PUBLIC_URL', '');
+    const rawPublicUrl = config.get<string>('R2_PUBLIC_URL', '');
+    const baseUrl = rawPublicUrl 
+      ? rawPublicUrl.replace(/\/$/, '') 
+      : `https://pub-${accountId}.r2.dev`;
+    this.publicUrl = baseUrl;
 
     this.s3 = new S3Client({
       region: 'auto',
@@ -25,7 +29,7 @@ export class CloudStorageService {
       },
     });
 
-    this.logger.log(`Cloudflare R2 initialized: bucket=${this.bucket}`);
+    this.logger.log(`Cloudflare R2 initialized: bucket=${this.bucket}, publicUrl=${this.publicUrl}`);
   }
 
   /**
@@ -51,7 +55,7 @@ export class CloudStorageService {
     );
 
     const url = `${this.publicUrl}/${key}`;
-    this.logger.log(`Uploaded to R2: ${key} (${mimetype}, ${buffer.length} bytes)`);
+    this.logger.log(`Uploaded to R2: ${key} (${mimetype}, ${buffer.length} bytes) -> ${url}`);
     return url;
   }
 

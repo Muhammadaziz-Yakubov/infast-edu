@@ -231,7 +231,7 @@ export const Groups: React.FC = () => {
             <div className="space-y-3">
               {groups.map((group) => {
                 const isSelected = selectedGroup?._id === group._id;
-                const course = courses.find((c) => c._id === (group.courseId?._id || group.courseId));
+                const course = courses.find((c) => c._id === ((group.courseId as any)?._id || group.courseId));
                 return (
                   <div
                     key={group._id}
@@ -273,7 +273,7 @@ export const Groups: React.FC = () => {
                     <h2 className="text-2xl font-bold tracking-tight">{selectedGroup.name}</h2>
                     <p className="text-sm text-primary font-semibold flex items-center gap-1.5 mt-1">
                       <BookOpen className="w-4 h-4" />
-                      Guruh Asosiy Kursi: {courses.find((c) => c._id === (selectedGroup.courseId?._id || selectedGroup.courseId))?.title || 'Belgilanmagan'}
+                      Guruh Asosiy Kursi: {courses.find((c) => c._id === ((selectedGroup.courseId as any)?._id || selectedGroup.courseId))?.title || 'Belgilanmagan'}
                     </p>
                   </div>
                   <button
@@ -340,7 +340,7 @@ export const Groups: React.FC = () => {
                         const s = students.find((item) => item._id === studentIdStr);
                         if (!s) return null;
 
-                        const groupCourseIdStr = selectedGroup.courseId?._id || selectedGroup.courseId;
+                        const groupCourseIdStr = (selectedGroup.courseId as any)?._id || selectedGroup.courseId;
                         const studentCourseIdStr = s.courseId;
                         const hasCustomCourse = studentCourseIdStr && studentCourseIdStr !== groupCourseIdStr;
                         const activeCourse = courses.find((c) => c._id === (studentCourseIdStr || groupCourseIdStr));

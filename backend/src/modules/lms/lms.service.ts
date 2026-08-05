@@ -577,7 +577,7 @@ export class LmsService implements OnModuleInit {
         totalLessonsCount: 0,
         completionPercentage: 0,
         averageQuizScore: 0,
-        lessons: [],
+        progress: [],
       };
     }
 

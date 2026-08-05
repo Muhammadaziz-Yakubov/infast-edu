@@ -44,6 +44,9 @@ export const Groups: React.FC = () => {
   // Student course assignment modal / state
   const [changingStudentCourseId, setChangingStudentCourseId] = useState<string | null>(null);
   const [selectedStudentCourse, setSelectedStudentCourse] = useState<string>('');
+  const [selectedStudentCourseStartDate, setSelectedStudentCourseStartDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
 
   useEffect(() => {
     loadData();
@@ -182,7 +185,10 @@ export const Groups: React.FC = () => {
 
   const handleChangeStudentCourse = async (studentId: string, newCourseId: string) => {
     try {
-      await updateStudent(studentId, { courseId: newCourseId });
+      await updateStudent(studentId, {
+        courseId: newCourseId,
+        courseStartDate: selectedStudentCourseStartDate || new Date().toISOString().split('T')[0],
+      });
       setChangingStudentCourseId(null);
       await loadData();
     } catch (err: any) {
@@ -365,40 +371,57 @@ export const Groups: React.FC = () => {
                             </div>
 
                             {/* Active Course Badge & Selector */}
-                            <div className="flex items-center justify-between text-xs pt-1 border-t border-border/30">
-                              <span className="text-muted-foreground">O'qiyotgan kursi:</span>
+                            <div className="text-xs pt-1 border-t border-border/30 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">O'qiyotgan kursi:</span>
+                              </div>
                               
                               {changingStudentCourseId === s._id ? (
-                                <div className="flex items-center gap-1">
-                                  <select
-                                    value={selectedStudentCourse}
-                                    onChange={(e) => setSelectedStudentCourse(e.target.value)}
-                                    className="text-xs border rounded px-1.5 py-0.5 bg-background"
-                                  >
-                                    <option value="">Guruh Kursi ({courses.find(c => c._id === groupCourseIdStr)?.title})</option>
-                                    {courses.map(c => (
-                                      <option key={c._id} value={c._id}>{c.title}</option>
-                                    ))}
-                                  </select>
-                                  <button
-                                    onClick={() => handleChangeStudentCourse(s._id, selectedStudentCourse)}
-                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
-                                    title="Saqlash"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => setChangingStudentCourseId(null)}
-                                    className="p-1 text-muted-foreground hover:bg-secondary rounded"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex items-center gap-1">
+                                    <select
+                                      value={selectedStudentCourse}
+                                      onChange={(e) => setSelectedStudentCourse(e.target.value)}
+                                      className="text-xs border rounded px-1.5 py-0.5 bg-background flex-1"
+                                    >
+                                      <option value="">Guruh Kursi ({courses.find(c => c._id === groupCourseIdStr)?.title})</option>
+                                      {courses.map(c => (
+                                        <option key={c._id} value={c._id}>{c.title}</option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      onClick={() => handleChangeStudentCourse(s._id, selectedStudentCourse)}
+                                      className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                                      title="Saqlash"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => setChangingStudentCourseId(null)}
+                                      className="p-1 text-muted-foreground hover:bg-secondary rounded"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  {selectedStudentCourse && (
+                                    <div className="flex items-center gap-1.5">
+                                      <CalendarDays className="w-3 h-3 text-amber-500 shrink-0" />
+                                      <span className="text-muted-foreground whitespace-nowrap">Boshlanish:</span>
+                                      <input
+                                        type="date"
+                                        value={selectedStudentCourseStartDate}
+                                        onChange={(e) => setSelectedStudentCourseStartDate(e.target.value)}
+                                        className="border rounded px-1.5 py-0.5 bg-background text-xs flex-1"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <button
                                   onClick={() => {
                                     setChangingStudentCourseId(s._id);
                                     setSelectedStudentCourse(s.courseId || '');
+                                    setSelectedStudentCourseStartDate(new Date().toISOString().split('T')[0]);
                                   }}
                                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium transition-all text-[11px] cursor-pointer ${
                                     hasCustomCourse

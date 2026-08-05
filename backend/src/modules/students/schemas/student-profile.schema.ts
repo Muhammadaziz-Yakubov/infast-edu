@@ -42,6 +42,9 @@ export class StudentProfile extends Document {
   @Prop({ type: Types.ObjectId, ref: 'Course' })
   courseId?: Types.ObjectId;
 
+  @Prop({ type: Date })
+  courseStartDate?: Date;
+
   @Prop({ type: String, enum: PaymentStatus, default: PaymentStatus.UPCOMING })
   paymentStatus: PaymentStatus;
 

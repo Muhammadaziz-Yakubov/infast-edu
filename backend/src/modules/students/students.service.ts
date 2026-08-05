@@ -321,6 +321,9 @@ export class StudentsService implements OnModuleInit {
     if (updateStudentDto.courseId !== undefined) {
       profileUpdates.courseId = updateStudentDto.courseId ? new Types.ObjectId(updateStudentDto.courseId) : null;
     }
+    if (updateStudentDto.courseStartDate !== undefined) {
+      profileUpdates.courseStartDate = updateStudentDto.courseStartDate ? new Date(updateStudentDto.courseStartDate) : null;
+    }
     if (updateStudentDto.paymentStatus !== undefined) {
       profileUpdates.paymentStatus = updateStudentDto.paymentStatus;
       // When admin manually sets PAID, auto-create a Payment record using course price

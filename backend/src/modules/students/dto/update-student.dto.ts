@@ -63,6 +63,11 @@ export class UpdateStudentDto {
   @IsOptional()
   courseId?: string;
 
+  @ApiProperty({ example: '2026-08-05', required: false })
+  @IsString()
+  @IsOptional()
+  courseStartDate?: string;
+
   @ApiProperty({ enum: PaymentStatus, required: false })
   @IsEnum(PaymentStatus)
   @IsOptional()

@@ -73,8 +73,8 @@ export class GroupsController {
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN, Role.STUDENT)
   @ApiOperation({ summary: 'Get the automatically generated lesson schedule dates for a group' })
   @ApiResponse({ status: 200, description: 'List of scheduled lessons.' })
-  getSchedule(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.groupsService.getGroupSchedule(id, user);
+  getSchedule(@Param('id') id: string, @CurrentUser() user: any, @Query('studentId') studentId?: string) {
+    return this.groupsService.getGroupSchedule(id, user, studentId);
   }
 
   @Get(':id/progress')

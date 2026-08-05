@@ -49,6 +49,9 @@ export class AttendanceService {
           xpDelta = -300;
           coinDelta = -70;
         }
+        if (dto.lessonNumber !== undefined) {
+          existing.lessonNumber = dto.lessonNumber;
+        }
         existing.status = dto.status;
         existing.date = new Date();
         await existing.save();
@@ -67,6 +70,7 @@ export class AttendanceService {
         studentId: studentIdObj,
         groupId: groupIdObj,
         lessonId: lessonIdObj,
+        lessonNumber: dto.lessonNumber,
         status: dto.status,
         date: new Date(),
       });
@@ -91,6 +95,7 @@ export class AttendanceService {
         studentId: record.studentId,
         groupId: dto.groupId,
         lessonId: dto.lessonId,
+        lessonNumber: dto.lessonNumber,
         status: record.status,
       });
       results.push(res);

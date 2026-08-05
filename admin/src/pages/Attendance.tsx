@@ -97,9 +97,12 @@ export const Attendance: React.FC = () => {
         status,
       }));
 
+      const selectedSch = schedule.find((sch) => String(sch.lessonId) === String(selectedLessonId));
+
       await submitAttendance({
         groupId: selectedGroupId,
         lessonId: selectedLessonId,
+        lessonNumber: selectedSch?.order,
         date: attendanceDate,
         records,
       });

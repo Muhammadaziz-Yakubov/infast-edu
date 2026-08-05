@@ -21,6 +21,9 @@ export class Attendance extends Document {
   @Prop({ type: Types.ObjectId, ref: 'Lesson', required: true })
   lessonId: Types.ObjectId;
 
+  @Prop({ type: Number })
+  lessonNumber?: number;
+
   @Prop({ required: true, default: Date.now })
   date: Date;
 
@@ -32,4 +35,6 @@ export type AttendanceDocument = Attendance & Document;
 export const AttendanceSchema = SchemaFactory.createForClass(Attendance);
 // Student can only have one attendance log per lesson
 AttendanceSchema.index({ studentId: 1, lessonId: 1 }, { unique: true });
+AttendanceSchema.index({ studentId: 1, groupId: 1, lessonNumber: 1 });
 AttendanceSchema.index({ groupId: 1, lessonId: 1 });
+AttendanceSchema.index({ groupId: 1, lessonNumber: 1 });

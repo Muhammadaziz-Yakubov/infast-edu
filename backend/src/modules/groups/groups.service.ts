@@ -10,6 +10,7 @@ import { User, UserDocument } from '../users/schemas/user.schema';
 import { StudentsService } from '../students/students.service';
 import { ChatService } from '../chat/chat.service';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { ScheduleGenerator } from './utils/schedule-generator.util';
 
 @Injectable()
 export class GroupsService {
@@ -228,91 +229,40 @@ export class GroupsService {
       throw new ForbiddenException('You do not have access to this group');
     }
 
-    // ── STUDENT INDIVIDUAL SCHEDULE ──────────────────────────────────────────
-    // Determine the effective studentId (from query param or from logged-in student)
     const effectiveStudentId = studentId || (user.role === 'STUDENT' ? user.sub : null);
+    let targetCourseId = group.courseId;
+    let completedLessonIds = new Set<string>();
+
     if (effectiveStudentId) {
       const StudentProfileModel = this.moduleModel.db.model('StudentProfile');
       const profile = await StudentProfileModel.findOne({ userId: new Types.ObjectId(effectiveStudentId) }).exec();
 
       if (profile && profile.courseId) {
-        const groupCourseIdStr = group.courseId?.toString();
-        const studentCourseIdStr = profile.courseId?.toString();
-
-        // Student has individual (different) course
-        if (studentCourseIdStr && studentCourseIdStr !== groupCourseIdStr) {
-          // Use courseStartDate if set, else today
-          const startDate = profile.courseStartDate ? new Date(profile.courseStartDate) : new Date();
-
-          // Find modules for student's individual course
-          let studentModules = await this.moduleModel
-            .find({ courseId: profile.courseId, groupId: { $exists: false } })
-            .sort({ order: 1 })
-            .exec();
-
-          const studentModuleIds = studentModules.map((m) => m._id);
-          const studentLessons = await this.lessonModel.find({ moduleId: { $in: studentModuleIds } }).exec();
-          studentLessons.sort((a, b) => {
-            const modA = studentModules.find((m) => m._id.toString() === a.moduleId.toString());
-            const modB = studentModules.find((m) => m._id.toString() === b.moduleId.toString());
-            return (modA?.order ?? 0) !== (modB?.order ?? 0)
-              ? (modA?.order ?? 0) - (modB?.order ?? 0)
-              : a.order - b.order;
-          });
-
-          // Generate virtual schedule from startDate using group's lesson days
-          const rawDays = (group.schedule?.days || []).map((d) => d.trim().toLowerCase());
-          const dayMap: Record<string, string[]> = {
-            sunday: ['sunday', 'sun', 'yakshanba', 'yak'],
-            monday: ['monday', 'mon', 'dushanba', 'du'],
-            tuesday: ['tuesday', 'tue', 'seshanba', 'se'],
-            wednesday: ['wednesday', 'wed', 'chorshanba', 'chor'],
-            thursday: ['thursday', 'thu', 'payshanba', 'pay'],
-            friday: ['friday', 'fri', 'juma', 'jum'],
-            saturday: ['saturday', 'sat', 'shanba', 'sha'],
-          };
-          const getUtcDayName = (date: Date): string => {
-            return ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][date.getUTCDay()];
-          };
-
-          const schedule: any[] = [];
-          let currentDate = new Date(startDate);
-          let lessonIndex = 0;
-
-          while (lessonIndex < studentLessons.length) {
-            const dayName = getUtcDayName(currentDate);
-            const aliases = dayMap[dayName] || [dayName];
-            const isMatch = rawDays.some((rd) => aliases.some((a) => rd.includes(a) || a.includes(rd)));
-
-            if (isMatch) {
-              const lesson = studentLessons[lessonIndex];
-              schedule.push({
-                _id: `virtual-${lesson._id}`,
-                lessonId: lesson._id.toString(),
-                lessonTitle: lesson.title || `Dars #${lessonIndex + 1}`,
-                lessonOrder: lesson.order || lessonIndex + 1,
-                scheduledDate: new Date(currentDate),
-                order: lessonIndex + 1,
-              });
-              lessonIndex++;
-            }
-            currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-          }
-
-          return schedule;
-        }
+        targetCourseId = profile.courseId;
       }
-    }
-    // ── END STUDENT INDIVIDUAL SCHEDULE ─────────────────────────────────────
 
-    // Find modules of this group (with fallback to course modules)
-    let modules = await this.moduleModel.find({ groupId: group._id }).sort({ order: 1 }).exec();
-    if (modules.length === 0 && group.courseId) {
-      modules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).sort({ order: 1 }).exec();
+      const LessonProgressModel = this.moduleModel.db.model('LessonProgress');
+      const progressRecords = await LessonProgressModel.find({
+        studentId: new Types.ObjectId(effectiveStudentId),
+        completed: true,
+      }).exec();
+
+      completedLessonIds = new Set(progressRecords.map((p: any) => p.lessonId.toString()));
     }
+
+    // 1. Fetch modules for target course (or group-specific modules)
+    let modules = await this.moduleModel.find({ groupId: group._id }).sort({ order: 1 }).exec();
+    if (modules.length === 0 && targetCourseId) {
+      modules = await this.moduleModel
+        .find({ courseId: targetCourseId, groupId: { $exists: false } })
+        .sort({ order: 1 })
+        .exec();
+    }
+
     const moduleIds = modules.map((m) => m._id);
     const lessons = await this.lessonModel.find({ moduleId: { $in: moduleIds } }).exec();
 
+    // Sort lessons globally by module order then lesson order
     lessons.sort((a, b) => {
       const modA = modules.find((m) => m._id.toString() === a.moduleId.toString());
       const modB = modules.find((m) => m._id.toString() === b.moduleId.toString());
@@ -322,44 +272,39 @@ export class GroupsService {
       return a.order - b.order;
     });
 
-    const totalLessons = lessons.length;
+    if (lessons.length === 0) return [];
 
-    const scheduleRecords = await this.scheduleModel
-      .find({ groupId: new Types.ObjectId(groupId) })
-      .populate('lessonId', 'title order videoUrl')
-      .exec();
+    // 2. Generate dynamic schedule dates using ScheduleGenerator
+    const days = group.schedule?.days || [];
+    const generatedDates = ScheduleGenerator.generateDates(group.startDate, days, lessons.length);
 
-    let needsRegen = scheduleRecords.length !== totalLessons;
-    if (!needsRegen) {
-      for (let i = 0; i < scheduleRecords.length; i++) {
-        const rec = scheduleRecords[i];
-        if (!rec.lessonId || typeof rec.lessonId === 'string' || !(rec.lessonId as any).title) {
-          needsRegen = true;
-          break;
-        }
+    // 3. Determine next lesson order (completed lessons count + 1)
+    let completedCount = 0;
+    for (let i = 0; i < lessons.length; i++) {
+      if (completedLessonIds.has(lessons[i]._id.toString())) {
+        completedCount++;
       }
     }
+    const nextLessonOrder = completedCount + 1;
 
-    if (needsRegen && totalLessons > 0) {
-      await this.generateLessonSchedule(groupId);
-    }
+    // 4. Return dynamic schedule array
+    return lessons.map((lesson, idx) => {
+      const order = idx + 1;
+      const dateInfo = generatedDates[idx];
+      const isCompleted = completedLessonIds.has(lesson._id.toString());
+      const isNext = order === nextLessonOrder;
 
-    const records = await this.scheduleModel
-      .find({ groupId: new Types.ObjectId(groupId) })
-      .populate('lessonId', 'title order videoUrl')
-      .sort({ order: 1 })
-      .exec();
-
-    return records.map((rec) => {
-      const recObj = rec.toObject();
-      const lesson = recObj.lessonId as any;
       return {
-        _id: recObj._id,
-        lessonId: lesson?._id?.toString() || recObj.lessonId?.toString() || '',
-        lessonTitle: lesson?.title || (lessons[rec.order - 1]?.title) || `Dars #${rec.order}`,
-        lessonOrder: lesson?.order || recObj.order,
-        scheduledDate: recObj.scheduledDate,
-        order: recObj.order,
+        _id: lesson._id.toString(),
+        lessonId: lesson._id.toString(),
+        lessonTitle: lesson.title || `Dars #${order}`,
+        lessonOrder: lesson.order || order,
+        scheduledDate: dateInfo ? dateInfo.date : new Date(),
+        formattedDate: dateInfo ? dateInfo.formattedDate : '',
+        order: order,
+        courseId: targetCourseId.toString(),
+        isCompleted: isCompleted,
+        isNext: isNext,
       };
     });
   }
@@ -469,78 +414,37 @@ export class GroupsService {
     };
   }
 
-  // Automatic Lesson Date Calculator
+  // Automatic Lesson Date Calculator / Cache Sync
   async generateLessonSchedule(groupId: string): Promise<void> {
     const group = await this.groupModel.findById(groupId);
     if (!group) return;
 
-    // 1. Fetch modules and lessons (handling custom group modules)
     let modules = await this.moduleModel.find({ groupId: group._id }).sort({ order: 1 }).exec();
     if (modules.length === 0 && group.courseId) {
       modules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).sort({ order: 1 }).exec();
     }
     const moduleIds = modules.map((m) => m._id);
-
     const lessons = await this.lessonModel.find({ moduleId: { $in: moduleIds } }).exec();
-
     if (lessons.length === 0) return;
 
-    // Sort lessons by module order, then lesson order
     lessons.sort((a, b) => {
       const modA = modules.find((m) => m._id.toString() === a.moduleId.toString());
       const modB = modules.find((m) => m._id.toString() === b.moduleId.toString());
-      const modOrderA = modA ? modA.order : 0;
-      const modOrderB = modB ? modB.order : 0;
-      if (modOrderA !== modOrderB) {
-        return modOrderA - modOrderB;
-      }
-      return a.order - b.order;
+      return (modA?.order ?? 0) - (modB?.order ?? 0) || a.order - b.order;
     });
 
-    // 2. Map lessons to schedule days
-    let currentDate = new Date(group.startDate);
-    let lessonIndex = 0;
-    // Normalize stored day names to lowercase for comparison
-    const rawDays = (group.schedule?.days || []).map((d) => d.trim().toLowerCase());
-    
-    // Day aliases dictionary
-    const dayMap: Record<string, string[]> = {
-      sunday: ['sunday', 'sun', 'yakshanba', 'yak'],
-      monday: ['monday', 'mon', 'dushanba', 'du'],
-      tuesday: ['tuesday', 'tue', 'seshanba', 'se'],
-      wednesday: ['wednesday', 'wed', 'chorshanba', 'chor'],
-      thursday: ['thursday', 'thu', 'payshanba', 'pay'],
-      friday: ['friday', 'fri', 'juma', 'jum'],
-      saturday: ['saturday', 'sat', 'shanba', 'sha'],
-    };
+    const generatedDates = ScheduleGenerator.generateDates(group.startDate, group.schedule?.days || [], lessons.length);
 
-    const getUtcDayName = (date: Date): string => {
-      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      return days[date.getUTCDay()];
-    };
-
-    // Wipe old schedules
     await this.scheduleModel.deleteMany({ groupId: group._id }).exec();
+    const records = generatedDates.map((d, idx) => ({
+      groupId: group._id,
+      lessonId: lessons[idx]._id,
+      scheduledDate: d.date,
+      order: d.order,
+    }));
 
-    // Simple loop: advance day-by-day and assign lesson if day matches schedule
-    while (lessonIndex < lessons.length) {
-      const dayName = getUtcDayName(currentDate);
-      const aliases = dayMap[dayName] || [dayName];
-      const isMatch = rawDays.some((rd) => aliases.some((a) => rd.includes(a) || a.includes(rd)));
-
-      if (isMatch) {
-        const lesson = lessons[lessonIndex];
-        const scheduleRecord = new this.scheduleModel({
-          groupId: group._id,
-          lessonId: lesson._id,
-          scheduledDate: new Date(currentDate),
-          order: lessonIndex + 1,
-        });
-        await scheduleRecord.save();
-        lessonIndex++;
-      }
-      // Advance by one day in UTC to prevent timezone DST shifts
-      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    if (records.length > 0) {
+      await this.scheduleModel.insertMany(records);
     }
   }
 }

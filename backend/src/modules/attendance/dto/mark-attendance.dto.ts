@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString, IsArray, IsOptional, ValidateNested } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, IsArray, IsOptional, IsNumber, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AttendanceStatus } from '../../../common/enums/status.enum';
 import { ApiProperty } from '@nestjs/swagger';
@@ -18,6 +18,11 @@ export class MarkAttendanceDto {
   @IsString()
   @IsNotEmpty()
   lessonId: string;
+
+  @ApiProperty({ example: 1, required: false })
+  @IsNumber()
+  @IsOptional()
+  lessonNumber?: number;
 
   @ApiProperty({ enum: AttendanceStatus, example: AttendanceStatus.PRESENT })
   @IsEnum(AttendanceStatus)
@@ -45,6 +50,11 @@ export class BatchAttendanceDto {
   @IsString()
   @IsNotEmpty()
   lessonId: string;
+
+  @ApiProperty({ example: 1, required: false })
+  @IsNumber()
+  @IsOptional()
+  lessonNumber?: number;
 
   @ApiProperty({ example: '2026-06-29', required: false })
   @IsString()

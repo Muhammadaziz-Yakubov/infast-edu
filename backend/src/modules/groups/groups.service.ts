@@ -254,14 +254,15 @@ export class GroupsService {
     // Count existing schedule records
     const scheduleRecords = await this.scheduleModel
       .find({ groupId: new Types.ObjectId(groupId) })
+      .populate('lessonId', 'title order videoUrl')
       .exec();
 
-    // Auto-regenerate if schedule count or ordering is stale
+    // Auto-regenerate if schedule count is wrong OR any lesson is missing/unpopulated
     let needsRegen = scheduleRecords.length !== totalLessons;
     if (!needsRegen) {
-      const sortedRecords = [...scheduleRecords].sort((a, b) => a.order - b.order);
-      for (let i = 0; i < totalLessons; i++) {
-        if (sortedRecords[i]?.lessonId?.toString() !== lessons[i]._id.toString()) {
+      for (let i = 0; i < scheduleRecords.length; i++) {
+        const rec = scheduleRecords[i];
+        if (!rec.lessonId || typeof rec.lessonId === 'string' || !(rec.lessonId as any).title) {
           needsRegen = true;
           break;
         }
@@ -284,7 +285,7 @@ export class GroupsService {
       return {
         _id: recObj._id,
         lessonId: lesson?._id?.toString() || recObj.lessonId?.toString() || '',
-        lessonTitle: lesson?.title || 'Dars mavjud emas',
+        lessonTitle: lesson?.title || (lessons[rec.order - 1]?.title) || `Dars #${rec.order}`,
         lessonOrder: lesson?.order || recObj.order,
         scheduledDate: recObj.scheduledDate,
         order: recObj.order,
@@ -429,7 +430,18 @@ export class GroupsService {
     let currentDate = new Date(group.startDate);
     let lessonIndex = 0;
     // Normalize stored day names to lowercase for comparison
-    const daysOfWeek = group.schedule.days.map((d) => d.trim().toLowerCase());
+    const rawDays = (group.schedule?.days || []).map((d) => d.trim().toLowerCase());
+    
+    // Day aliases dictionary
+    const dayMap: Record<string, string[]> = {
+      sunday: ['sunday', 'sun', 'yakshanba', 'yak'],
+      monday: ['monday', 'mon', 'dushanba', 'du'],
+      tuesday: ['tuesday', 'tue', 'seshanba', 'se'],
+      wednesday: ['wednesday', 'wed', 'chorshanba', 'chor'],
+      thursday: ['thursday', 'thu', 'payshanba', 'pay'],
+      friday: ['friday', 'fri', 'juma', 'jum'],
+      saturday: ['saturday', 'sat', 'shanba', 'sha'],
+    };
 
     const getUtcDayName = (date: Date): string => {
       const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -442,7 +454,10 @@ export class GroupsService {
     // Simple loop: advance day-by-day and assign lesson if day matches schedule
     while (lessonIndex < lessons.length) {
       const dayName = getUtcDayName(currentDate);
-      if (daysOfWeek.includes(dayName)) {
+      const aliases = dayMap[dayName] || [dayName];
+      const isMatch = rawDays.some((rd) => aliases.some((a) => rd.includes(a) || a.includes(rd)));
+
+      if (isMatch) {
         const lesson = lessons[lessonIndex];
         const scheduleRecord = new this.scheduleModel({
           groupId: group._id,

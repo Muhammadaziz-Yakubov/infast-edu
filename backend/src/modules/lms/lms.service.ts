@@ -78,7 +78,8 @@ export class LmsService implements OnModuleInit {
   }
 
   async findModulesByCourse(courseId: string): Promise<any[]> {
-    const modules = await this.moduleModel.find({ courseId: new Types.ObjectId(courseId), groupId: { $exists: false } }).sort({ order: 1 }).exec();
+    const validCourseId = new Types.ObjectId(courseId);
+    const modules = await this.moduleModel.find({ courseId: validCourseId, $or: [{ groupId: { $exists: false } }, { groupId: null }] }).sort({ order: 1 }).exec();
     const result = [];
     for (const mod of modules) {
       const lessons = await this.lessonModel.find({ moduleId: mod._id }).sort({ order: 1 }).exec();
@@ -101,7 +102,9 @@ export class LmsService implements OnModuleInit {
 
     // If no custom modules for this group, fallback to course modules
     if (modules.length === 0 && group.courseId) {
-      modules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).sort({ order: 1 }).exec();
+      const courseObjId = (group.courseId as any)?._id || group.courseId;
+      const validCourseId = typeof courseObjId === 'string' ? new Types.ObjectId(courseObjId) : courseObjId;
+      modules = await this.moduleModel.find({ courseId: validCourseId, $or: [{ groupId: { $exists: false } }, { groupId: null }] }).sort({ order: 1 }).exec();
     }
 
     const result = [];
@@ -132,7 +135,9 @@ export class LmsService implements OnModuleInit {
     if (sourceGroupId) {
       sourceModules = await this.moduleModel.find({ groupId: new Types.ObjectId(sourceGroupId) }).exec();
     } else {
-      sourceModules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).exec();
+      const courseObjId = (group.courseId as any)?._id || group.courseId;
+      const validCourseId = typeof courseObjId === 'string' ? new Types.ObjectId(courseObjId) : courseObjId;
+      sourceModules = await this.moduleModel.find({ courseId: validCourseId, $or: [{ groupId: { $exists: false } }, { groupId: null }] }).exec();
     }
 
     for (const cMod of sourceModules) {

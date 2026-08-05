@@ -253,8 +253,10 @@ export class GroupsService {
     // 1. Fetch modules for target course (or group-specific modules)
     let modules = await this.moduleModel.find({ groupId: group._id }).sort({ order: 1 }).exec();
     if (modules.length === 0 && targetCourseId) {
+      const courseObjId = (targetCourseId as any)?._id || targetCourseId;
+      const validCourseId = typeof courseObjId === 'string' ? new Types.ObjectId(courseObjId) : courseObjId;
       modules = await this.moduleModel
-        .find({ courseId: targetCourseId, groupId: { $exists: false } })
+        .find({ courseId: validCourseId, $or: [{ groupId: { $exists: false } }, { groupId: null }] })
         .sort({ order: 1 })
         .exec();
     }
@@ -327,8 +329,9 @@ export class GroupsService {
       .exec();
 
     if (modules.length === 0 && courseId) {
+      const validCourseId = typeof courseId === 'string' ? new Types.ObjectId(courseId) : (courseId as any)._id || courseId;
       modules = await this.moduleModel
-        .find({ courseId: new Types.ObjectId(courseId.toString()), groupId: { $exists: false } })
+        .find({ courseId: new Types.ObjectId(validCourseId.toString()), $or: [{ groupId: { $exists: false } }, { groupId: null }] })
         .sort({ order: 1 })
         .exec();
     }
@@ -421,7 +424,12 @@ export class GroupsService {
 
     let modules = await this.moduleModel.find({ groupId: group._id }).sort({ order: 1 }).exec();
     if (modules.length === 0 && group.courseId) {
-      modules = await this.moduleModel.find({ courseId: group.courseId, groupId: { $exists: false } }).sort({ order: 1 }).exec();
+      const courseObjId = (group.courseId as any)?._id || group.courseId;
+      const validCourseId = typeof courseObjId === 'string' ? new Types.ObjectId(courseObjId) : courseObjId;
+      modules = await this.moduleModel
+        .find({ courseId: validCourseId, $or: [{ groupId: { $exists: false } }, { groupId: null }] })
+        .sort({ order: 1 })
+        .exec();
     }
     const moduleIds = modules.map((m) => m._id);
     const lessons = await this.lessonModel.find({ moduleId: { $in: moduleIds } }).exec();

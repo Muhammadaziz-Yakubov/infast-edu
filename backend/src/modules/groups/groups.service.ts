@@ -226,7 +226,7 @@ export class GroupsService {
     if (!group) return [];
 
     if (user.role === Role.BRANCH_ADMIN && (!group.branchId || group.branchId.toString() !== user.branchId)) {
-      throw new ForbiddenException('You do not have access to this group');
+      return [];
     }
 
     const effectiveStudentId = studentId || (user.role === 'STUDENT' ? user.sub : null);

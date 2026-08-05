@@ -9,7 +9,7 @@
     "build": "nest build && npm install --prefix AIAGENT && npm run build --prefix AIAGENT",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "node dist/main",
-    "render-build": "npm install && npm run build",
+    "render-build": "npm install && npm run build && pip install -r AIAGENT/src/telegram/requirements.txt",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",

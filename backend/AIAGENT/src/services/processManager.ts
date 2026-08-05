@@ -18,7 +18,39 @@ export class TelegramProcessManager {
     }
 
     const scriptPath = path.join(process.cwd(), "src", "telegram", "client.py");
+    const requirementsPath = path.join(process.cwd(), "src", "telegram", "requirements.txt");
     const pythonCmd = process.platform === "win32" ? "py" : "python";
+    const pipCmd = process.platform === "win32" ? "pip" : "pip3";
+
+    logger.info(`Installing Python dependencies from: ${requirementsPath}`);
+
+    // Install Python dependencies before starting the microservice
+    const pipInstall = spawn(pipCmd, ["install", "-r", requirementsPath], {
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: false,
+    });
+
+    pipInstall.stdout?.on("data", (data) => {
+      const out = data.toString().trim();
+      if (out) logger.info(`[pip] ${out}`);
+    });
+
+    pipInstall.stderr?.on("data", (data) => {
+      const err = data.toString().trim();
+      if (err) logger.warn(`[pip] ${err}`);
+    });
+
+    pipInstall.on("close", (code) => {
+      if (code !== 0) {
+        logger.error(`pip install failed with code ${code}. Attempting to start Python anyway...`);
+      } else {
+        logger.info("Python dependencies installed successfully.");
+      }
+      this.spawnPythonProcess(pythonCmd, scriptPath);
+    });
+  }
+
+  private spawnPythonProcess(pythonCmd: string, scriptPath: string): void {
     logger.info(`Spawning Telegram Python microservice: ${pythonCmd} "${scriptPath}"`);
 
     // Spawn python process

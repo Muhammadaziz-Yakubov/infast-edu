@@ -78,11 +78,18 @@ export class LmsService implements OnModuleInit {
   }
 
   async findModulesByCourse(courseId: string): Promise<any[]> {
+    console.log('[LMS] findModulesByCourse called with courseId:', courseId);
+    if (!courseId || !Types.ObjectId.isValid(courseId)) {
+      console.log('[LMS] findModulesByCourse: invalid courseId, returning []');
+      return [];
+    }
     const validCourseId = new Types.ObjectId(courseId);
     const modules = await this.moduleModel.find({ courseId: validCourseId, $or: [{ groupId: { $exists: false } }, { groupId: null }] }).sort({ order: 1 }).exec();
+    console.log('[LMS] findModulesByCourse: found', modules.length, 'modules for courseId', courseId);
     const result = [];
     for (const mod of modules) {
       const lessons = await this.lessonModel.find({ moduleId: mod._id }).sort({ order: 1 }).exec();
+      console.log('[LMS] Module', mod._id, 'has', lessons.length, 'lessons');
       result.push({
         ...mod.toObject(),
         lessons,
@@ -92,17 +99,25 @@ export class LmsService implements OnModuleInit {
   }
 
   async findModulesByGroup(groupId: string): Promise<any[]> {
-    if (!groupId || !Types.ObjectId.isValid(groupId)) return [];
+    console.log('[LMS] findModulesByGroup called with groupId:', groupId);
+    if (!groupId || !Types.ObjectId.isValid(groupId)) {
+      console.log('[LMS] findModulesByGroup: invalid groupId, returning []');
+      return [];
+    }
     const group = await this.groupModel.findById(groupId).exec();
+    console.log('[LMS] findModulesByGroup: group found?', !!group, '| group.courseId:', group?.courseId);
 
     // Try finding modules specifically created for this group
     let modules = await this.moduleModel.find({ groupId: new Types.ObjectId(groupId) }).sort({ order: 1 }).exec();
+    console.log('[LMS] findModulesByGroup: group-specific modules:', modules.length);
 
     // If no custom modules for this group, fallback to course modules
     if (modules.length === 0 && group && group.courseId) {
       const courseObjId = (group.courseId as any)?._id || group.courseId;
       const validCourseId = typeof courseObjId === 'string' ? new Types.ObjectId(courseObjId) : courseObjId;
+      console.log('[LMS] findModulesByGroup: falling back to course modules for courseId:', validCourseId?.toString());
       modules = await this.moduleModel.find({ courseId: validCourseId, $or: [{ groupId: { $exists: false } }, { groupId: null }] }).sort({ order: 1 }).exec();
+      console.log('[LMS] findModulesByGroup: course fallback modules:', modules.length);
     }
 
     const result = [];
@@ -115,6 +130,7 @@ export class LmsService implements OnModuleInit {
     }
     return result;
   }
+
 
   async cloneCourseLmsToGroup(groupId: string, sourceGroupId?: string): Promise<any> {
     const group = await this.groupModel.findById(groupId).exec();

@@ -497,8 +497,9 @@ export class StudentsService implements OnModuleInit {
     let totalLessonsCount = 0;
     let averageQuizScore = 0;
 
-    if (profile.courseId) {
-      const courseIdStr = profile.courseId._id ? profile.courseId._id.toString() : profile.courseId.toString();
+    const effectiveCourse = profile.courseId || (profile.groupId as any)?.courseId;
+    if (effectiveCourse) {
+      const courseIdStr = effectiveCourse._id ? effectiveCourse._id.toString() : effectiveCourse.toString();
       
       const moduleModel = this.studentProfileModel.db.model('CourseModule');
       const lessonModel = this.studentProfileModel.db.model('Lesson');

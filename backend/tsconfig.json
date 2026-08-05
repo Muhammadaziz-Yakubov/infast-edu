@@ -19,7 +19,8 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,
     "strictBindCallApply": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "types": ["jest", "node"]
   },
-  "exclude": ["AIAGENT", "node_modules", "dist", "test", "**/*spec.ts"]
+  "exclude": ["AIAGENT", "node_modules", "dist"]
 }

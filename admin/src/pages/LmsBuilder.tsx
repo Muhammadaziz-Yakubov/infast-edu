@@ -415,8 +415,8 @@ export const LmsBuilder: React.FC = () => {
             }}
             className="text-sm rounded-lg border bg-background px-2.5 py-1.5 focus:ring-1 focus:ring-primary outline-none font-bold"
           >
-            <option value="COURSE">Kurs (Shablon)</option>
-            <option value="GROUP">Guruh (Individual)</option>
+            <option value="COURSE">Asosiy Kurs Dasturi</option>
+            <option value="GROUP">Guruh Darslari (Individual)</option>
           </select>
         </div>
 
@@ -475,17 +475,17 @@ export const LmsBuilder: React.FC = () => {
           {builderMode === 'GROUP' && selectedGroupId && !isCustomGroupLms && (
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs space-y-3">
               <p className="font-semibold text-amber-600">
-                Ushbu guruh hozirda umumiy kurs shablonidan foydalanmoqda.
+                Ushbu guruh hozirda umumiy kurs dasturidan foydalanmoqda.
               </p>
               
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-muted-foreground">Mavzular andozasini tanlang:</label>
+                <label className="text-[10px] font-bold text-muted-foreground">Mavzular manbasini tanlang:</label>
                 <select
                   value={cloneSourceId}
                   onChange={(e) => setCloneSourceId(e.target.value)}
                   className="w-full text-xs rounded border bg-background px-2.5 py-1.5 focus:ring-1 focus:ring-primary outline-none"
                 >
-                  <option value="COURSE">Kurs shabloni (Andoza)</option>
+                  <option value="COURSE">Asosiy Kurs Dasturi</option>
                   {allGroupsList
                     .filter((g) => g._id !== selectedGroupId)
                     .map((g) => (

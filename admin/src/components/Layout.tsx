@@ -78,7 +78,6 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
     icon: BookOpen,
     items: [
       { name: 'Courses', path: '/courses', icon: BookOpen },
-      { name: 'Shablonlar Ro\'yxati', path: '/course-templates', icon: Layers },
       { name: 'LMS Builder', path: '/lms', icon: GraduationCap },
       { name: 'Kutubxona', path: '/library', icon: LibraryIcon },
       { name: 'Homework', path: '/homework', icon: FileCode },

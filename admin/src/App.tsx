@@ -84,7 +84,6 @@ export const App: React.FC = () => {
             
             {/* LMS Syllabus */}
             <Route path="/courses" element={<Courses />} />
-            <Route path="/course-templates" element={<CourseTemplates />} />
             <Route path="/lms" element={<LmsBuilder />} />
             <Route path="/lms-check" element={<LmsCheck />} />
             <Route path="/homework" element={<Homework />} />

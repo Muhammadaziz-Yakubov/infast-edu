@@ -559,6 +559,8 @@ export class StudentsService implements OnModuleInit {
       profileObj.branchName = user.branchId?.name || "Asosiy filial";
     }
 
+    console.log('[Students] getProfile returning for userId:', userId, '| courseId:', (profileObj as any).courseId?._id || (profileObj as any).courseId, '| groupId:', (profileObj as any).groupId?._id || (profileObj as any).groupId);
+
     return profileObj;
   }
 
@@ -605,6 +607,36 @@ export class StudentsService implements OnModuleInit {
     profile.level = Math.floor(profile.xp / 1000) + 1;
 
     return profile.save();
+  }
+
+  async resetAllXp(requestingUser?: any): Promise<any> {
+    await this.studentProfileModel.updateMany(
+      {},
+      { $set: { xp: 0, coins: 0, level: 1 } }
+    ).exec();
+
+    return {
+      success: true,
+      message: "Barcha o'quvchilarning XP, tangalari va darajalari 0 ga tushirildi va reyting qayta nollashtirildi.",
+    };
+  }
+
+  async resetStudentXp(studentId: string, requestingUser?: any): Promise<any> {
+    const profile = await this.studentProfileModel.findOne({ userId: new Types.ObjectId(studentId) }).exec();
+    if (!profile) {
+      throw new NotFoundException('Student profile not found');
+    }
+
+    profile.xp = 0;
+    profile.coins = 0;
+    profile.level = 1;
+    await profile.save();
+
+    return {
+      success: true,
+      message: "O'quvchining XP, tangalari va darajasi 0 ga tushirildi.",
+      profile,
+    };
   }
 
   async adjustCoins(studentId: string, amount: number, type: 'ADD' | 'DEDUCT', reason: string, requestingUser?: any): Promise<any> {

@@ -5,6 +5,8 @@ import {
   createStudent,
   deleteStudent,
   updateStudent,
+  resetAllStudentsXp,
+  resetStudentXp,
 } from '../api/students';
 import { getCourses } from '../api/courses';
 import { getGroups } from '../api/groups';
@@ -28,6 +30,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 
 export const Students: React.FC = () => {
@@ -86,6 +89,34 @@ export const Students: React.FC = () => {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [resettingXp, setResettingXp] = useState(false);
+
+  const handleResetAllXp = async () => {
+    if (window.confirm("Barcha o'quvchilarning XP, Tangalar va Darajalarini 0 ga tushirishni (Restart XP) tasdiqlaysizmi? Reyting ham qayta 0 dan boshlanadi.")) {
+      setResettingXp(true);
+      try {
+        await resetAllStudentsXp();
+        alert("Barcha talabalarning XP lar va Darajalari muvaffaqiyatli 0 ga tushirildi!");
+        await loadData();
+      } catch (e: any) {
+        alert(e.message || "XP ni nolga tushirishda xatolik yuz berdi.");
+      } finally {
+        setResettingXp(false);
+      }
+    }
+  };
+
+  const handleResetSingleXp = async (id: string, name: string) => {
+    if (window.confirm(`${name} ning XP, Tangalar va Darajasini 0 ga tushirishni tasdiqlaysizmi?`)) {
+      try {
+        await resetStudentXp(id);
+        await loadData();
+      } catch (e: any) {
+        alert(e.message || "XP ni nollashtirishda xatolik");
+      }
     }
   };
 
@@ -235,6 +266,17 @@ export const Students: React.FC = () => {
           <p className="text-muted-foreground">O'quvchilar ro'yxati, to'lov va davomat statistikalari boshqaruvi.</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Restart XP button */}
+          <button
+            onClick={handleResetAllXp}
+            disabled={resettingXp}
+            title="Barcha o'quvchilar XP, Tangalar va Darajalarini 0 ga qayta tushirish"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 hover:bg-amber-500/20 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+          >
+            <RotateCcw className={`w-4 h-4 ${resettingXp ? 'animate-spin' : ''}`} />
+            {resettingXp ? 'Qayta tiklanmoqda...' : 'Restart XP'}
+          </button>
+
           {/* Check Payments button */}
           <button
             onClick={handleCheckPayments}
@@ -434,6 +476,13 @@ export const Students: React.FC = () => {
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
 
+                          <button
+                            onClick={() => handleResetSingleXp(student._id, student.fullName)}
+                            className="p-1.5 text-muted-foreground hover:text-amber-500 rounded-md hover:bg-amber-500/10 transition-colors"
+                            title="XP/Level nolga tushirish (Restart)"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => navigate(`/students/${student._id}`)}
                             className="p-1.5 text-muted-foreground hover:text-primary rounded-md hover:bg-secondary transition-colors"

@@ -141,6 +141,20 @@ export class StudentsController {
     return this.studentsService.generateContract(id, generateContractDto);
   }
 
+  @Post('reset-all-xp')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Reset XP, Level and Coins for ALL students to 0 (Admin only)' })
+  resetAllXp(@CurrentUser() user: any) {
+    return this.studentsService.resetAllXp(user);
+  }
+
+  @Post(':id/reset-xp')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Reset XP, Level and Coins for a specific student to 0 (Admin only)' })
+  resetStudentXp(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.studentsService.resetStudentXp(id, user);
+  }
+
   @Post(':id/coins')
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Add or deduct coins from student balance (Admin only)' })

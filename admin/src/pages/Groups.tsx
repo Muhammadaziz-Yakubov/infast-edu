@@ -93,12 +93,18 @@ export const Groups: React.FC = () => {
     }
   };
 
+  // Group topic/lesson tracking states (Frontend & Backend bifurcated)
+  const [frontendStartLessonOrder, setFrontendStartLessonOrder] = useState<number>(1);
+  const [backendStartLessonOrder, setBackendStartLessonOrder] = useState<number>(1);
+
   const openCreateModal = () => {
     setName('');
     setCourseId(courses[0]?._id || '');
     setStartDate(new Date().toISOString().split('T')[0]);
     setScheduleDays(['Monday', 'Wednesday', 'Friday']);
     setLessonTime('18:30 - 20:00');
+    setFrontendStartLessonOrder(1);
+    setBackendStartLessonOrder(1);
     setCreateOpen(true);
   };
 
@@ -109,6 +115,8 @@ export const Groups: React.FC = () => {
     setStartDate(selectedGroup.startDate || '');
     setScheduleDays(selectedGroup.schedule?.days || []);
     setLessonTime(selectedGroup.schedule?.time || '18:30 - 20:00');
+    setFrontendStartLessonOrder((selectedGroup as any).frontendStartLessonOrder || (selectedGroup as any).startLessonOrder || 1);
+    setBackendStartLessonOrder((selectedGroup as any).backendStartLessonOrder || (selectedGroup as any).startLessonOrder || 1);
     setEditOpen(true);
   };
 
@@ -128,6 +136,9 @@ export const Groups: React.FC = () => {
           days: scheduleDays,
           time: lessonTime,
         },
+        startLessonOrder: Number(frontendStartLessonOrder) || 1,
+        frontendStartLessonOrder: Number(frontendStartLessonOrder) || 1,
+        backendStartLessonOrder: Number(backendStartLessonOrder) || 1,
       });
       setCreateOpen(false);
       await loadData();
@@ -152,6 +163,9 @@ export const Groups: React.FC = () => {
           days: scheduleDays,
           time: lessonTime,
         },
+        startLessonOrder: Number(frontendStartLessonOrder) || 1,
+        frontendStartLessonOrder: Number(frontendStartLessonOrder) || 1,
+        backendStartLessonOrder: Number(backendStartLessonOrder) || 1,
       });
       setEditOpen(false);
       await loadData();
@@ -291,7 +305,7 @@ export const Groups: React.FC = () => {
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm bg-secondary/30 p-4 rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm bg-secondary/30 p-4 rounded-lg">
                   <div className="flex items-center gap-2.5 text-muted-foreground">
                     <Calendar className="w-4 h-4 text-primary shrink-0" />
                     <div>
@@ -313,6 +327,20 @@ export const Groups: React.FC = () => {
                     <div>
                       <span className="text-xs text-muted-foreground block">Dars vaqti</span>
                       <span className="font-semibold text-foreground">{selectedGroup.schedule?.time || '—'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-muted-foreground">
+                    <BookOpen className="w-4 h-4 text-amber-500 shrink-0" />
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Joriy Dars/Mavzu</span>
+                      <div className="flex items-center gap-1.5 text-xs font-bold pt-0.5">
+                        <span className="bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded border border-blue-500/20">
+                          FE: #{(selectedGroup as any).frontendStartLessonOrder || (selectedGroup as any).startLessonOrder || 1}
+                        </span>
+                        <span className="bg-purple-500/10 text-purple-600 px-1.5 py-0.5 rounded border border-purple-500/20">
+                          BE: #{(selectedGroup as any).backendStartLessonOrder || (selectedGroup as any).startLessonOrder || 1}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -607,6 +635,47 @@ export const Groups: React.FC = () => {
                 />
               </div>
 
+              {/* Topic & Starting Lesson Settings (Bifurcated Frontend vs Backend) */}
+              <div className="p-3 bg-secondary/40 rounded-xl border border-border space-y-3">
+                <div className="text-xs font-bold text-foreground flex items-center justify-between">
+                  <span>📌 Guruh Dars/Mavzusi (Tracking)</span>
+                  <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-mono font-bold">Dual Track</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-muted-foreground">
+                      🎨 Frontend Darsi (#)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={114}
+                      value={frontendStartLessonOrder}
+                      onChange={(e) => setFrontendStartLessonOrder(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full border rounded-lg p-2 text-sm bg-background font-semibold outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-muted-foreground">
+                      ⚙️ Backend Darsi (#)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={backendStartLessonOrder}
+                      onChange={(e) => setBackendStartLessonOrder(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full border rounded-lg p-2 text-sm bg-background font-semibold outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-tight">
+                  Talabalar belgilangan dars tartibi/mavzusidan boshlab o'quv dasturini davom ettirishadi.
+                </p>
+              </div>
+
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <button
                   type="button"
@@ -708,6 +777,47 @@ export const Groups: React.FC = () => {
                   onChange={(e) => setLessonTime(e.target.value)}
                   className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
                 />
+              </div>
+
+              {/* Topic & Starting Lesson Settings (Bifurcated Frontend vs Backend) */}
+              <div className="p-3 bg-secondary/40 rounded-xl border border-border space-y-3">
+                <div className="text-xs font-bold text-foreground flex items-center justify-between">
+                  <span>📌 Guruh Dars/Mavzusini Belgilash (Tracking)</span>
+                  <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-mono font-bold">Dual Track</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-muted-foreground">
+                      🎨 Frontend Darsi (#)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={114}
+                      value={frontendStartLessonOrder}
+                      onChange={(e) => setFrontendStartLessonOrder(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full border rounded-lg p-2 text-sm bg-background font-semibold outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-muted-foreground">
+                      ⚙️ Backend Darsi (#)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={backendStartLessonOrder}
+                      onChange={(e) => setBackendStartLessonOrder(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full border rounded-lg p-2 text-sm bg-background font-semibold outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-tight">
+                  Talabalar o'z yo'nalishi (Frontend/Backend) bo'yicha belgilangan dars va mavzudan davom ettirishadi.
+                </p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t">

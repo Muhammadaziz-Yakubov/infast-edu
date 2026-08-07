@@ -48,3 +48,13 @@ export async function generateStudentContract(id: string, dto: any): Promise<any
   const res = await apiClient.post(`/students/${id}/contract/generate`, dto);
   return unwrapObject(res);
 }
+
+export async function resetAllStudentsXp(): Promise<any> {
+  const res = await apiClient.post('/students/reset-all-xp');
+  return unwrapObject(res);
+}
+
+export async function resetStudentXp(id: string): Promise<any> {
+  const res = await apiClient.post(`/students/${id}/reset-xp`);
+  return unwrapObject(res);
+}

@@ -409,6 +409,8 @@ export class GroupsService {
         _id: group._id,
         name: group.name,
         startLessonOrder: (group as any).startLessonOrder ?? 1,
+        frontendStartLessonOrder: (group as any).frontendStartLessonOrder ?? (group as any).startLessonOrder ?? 1,
+        backendStartLessonOrder: (group as any).backendStartLessonOrder ?? (group as any).startLessonOrder ?? 1,
         courseId: courseId,
         courseName: (group.courseId as any)?.name || '',
       },

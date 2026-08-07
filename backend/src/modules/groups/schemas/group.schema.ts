@@ -43,6 +43,12 @@ export class Group extends Document {
   @Prop({ default: 1, min: 1 })
   startLessonOrder: number; // Guruh uchun qaysi dars tartib raqamidan boshlanishi (oldingilari lock)
 
+  @Prop({ default: 1, min: 1 })
+  frontendStartLessonOrder: number; // Frontend yuborilgan dars tartibi
+
+  @Prop({ default: 1, min: 1 })
+  backendStartLessonOrder: number; // Backend yuborilgan dars tartibi
+
   @Prop({ type: Types.ObjectId, ref: 'Branch' })
   branchId?: Types.ObjectId;
 }

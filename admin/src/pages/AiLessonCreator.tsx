@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getCourses } from '../api/courses';
-import { getGroups } from '../api/groups';
 import { apiClient } from '../api/client';
 import {
   Sparkles,
@@ -10,7 +9,6 @@ import {
   Save,
   BookOpen,
   Layers,
-  FolderKanban,
   HelpCircle,
   ChevronDown,
   ChevronUp,
@@ -26,7 +24,6 @@ import {
 
 interface ChatHistoryItem {
   _id: string;
-  groupId?: { _id: string; name: string };
   courseId?: { _id: string; title: string };
   moduleId?: { _id: string; title: string };
   lessonId?: { _id: string; title: string };
@@ -40,12 +37,10 @@ interface ChatHistoryItem {
 export const AiLessonCreator: React.FC = () => {
   // Config & Metadata states
   const [courses, setCourses] = useState<any[]>([]);
-  const [groups, setGroups] = useState<any[]>([]);
   const [modules, setModules] = useState<any[]>([]);
   const [lessons, setLessons] = useState<any[]>([]);
 
   // Selection states
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   const [selectedLessonId, setSelectedLessonId] = useState<string>('');
@@ -89,54 +84,26 @@ export const AiLessonCreator: React.FC = () => {
     loadChatHistory();
   }, []);
 
-  // Sync course selection with selected group
+  // Load modules based on selected course
   useEffect(() => {
-    if (selectedGroupId && groups.length > 0) {
-      const group = groups.find((g) => g._id === selectedGroupId);
-      if (group && group.courseId) {
-        const courseId = typeof group.courseId === 'object' ? group.courseId._id : group.courseId;
-        setSelectedCourseId(courseId);
-      }
-    }
-  }, [selectedGroupId, groups]);
-
-  // Load modules based on selected group or course
-  useEffect(() => {
-    const loadModulesForSelection = async () => {
-      if (selectedGroupId) {
-        try {
-          const res = await apiClient.get(`/lms/groups/${selectedGroupId}/modules`);
-          const mods = res.data.data || res.data || [];
-          setModules(mods);
-          setLessons([]);
-          setSelectedModuleId('');
-          setSelectedLessonId('');
-        } catch (err) {
-          console.error("Failed to load group modules", err);
-          setModules([]);
-          setLessons([]);
-        }
-      } else if (selectedCourseId) {
-        const course = courses.find((c) => c._id === selectedCourseId);
-        if (course && course.modules) {
-          setModules(course.modules);
-          setLessons([]);
-          setSelectedModuleId('');
-          setSelectedLessonId('');
-        } else {
-          setModules([]);
-          setLessons([]);
-        }
-      } else {
-        setModules([]);
+    if (selectedCourseId) {
+      const course = courses.find((c) => c._id === selectedCourseId);
+      if (course && course.modules) {
+        setModules(course.modules);
         setLessons([]);
         setSelectedModuleId('');
         setSelectedLessonId('');
+      } else {
+        setModules([]);
+        setLessons([]);
       }
-    };
-
-    loadModulesForSelection();
-  }, [selectedGroupId, selectedCourseId, courses]);
+    } else {
+      setModules([]);
+      setLessons([]);
+      setSelectedModuleId('');
+      setSelectedLessonId('');
+    }
+  }, [selectedCourseId, courses]);
 
   // Load lessons based on selected module
   useEffect(() => {
@@ -165,9 +132,8 @@ export const AiLessonCreator: React.FC = () => {
 
   const loadMetadata = async () => {
     try {
-      const [coursesData, groupsData] = await Promise.all([getCourses(), getGroups()]);
+      const coursesData = await getCourses();
       setCourses(coursesData || []);
-      setGroups(groupsData || []);
     } catch (err: any) {
       showToast("Metadata yuklashda xatolik yuz berdi", "error");
     }
@@ -199,7 +165,6 @@ export const AiLessonCreator: React.FC = () => {
       
       // Restore states
       setMessages(chat.messages || []);
-      setSelectedGroupId(chat.groupId?._id || '');
       setSelectedCourseId(chat.courseId?._id || '');
       setSelectedModuleId(chat.moduleId?._id || '');
       setSelectedLessonId(chat.lessonId?._id || '');
@@ -297,7 +262,6 @@ export const AiLessonCreator: React.FC = () => {
       const endpoint = isNewChat ? '/ai/generate-lesson' : '/ai/chat';
       
       const payload: any = isNewChat ? {
-        groupId: selectedGroupId || undefined,
         courseId: selectedCourseId || undefined,
         moduleId: selectedModuleId || undefined,
         lessonId: selectedLessonId || undefined,
@@ -575,20 +539,7 @@ export const AiLessonCreator: React.FC = () => {
         {activeTab === 'chat' && (
           <div className="flex-1 flex flex-col min-h-0">
             {/* Top Selector Panel */}
-            <div className="p-4 border-b bg-secondary/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1"><FolderKanban className="w-3 h-3"/> Guruh</label>
-                <select
-                  value={selectedGroupId}
-                  onChange={(e) => setSelectedGroupId(e.target.value)}
-                  className="w-full text-xs rounded-lg border bg-background px-2 py-1.5 outline-none"
-                >
-                  <option value="">Tanlang...</option>
-                  {groups.map((g) => (
-                    <option key={g._id} value={g._id}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="p-4 border-b bg-secondary/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1"><BookOpen className="w-3 h-3"/> Kurs</label>
                 <select

@@ -1,216 +1,536 @@
-import React, { useEffect, useState } from 'react';
-import { getPayments, confirmPayment } from '../api/payments';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  getPayments,
+  confirmPayment,
+  getBlockedStudents,
+  checkPaymentStatuses,
+} from '../api/payments';
 import { getStudents } from '../api/students';
-import type { Payment, Student } from '../utils/mockDb';
+import { showSuccess, showError } from '../utils/toast';
 import {
   Plus,
   Search,
   CheckCircle,
-  Clock,
   AlertTriangle,
   X,
   PlusCircle,
+  ShieldOff,
+  RefreshCw,
+  TrendingUp,
+  DollarSign,
+  Clock,
+  Calendar,
 } from 'lucide-react';
 
-export const Payments: React.FC = () => {
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
-  // Search & Filter state
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('uz-UZ', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('uz-UZ', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatMoney(n: number): string {
+  return n.toLocaleString('uz-UZ') + " so'm";
+}
+
+// ─── types ────────────────────────────────────────────────────────────────────
+
+interface PaymentRecord {
+  _id: string;
+  studentId: string;
+  studentName: string;
+  studentLabel?: string;
+  studentPhone?: string;
+  amount: number;
+  paymentDate: string;
+  nextPaymentDate: string;
+  status: string;
+  transactionId?: string;
+}
+
+interface BlockedStudent {
+  _id: string;
+  studentName: string;
+  studentPhone: string;
+  studentLabel?: string;
+  lastPaymentAmount: number;
+  nextPaymentDate: string | null;
+  daysOverdue: number;
+}
+
+// ─── tabs ─────────────────────────────────────────────────────────────────────
+
+type Tab = 'paid' | 'blocked';
+
+// ─── component ────────────────────────────────────────────────────────────────
+
+export const Payments: React.FC = () => {
+  const [tab, setTab] = useState<Tab>('blocked');
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [blocked, setBlocked] = useState<BlockedStudent[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // USD exchange rate (CBU)
+  const [usdRate, setUsdRate] = useState<number | null>(null);
+  const [rateLoading, setRateLoading] = useState(false);
+
+  // Search
   const [search, setSearch] = useState('');
 
-  // Confirmation Modal state
+  // Modal
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [amount, setAmount] = useState('500000');
   const [transactionId, setTransactionId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // ── fetch data ──────────────────────────────────────────────────────────────
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [pList, sList] = await Promise.all([
+      const [pList, bList, sList] = await Promise.all([
         getPayments(),
+        getBlockedStudents(),
         getStudents(),
       ]);
       setPayments(pList);
+      setBlocked(bList);
       setStudents(sList);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      showError(e?.response?.data?.message || 'Maʼlumotlarni yuklashda xatolik');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    fetchUsdRate();
+  }, [loadData]);
+
+  // ── USD rate from CBU ────────────────────────────────────────────────────────
+
+  const fetchUsdRate = async () => {
+    setRateLoading(true);
+    try {
+      const res = await fetch('https://cbu.uz/uz/arkhiv-kursov-valyut/json/USD/');
+      const json = await res.json();
+      if (Array.isArray(json) && json.length > 0) {
+        setUsdRate(parseFloat(json[0].Rate));
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setRateLoading(false);
+    }
   };
+
+  // ── manual status refresh ────────────────────────────────────────────────────
+
+  const handleRefreshStatuses = async () => {
+    setRefreshing(true);
+    try {
+      await checkPaymentStatuses();
+      await loadData();
+      showSuccess("Barcha toʼlov statuslari yangilandi");
+    } catch (e: any) {
+      showError(e?.response?.data?.message || 'Yangilashda xatolik');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // ── confirm payment ──────────────────────────────────────────────────────────
 
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudentId) {
-      alert('Iltimos, talabani tanlang');
+      showError("Iltimos, talabani tanlang");
       return;
     }
+    setSubmitting(true);
     try {
       await confirmPayment({
         studentId: selectedStudentId,
         amount: Number(amount),
-        transactionId,
+        transactionId: transactionId || undefined,
       });
       setCreateOpen(false);
       setSelectedStudentId('');
       setTransactionId('');
       await loadData();
-      alert('To\'lov muvaffaqiyatli qabul qilindi');
+      showSuccess("Toʼlov muvaffaqiyatli qabul qilindi ✓");
     } catch (err: any) {
-      alert(err.message || 'Xatolik yuz berdi');
+      showError(err?.response?.data?.message || err.message || 'Xatolik yuz berdi');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Filter payments
-  const filteredPayments = payments.filter((p) => {
-    const matchesSearch = p.studentName.toLowerCase().includes(search.toLowerCase());
-    return p.status === 'PAID' && matchesSearch;
-  });
+  // ── filtered lists ───────────────────────────────────────────────────────────
+
+  const paidPayments = payments
+    .filter((p) => p.status === 'PAID')
+    .filter((p) =>
+      !search ||
+      p.studentName.toLowerCase().includes(search.toLowerCase()) ||
+      (p.transactionId || '').toLowerCase().includes(search.toLowerCase())
+    );
+
+  const filteredBlocked = blocked.filter(
+    (b) =>
+      !search ||
+      b.studentName.toLowerCase().includes(search.toLowerCase()) ||
+      b.studentPhone.includes(search)
+  );
+
+  // ── stats ────────────────────────────────────────────────────────────────────
+
+  const totalPaidThisMonth = payments
+    .filter((p) => {
+      const d = new Date(p.paymentDate);
+      const now = new Date();
+      return p.status === 'PAID' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    })
+    .reduce((s, p) => s + p.amount, 0);
+
+  // ── render ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      
-      {/* Title */}
+
+      {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-1">To'lovlar & Billing</h1>
-          <p className="text-muted-foreground">O'quvchilar subscription to'lovlari hisob-kitobi va monitoringi.</p>
+          <h1 className="text-3xl font-bold tracking-tight mb-1">Toʼlovlar & Billing</h1>
+          <p className="text-muted-foreground">Oʼquvchilar subscription toʼlovlari hisob-kitobi va monitoringi.</p>
         </div>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Yangi To'lov Qabul Qilish
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefreshStatuses}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg border bg-card hover:bg-secondary transition-all shadow-sm disabled:opacity-60"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Yangilash
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Toʼlov Qabul Qilish
+          </button>
+        </div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      {/* ── Stats + USD rate ────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Blocked */}
+        <div className="p-4 bg-card border rounded-xl shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-red-500/10 text-red-500 rounded-lg">
+            <ShieldOff className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground block font-semibold uppercase">Bloklangan</span>
+            <p className="text-lg font-bold text-red-500">{blocked.length} ta oʼquvchi</p>
+          </div>
+        </div>
+
+        {/* Paid this month */}
         <div className="p-4 bg-card border rounded-xl shadow-sm flex items-center gap-4">
           <div className="p-3 bg-green-500/10 text-green-500 rounded-lg">
             <CheckCircle className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-xs text-muted-foreground block font-semibold uppercase">Jami To'langanlar</span>
-            <p className="text-lg font-bold">{payments.filter(p => p.status === 'PAID').length} ta talaba</p>
+            <span className="text-xs text-muted-foreground block font-semibold uppercase">Bu oy toʼlangan</span>
+            <p className="text-lg font-bold">{formatMoney(totalPaidThisMonth)}</p>
           </div>
         </div>
+
+        {/* Total paid records */}
+        <div className="p-4 bg-card border rounded-xl shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-blue-500/10 text-blue-500 rounded-lg">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground block font-semibold uppercase">Jami yozuvlar</span>
+            <p className="text-lg font-bold">{payments.filter(p => p.status === 'PAID').length} ta</p>
+          </div>
+        </div>
+
+        {/* USD rate */}
         <div className="p-4 bg-card border rounded-xl shadow-sm flex items-center gap-4">
           <div className="p-3 bg-amber-500/10 text-amber-500 rounded-lg">
-            <Clock className="w-5 h-5" />
+            <DollarSign className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-xs text-muted-foreground block font-semibold uppercase">Yaqinda to'lashi kerak</span>
-            <p className="text-lg font-bold">{payments.filter(p => p.status === 'UPCOMING').length} ta talaba</p>
-          </div>
-        </div>
-        <div className="p-4 bg-card border rounded-xl shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-red-500/10 text-red-500 rounded-lg">
-            <AlertTriangle className="w-5 h-5 animate-pulse" />
-          </div>
-          <div>
-            <span className="text-xs text-muted-foreground block font-semibold uppercase">Muddati O'tganlar (Qarzlar)</span>
-            <p className="text-lg font-bold">{payments.filter(p => p.status === 'OVERDUE').length} ta talaba</p>
+            <span className="text-xs text-muted-foreground block font-semibold uppercase">
+              USD kursi (CBU)
+            </span>
+            {rateLoading ? (
+              <div className="h-4 w-24 bg-muted rounded animate-pulse mt-1" />
+            ) : usdRate ? (
+              <p className="text-lg font-bold text-amber-600">{usdRate.toLocaleString()} soʻm</p>
+            ) : (
+              <button
+                onClick={fetchUsdRate}
+                className="text-xs text-primary underline mt-1"
+              >
+                Kursni yuklash
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Filter Panel */}
-      <div className="flex flex-col md:flex-row gap-4 p-4 bg-card border rounded-xl shadow-sm">
-        
+      {/* ── Tabs + Search ───────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+        {/* Tabs */}
+        <div className="flex bg-card border rounded-xl p-1 gap-1">
+          <button
+            onClick={() => setTab('blocked')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+              tab === 'blocked'
+                ? 'bg-red-500 text-white shadow-sm'
+                : 'text-muted-foreground hover:bg-secondary'
+            }`}
+          >
+            <ShieldOff className="w-4 h-4" />
+            Bloklangan ({blocked.length})
+          </button>
+          <button
+            onClick={() => setTab('paid')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+              tab === 'paid'
+                ? 'bg-green-500 text-white shadow-sm'
+                : 'text-muted-foreground hover:bg-secondary'
+            }`}
+          >
+            <CheckCircle className="w-4 h-4" />
+            Toʼlangan ({payments.filter(p => p.status === 'PAID').length})
+          </button>
+        </div>
+
         {/* Search */}
-        <div className="relative flex-1">
+        <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="O'quvchi ismi orqali qidirish..."
+            placeholder="Ism, telefon yoki tranzaksiya ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border bg-background focus:ring-1 focus:ring-primary outline-none transition-all"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border bg-card focus:ring-2 focus:ring-primary outline-none transition-all"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
-
-        {/* Filter status is removed to only show PAID payments in the list */}
-
       </div>
 
-      {/* Payments Ledger table */}
+      {/* ── Table ──────────────────────────────────────────────────── */}
       <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
         {loading ? (
-          <div className="flex justify-center p-12">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex flex-col items-center justify-center gap-3 p-16">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-muted-foreground">Yuklanmoqda...</p>
           </div>
-        ) : filteredPayments.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-12 text-center">To'lovlar topilmadi.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b bg-muted/40 text-xs font-semibold uppercase text-muted-foreground select-none">
-                  <th className="px-6 py-4">O'quvchi</th>
-                  <th className="px-6 py-4">Summa (UZS)</th>
-                  <th className="px-6 py-4">To'lov Sanasi</th>
-                  <th className="px-6 py-4">Keyingi To'lov Sanasi</th>
-                  <th className="px-6 py-4 text-center">Tranzaksiya ID</th>
-                  <th className="px-6 py-4 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y text-sm">
-                {filteredPayments.map((p) => (
-                  <tr key={p._id} className="hover:bg-muted/10 transition-colors">
-                    <td className="px-6 py-4 font-semibold flex items-center gap-1">
-                      {p.studentLabel && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
-                          {p.studentLabel}
-                        </span>
-                      )}
-                      <span>{p.studentName}</span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-primary">
-                      {p.amount.toLocaleString()} so'm
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">{p.paymentDate}</td>
-                    <td className="px-6 py-4 font-medium text-foreground">{p.nextPaymentDate}</td>
-                    <td className="px-6 py-4 text-center text-xs font-mono text-muted-foreground">
-                      {p.transactionId || 'Kassa orqali'}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                        p.status === 'PAID'
-                          ? 'bg-green-500/10 text-green-500'
-                          : p.status === 'UPCOMING'
-                          ? 'bg-amber-500/10 text-amber-500'
-                          : 'bg-red-500/10 text-red-500 animate-pulse'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
+        ) : tab === 'blocked' ? (
+          /* ── BLOCKED TAB ── */
+          filteredBlocked.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 p-16 text-center">
+              <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-green-500" />
+              </div>
+              <p className="font-semibold text-lg">Ajoyib! Hozirda bloklangan oʼquvchi yoʼq.</p>
+              <p className="text-sm text-muted-foreground">Barcha oʼquvchilar faol hisobga ega.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b bg-red-500/5 text-xs font-semibold uppercase text-muted-foreground">
+                    <th className="px-6 py-4">Oʼquvchi</th>
+                    <th className="px-6 py-4">Telefon</th>
+                    <th className="px-6 py-4">Oxirgi summa</th>
+                    <th className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" /> Toʼlov sanasi
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center">Kechikish</th>
+                    <th className="px-6 py-4 text-center">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y text-sm">
+                  {filteredBlocked.map((b) => (
+                    <tr key={String(b._id)} className="hover:bg-red-500/5 transition-colors">
+                      <td className="px-6 py-4 font-semibold flex items-center gap-1.5">
+                        {b.studentLabel && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
+                            {b.studentLabel}
+                          </span>
+                        )}
+                        <span>{b.studentName}</span>
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground font-mono text-xs">
+                        {b.studentPhone || '—'}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-foreground">
+                        {b.lastPaymentAmount ? formatMoney(b.lastPaymentAmount) : '—'}
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground">
+                        {formatDate(b.nextPaymentDate)}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-500/10 text-red-600">
+                          <Clock className="w-3 h-3" />
+                          {b.daysOverdue} kun
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-red-500/10 text-red-500 animate-pulse">
+                          <ShieldOff className="w-3 h-3" />
+                          BLOKLANGAN
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : (
+          /* ── PAID TAB ── */
+          paidPayments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 p-16 text-center">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <p className="font-semibold">Toʼlov topilmadi</p>
+              {search && (
+                <p className="text-sm text-muted-foreground">
+                  "<span className="font-semibold">{search}</span>" boʼyicha natija yoʼq.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b bg-green-500/5 text-xs font-semibold uppercase text-muted-foreground">
+                    <th className="px-6 py-4">Oʼquvchi</th>
+                    <th className="px-6 py-4">Summa</th>
+                    <th className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> Toʼlov vaqti
+                      </div>
+                    </th>
+                    <th className="px-6 py-4">Keyingi toʼlov</th>
+                    <th className="px-6 py-4">Tranzaksiya ID</th>
+                    <th className="px-6 py-4 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y text-sm">
+                  {paidPayments.map((p) => (
+                    <tr key={p._id} className="hover:bg-green-500/5 transition-colors">
+                      <td className="px-6 py-4 font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          {p.studentLabel && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 rounded shrink-0">
+                              {p.studentLabel}
+                            </span>
+                          )}
+                          <span>{p.studentName}</span>
+                        </div>
+                        {p.studentPhone && (
+                          <span className="text-xs text-muted-foreground font-normal font-mono">
+                            {p.studentPhone}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-green-600">
+                        {formatMoney(p.amount)}
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground">
+                        <div className="flex flex-col">
+                          <span>{formatDateTime(p.paymentDate)}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-medium">
+                        {formatDate(p.nextPaymentDate)}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-mono text-muted-foreground">
+                        {p.transactionId || 'Kassa orqali'}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-green-500/10 text-green-600">
+                          <CheckCircle className="w-3 h-3" />
+                          PAID
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="px-6 py-3 border-t text-xs text-muted-foreground flex items-center justify-between">
+                <span>{paidPayments.length} ta yozuv</span>
+                <span>Jami: {formatMoney(paidPayments.reduce((s, p) => s + p.amount, 0))}</span>
+              </div>
+            </div>
+          )
         )}
       </div>
 
-      {/* Confirm Payment Modal dialog */}
+      {/* ── Payment Modal ───────────────────────────────────────────── */}
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-card border rounded-2xl p-6 shadow-xl space-y-6 animate-in zoom-in-95 duration-200">
+          <div className="w-full max-w-md bg-card border rounded-2xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b pb-4">
-              <h3 className="text-lg font-bold">To'lov Qabul Qilish</h3>
-              <button onClick={() => setCreateOpen(false)} className="p-1 rounded-md text-muted-foreground hover:bg-secondary">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-primary" />
+                Toʼlov Qabul Qilish
+              </h3>
+              <button
+                onClick={() => setCreateOpen(false)}
+                className="p-1.5 rounded-md text-muted-foreground hover:bg-secondary"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* USD rate banner */}
+            {usdRate && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-semibold text-amber-700">
+                <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                Bugungi USD kursi (CBU): {usdRate.toLocaleString()} soʻm
+              </div>
+            )}
 
             <form onSubmit={handleConfirm} className="space-y-4">
               <div className="space-y-1">
@@ -219,12 +539,12 @@ export const Payments: React.FC = () => {
                   required
                   value={selectedStudentId}
                   onChange={(e) => setSelectedStudentId(e.target.value)}
-                  className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full border rounded-lg p-2.5 text-sm bg-background outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value="">Talabani tanlang</option>
+                  <option value="">— Talabani tanlang —</option>
                   {students.map((s) => (
                     <option key={s._id} value={s._id}>
-                      {s.fullName} ({s.studentPhone})
+                      {s.fullName} {s.studentPhone ? `(${s.studentPhone})` : ''}
                     </option>
                   ))}
                 </select>
@@ -235,10 +555,16 @@ export const Payments: React.FC = () => {
                 <input
                   type="number"
                   required
+                  min={1000}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full border rounded-lg p-2.5 text-sm bg-background outline-none focus:ring-2 focus:ring-primary"
                 />
+                {usdRate && Number(amount) > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ≈ ${(Number(amount) / usdRate).toFixed(2)} USD
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -248,7 +574,7 @@ export const Payments: React.FC = () => {
                   placeholder="E.g. click_tx_998877"
                   value={transactionId}
                   onChange={(e) => setTransactionId(e.target.value)}
-                  className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full border rounded-lg p-2.5 text-sm bg-background outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
@@ -262,9 +588,14 @@ export const Payments: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg hover:opacity-90 transition-all flex items-center gap-1.5 shadow-sm"
+                  disabled={submitting}
+                  className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg hover:opacity-90 transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-60"
                 >
-                  <PlusCircle className="w-4 h-4" />
+                  {submitting ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <PlusCircle className="w-4 h-4" />
+                  )}
                   Tasdiqlash
                 </button>
               </div>
@@ -272,7 +603,6 @@ export const Payments: React.FC = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

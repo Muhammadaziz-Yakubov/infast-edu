@@ -39,3 +39,7 @@ export async function checkPaymentStatuses(): Promise<any> {
   return unwrapObject(res);
 }
 
+export async function getBlockedStudents(): Promise<any[]> {
+  const res = await apiClient.get('/payments/blocked');
+  return unwrapArray(res);
+}

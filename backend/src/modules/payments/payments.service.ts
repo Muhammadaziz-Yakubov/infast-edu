@@ -395,4 +395,47 @@ export class PaymentsService implements OnModuleInit {
       };
     });
   }
+
+  /** Returns students whose account is currently BLOCKED (status=BLOCKED) with their latest payment info */
+  async getBlockedStudents(user: any): Promise<any[]> {
+    let userFilter: any = { status: UserStatus.BLOCKED, role: Role.STUDENT };
+
+    if (user.role === Role.BRANCH_ADMIN) {
+      userFilter.branchId = new Types.ObjectId(user.branchId);
+    } else if (user.role === Role.SUPER_ADMIN) {
+      userFilter.branchId = { $in: [null, undefined] } as any;
+    }
+
+    const blockedUsers = await this.userModel.find(userFilter).lean().exec();
+
+    const results = await Promise.all(
+      blockedUsers.map(async (u) => {
+        const latestPayment = await this.paymentModel
+          .findOne({ studentId: u._id })
+          .sort({ paymentDate: -1 })
+          .lean()
+          .exec();
+
+        const daysOverdue = latestPayment?.nextPaymentDate
+          ? Math.max(0, Math.ceil((Date.now() - new Date(latestPayment.nextPaymentDate).getTime()) / (1000 * 60 * 60 * 24)))
+          : 0;
+
+        return {
+          _id: u._id,
+          studentName: u.fullName || "Noma'lum Talaba",
+          studentPhone: (u as any).studentPhone || (u as any).phone || '',
+          studentLabel: (u as any).label || '',
+          lastPaymentAmount: latestPayment?.amount || 0,
+          nextPaymentDate: latestPayment?.nextPaymentDate
+            ? new Date(latestPayment.nextPaymentDate).toISOString().split('T')[0]
+            : null,
+          daysOverdue,
+          blockedAt: latestPayment?.nextPaymentDate || null,
+        };
+      })
+    );
+
+    // Sort by daysOverdue descending (most overdue first)
+    return results.sort((a, b) => b.daysOverdue - a.daysOverdue);
+  }
 }

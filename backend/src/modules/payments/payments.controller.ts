@@ -71,6 +71,14 @@ export class PaymentsController {
     return this.paymentsService.getOverdueStudents(user);
   }
 
+  @Get('blocked')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Get all currently BLOCKED students (account blocked due to overdue payment)' })
+  @ApiResponse({ status: 200, description: 'List of blocked students with latest payment info.' })
+  findBlocked(@CurrentUser() user: any) {
+    return this.paymentsService.getBlockedStudents(user);
+  }
+
   @Post('check-statuses')
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Manually trigger payment status check for all students (Admin only)' })

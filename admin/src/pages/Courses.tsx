@@ -150,11 +150,11 @@ export const Courses: React.FC = () => {
     if (!ok) return;
     try {
       await deleteCourse(course._id);
-      showSuccess('Kurs o'chirildi');
+      showSuccess(`Kurs o'chirildi`);
       if (selectedCourse?._id === course._id) setSelectedCourse(null);
       await loadData();
     } catch (err: any) {
-      showError(err?.response?.data?.message || 'O'chirishda xatolik');
+      showError(err?.response?.data?.message || 'Ochirishda xatolik');
     }
   };
 

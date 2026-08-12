@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getGroups } from '../api/groups';
 import { getStudents } from '../api/students';
 import { submitAttendance, getAllAttendanceLogs, getAcademyConfig, updateAcademyConfig, resetAllAttendance } from '../api/attendance';
@@ -82,6 +82,22 @@ export const Attendance: React.FC = () => {
       loadGpsLogs();
     }
   }, [activeTab]);
+
+  const selectedGroup = useMemo(
+    () => groups.find((g) => g._id === selectedGroupId),
+    [groups, selectedGroupId]
+  );
+
+  const activeStudents = useMemo(() => {
+    return students.filter((s) => {
+      if (!selectedGroupId) return false;
+      if (s.groupId === selectedGroupId) return true;
+      const groupStudentIds = (selectedGroup?.students || []).map((st: any) =>
+        typeof st === 'string' ? st : st?._id?.toString() || st?.id?.toString() || String(st)
+      );
+      return groupStudentIds.includes(s._id) || groupStudentIds.includes(s.userId);
+    });
+  }, [students, selectedGroupId, selectedGroup]);
 
   useEffect(() => {
     if (!selectedGroupId) return;
@@ -207,17 +223,6 @@ export const Attendance: React.FC = () => {
       setSubmitting(false);
     }
   };
-
-  const selectedGroup = groups.find((g) => g._id === selectedGroupId);
-
-  const activeStudents = students.filter((s) => {
-    if (!selectedGroupId) return false;
-    if (s.groupId === selectedGroupId) return true;
-    const groupStudentIds = (selectedGroup?.students || []).map((st: any) =>
-      typeof st === 'string' ? st : st?._id?.toString() || st?.id?.toString() || String(st)
-    );
-    return groupStudentIds.includes(s._id) || groupStudentIds.includes(s.userId);
-  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">

@@ -31,3 +31,9 @@ export async function resetAllAttendance(): Promise<any> {
   const res = await apiClient.post('/attendance/admin/reset-all');
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
+
+export async function getGroupAttendanceByDate(groupId: string, date: string): Promise<any[]> {
+  const res = await apiClient.get(`/attendance/groups/${groupId}/by-date`, { params: { date } });
+  const d = res.data?.data !== undefined ? res.data.data : res.data;
+  return Array.isArray(d) ? d : [];
+}

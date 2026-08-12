@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { MarkAttendanceDto, BatchAttendanceDto, GeofencedCheckInDto, UpdateAcademyConfigDto } from './dto/mark-attendance.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -6,7 +6,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/roles.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('attendance')
 @ApiBearerAuth()
@@ -49,6 +49,18 @@ export class AttendanceController {
   @ApiOperation({ summary: 'Delete all historical attendance records for all students (Admin only)' })
   resetAll() {
     return this.attendanceService.resetAllAttendance();
+  }
+
+  @Get('groups/:groupId/by-date')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get attendance records for a group on a specific date (Admin only)' })
+  @ApiQuery({ name: 'date', required: false, description: 'Date in YYYY-MM-DD format. Defaults to today.' })
+  getGroupAttendanceByDate(
+    @Param('groupId') groupId: string,
+    @Query('date') date?: string,
+  ) {
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    return this.attendanceService.getGroupAttendanceByDate(groupId, targetDate);
   }
 
   @Post()

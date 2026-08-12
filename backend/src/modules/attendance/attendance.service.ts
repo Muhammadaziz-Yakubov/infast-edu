@@ -271,6 +271,44 @@ export class AttendanceService {
       .exec();
   }
 
+  async getGroupAttendanceByDate(groupId: string, date: string): Promise<any[]> {
+    const isValidGroupId = Types.ObjectId.isValid(groupId);
+    const gId = isValidGroupId ? new Types.ObjectId(groupId) : groupId;
+
+    // Parse the date string and get start/end of that day in UTC
+    const targetDate = new Date(date);
+    const startOfDay = new Date(targetDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    const logs = await this.attendanceModel
+      .find({
+        groupId: gId,
+        date: { $gte: startOfDay, $lte: endOfDay },
+      })
+      .populate('studentId', 'fullName email phone studentPhone')
+      .sort({ date: -1 })
+      .exec();
+
+    // Return logs with userId exposed for frontend matching
+    return logs.map((log: any) => {
+      const studentDoc = log.studentId as any;
+      return {
+        _id: log._id,
+        status: log.status,
+        isGeofenced: log.isGeofenced,
+        isMockedLocation: log.isMockedLocation,
+        distanceFromAcademy: log.distanceFromAcademy,
+        date: log.date,
+        lessonNumber: log.lessonNumber,
+        // Expose the raw userId (which is the User._id = StudentProfile.userId)
+        userId: studentDoc?._id?.toString() || log.studentId?.toString(),
+        studentName: studentDoc?.fullName || '',
+      };
+    });
+  }
+
   async resetAllAttendance(): Promise<{ success: boolean; message: string; deletedCount: number }> {
     const res = await this.attendanceModel.deleteMany({}).exec();
     await this.studentProfileModel.updateMany({}, { attendancePercentage: 100 }).exec();

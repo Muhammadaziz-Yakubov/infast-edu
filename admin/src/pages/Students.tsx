@@ -69,6 +69,14 @@ export const Students: React.FC = () => {
   const [credentials, setCredentials] = useState<{ phone: string; pass: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Bulk selection & update state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkCourseId, setBulkCourseId] = useState('');
+  const [bulkGroupId, setBulkGroupId] = useState('');
+  const [bulkLessonOrder, setBulkLessonOrder] = useState<string>('');
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+
 
 
   useEffect(() => {
@@ -245,6 +253,54 @@ export const Students: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Bulk selection handlers
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>, currentFiltered: Student[]) => {
+    if (e.target.checked) {
+      setSelectedIds(currentFiltered.map((s) => s._id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectStudent = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedIds.length === 0) return;
+
+    const payload: any = {};
+    if (bulkCourseId) payload.courseId = bulkCourseId;
+    if (bulkGroupId) payload.groupId = bulkGroupId;
+    if (bulkLessonOrder !== '') {
+      payload.currentLessonOrder = Math.max(1, Number(bulkLessonOrder));
+    }
+
+    if (Object.keys(payload).length === 0) {
+      alert("Iltimos, kamida bitta o'zgartiriladigan maydonni belgilang (Kurs, Guruh yoki Dars raqami).");
+      return;
+    }
+
+    setBulkUpdating(true);
+    try {
+      await Promise.all(selectedIds.map((id) => updateStudent(id, payload)));
+      alert(`${selectedIds.length} ta o'quvchi ma'lumotlari muvaffaqiyatli yangilandi!`);
+      setBulkEditOpen(false);
+      setSelectedIds([]);
+      setBulkCourseId('');
+      setBulkGroupId('');
+      setBulkLessonOrder('');
+      await loadData();
+    } catch (err: any) {
+      alert("O'quvchilarni yangilashda xatolik yuz berdi: " + (err.response?.data?.message || err.message));
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
   // Filter logic
   const filteredStudents = students.filter((s) => {
     const matchesSearch =
@@ -382,6 +438,36 @@ export const Students: React.FC = () => {
 
       </div>
 
+      {/* Bulk Selection Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between p-3.5 bg-primary/10 border border-primary/30 rounded-xl shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+            <CheckCircle2 className="w-5 h-5 text-primary" />
+            <span>{selectedIds.length} ta o'quvchi tanlandi</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setBulkCourseId('');
+                setBulkGroupId('');
+                setBulkLessonOrder('');
+                setBulkEditOpen(true);
+              }}
+              className="px-3.5 py-1.5 text-xs font-bold bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              Guruhlab Kurs / Dars belgilash
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="px-3 py-1.5 text-xs font-semibold border rounded-lg hover:bg-secondary transition-all"
+            >
+              Bekor qilish
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Roster Table */}
       <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
         {loading ? (
@@ -397,6 +483,14 @@ export const Students: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b bg-muted/40 text-xs font-semibold uppercase text-muted-foreground select-none">
+                  <th className="px-4 py-4 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filteredStudents.length > 0 && selectedIds.length === filteredStudents.length}
+                      onChange={(e) => handleSelectAll(e, filteredStudents)}
+                      className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer w-4 h-4"
+                    />
+                  </th>
                   <th className="px-6 py-4">Avatar / Ism</th>
                   <th className="px-6 py-4">Telefonlar</th>
                   <th className="px-6 py-4">Kurs / Guruh</th>
@@ -410,8 +504,17 @@ export const Students: React.FC = () => {
                 {filteredStudents.map((student) => {
                   const course = courses.find((c) => c._id === student.courseId);
                   const group = groups.find((g) => g._id === student.groupId);
+                  const isSelected = selectedIds.includes(student._id);
                   return (
-                    <tr key={student._id} className="hover:bg-muted/10 transition-colors">
+                    <tr key={student._id} className={`transition-colors ${isSelected ? 'bg-primary/5' : 'hover:bg-muted/10'}`}>
+                      <td className="px-4 py-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectStudent(student._id)}
+                          className="rounded border-gray-300 text-primary focus:ring-primary cursor-pointer w-4 h-4"
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img
@@ -769,6 +872,94 @@ export const Students: React.FC = () => {
       )}
 
 
+
+      {/* Bulk Edit Modal */}
+      {bulkEditOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-card border rounded-2xl p-6 shadow-xl space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="text-lg font-bold">Guruhlab Tahrirlash</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Tanlangan <strong>{selectedIds.length} ta</strong> o'quvchi uchun ma'lumotlarni o'zgartirish
+                </p>
+              </div>
+              <button
+                onClick={() => setBulkEditOpen(false)}
+                className="p-1 rounded-md text-muted-foreground hover:bg-secondary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleBulkUpdateSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Yangi Kurs (Ixtiyoriy)</label>
+                <select
+                  value={bulkCourseId}
+                  onChange={(e) => setBulkCourseId(e.target.value)}
+                  className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">O'zgarmaydi (O'z holicha qoladi)</option>
+                  {courses.map((c) => (
+                    <option key={c._id} value={c._id}>{c.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Yangi Guruh (Ixtiyoriy)</label>
+                <select
+                  value={bulkGroupId}
+                  onChange={(e) => setBulkGroupId(e.target.value)}
+                  className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">O'zgarmaydi (O'z holicha qoladi)</option>
+                  {groups.map((g) => (
+                    <option key={g._id} value={g._id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                <label className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                  📚 Joriy Dars Raqami (Ixtiyoriy)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  placeholder="Bo'sh qolsa o'zgarmaydi"
+                  value={bulkLessonOrder}
+                  onChange={(e) => setBulkLessonOrder(e.target.value)}
+                  className="w-full border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary font-bold"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Masalan: <strong>16</strong> kiritilsa, tanlangan barcha {selectedIds.length} ta o'quvchining joriy darsi 16-darsga o'tkaziladi.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setBulkEditOpen(false)}
+                  disabled={bulkUpdating}
+                  className="px-4 py-2 border rounded-lg text-sm font-semibold hover:bg-secondary transition-all disabled:opacity-50"
+                >
+                  Bekor Qilish
+                </button>
+                <button
+                  type="submit"
+                  disabled={bulkUpdating}
+                  className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg hover:opacity-90 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
+                >
+                  {bulkUpdating ? 'Saqlanmoqda...' : 'Hammasini Saqlash'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

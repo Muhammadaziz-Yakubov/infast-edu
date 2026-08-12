@@ -3,8 +3,10 @@ export interface Student {
   _id: string;
   fullName: string;
   studentPhone: string;
+  phone?: string;
   parentPhone: string;
   dateOfBirth: string;
+  userId?: any;
   email?: string;
   avatar?: string;
   role: string;

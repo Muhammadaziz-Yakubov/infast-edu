@@ -38,6 +38,20 @@ export class StudentsController {
     return this.studentsService.getProfile(user.userId);
   }
 
+  @Post('me/location')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Update current student live location' })
+  updateOwnLocation(@CurrentUser() user: any, @Body() body: { latitude: number; longitude: number; isMocked?: boolean }) {
+    return this.studentsService.updateLiveLocation(user.userId, body.latitude, body.longitude, body.isMocked || false);
+  }
+
+  @Get('live-locations')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get all active student live locations (Admin only)' })
+  getLiveLocations() {
+    return this.studentsService.getLiveLocations();
+  }
+
   @Patch('me/avatar')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Update student avatar (Student only)' })

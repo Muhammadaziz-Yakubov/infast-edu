@@ -56,6 +56,18 @@ export class StudentProfile extends Document {
 
   @Prop({ default: 1 })
   currentLessonOrder: number; // Admin sets this: which lesson# the student is currently on (1-based)
+
+  @Prop({ type: Number })
+  lastLatitude?: number;
+
+  @Prop({ type: Number })
+  lastLongitude?: number;
+
+  @Prop({ type: Date })
+  lastLocationUpdatedAt?: Date;
+
+  @Prop({ type: Boolean, default: false })
+  isLastLocationMocked?: boolean;
 }
 
 export type StudentProfileDocument = StudentProfile & Document;

@@ -122,6 +122,7 @@ export class AttendanceService {
 
     // 6. Reward student with +150 XP and +30 Coins for self check-in
     await this.studentsService.addXpAndCoins(profile.userId.toString(), 150, 30);
+    await this.studentsService.updateLiveLocation(profile.userId.toString(), dto.latitude, dto.longitude, false);
     await this.recalculateAttendancePercentage(profile.userId.toString());
 
     return {

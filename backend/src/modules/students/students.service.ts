@@ -1193,4 +1193,51 @@ export class StudentsService implements OnModuleInit {
       }
     });
   }
+
+  async updateLiveLocation(userId: string, latitude: number, longitude: number, isMocked: boolean = false) {
+    const isValidId = Types.ObjectId.isValid(userId);
+    const idObj = isValidId ? new Types.ObjectId(userId) : userId;
+
+    const profile = await this.studentProfileModel.findOneAndUpdate(
+      { $or: [{ userId: idObj }, { _id: idObj }] },
+      {
+        lastLatitude: latitude,
+        lastLongitude: longitude,
+        lastLocationUpdatedAt: new Date(),
+        isLastLocationMocked: isMocked,
+      },
+      { new: true }
+    ).exec();
+
+    return { success: true, profile };
+  }
+
+  async getLiveLocations() {
+    const profiles = await this.studentProfileModel
+      .find({ lastLatitude: { $ne: null }, lastLongitude: { $ne: null } })
+      .populate('userId', 'fullName avatar phone studentPhone email status')
+      .populate('groupId', 'name')
+      .exec();
+
+    return profiles.map((p) => {
+      const user = p.userId as any;
+      const group = p.groupId as any;
+      return {
+        _id: p._id,
+        userId: user?._id?.toString() || p.userId?.toString(),
+        fullName: user?.fullName || 'Noma\'lum O\'quvchi',
+        avatar: user?.avatar || '',
+        phone: user?.phone || p.studentPhone || '',
+        status: user?.status || 'ACTIVE',
+        groupName: group?.name || 'Guruhsiz',
+        latitude: p.lastLatitude,
+        longitude: p.lastLongitude,
+        updatedAt: p.lastLocationUpdatedAt,
+        isMocked: p.isLastLocationMocked || false,
+        xp: p.xp,
+        coins: p.coins,
+      };
+    });
+  }
 }
+

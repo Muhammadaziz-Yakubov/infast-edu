@@ -22,10 +22,8 @@ import {
   Eye,
   RefreshCw,
   Code2,
-  AlertCircle,
   ChevronDown,
   ChevronUp,
-  Clock,
   Zap,
   HelpCircle
 } from 'lucide-react';

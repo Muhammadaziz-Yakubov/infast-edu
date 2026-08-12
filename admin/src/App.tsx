@@ -16,6 +16,7 @@ import { LmsBuilder } from './pages/LmsBuilder';
 import { Homework } from './pages/Homework';
 import { Payments } from './pages/Payments';
 import { Attendance } from './pages/Attendance';
+import { LiveMap } from './pages/LiveMap';
 import { Market } from './pages/Market';
 import { Analytics } from './pages/Analytics';
 import { Notifications } from './pages/Notifications';
@@ -93,6 +94,7 @@ export const App: React.FC = () => {
             <Route path="/payments" element={<Payments />} />
             <Route path="/coins" element={<Coins />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/live-map" element={<LiveMap />} />
             <Route path="/library" element={<Library />} />
             
             {/* Gamification Market */}

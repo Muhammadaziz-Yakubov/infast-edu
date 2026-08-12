@@ -38,6 +38,7 @@ import {
   FileText,
   Tag,
   Layers,
+  MapPin,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -70,6 +71,7 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
       { name: 'Students', path: '/students', icon: Users },
       { name: 'Groups', path: '/groups', icon: FolderKanban },
       { name: 'Attendance', path: '/attendance', icon: CheckSquare },
+      { name: 'Xarita (Live Map)', path: '/live-map', icon: MapPin },
     ],
   },
   {
@@ -162,8 +164,9 @@ const getBreadcrumbs = (pathname: string): string[] => {
   // Groups
   if (pathname.startsWith('/groups')) return ['Academy', 'Groups'];
   
-  // Attendance
+  // Attendance & Live Map
   if (pathname.startsWith('/attendance')) return ['Academy', 'Attendance'];
+  if (pathname.startsWith('/live-map')) return ['Academy', 'Xarita (Live Map)'];
   
   // Courses
   if (pathname.startsWith('/courses/')) return ['Learning', 'Courses', 'Course Details'];

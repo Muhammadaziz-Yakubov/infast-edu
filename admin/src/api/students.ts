@@ -44,6 +44,11 @@ export async function getStudentContract(id: string): Promise<any> {
   return unwrapObject(res);
 }
 
+export async function getLiveLocations(): Promise<any[]> {
+  const res = await apiClient.get('/students/live-locations');
+  return unwrapArray(res);
+}
+
 export async function generateStudentContract(id: string, dto: any): Promise<any> {
   const res = await apiClient.post(`/students/${id}/contract/generate`, dto);
   return unwrapObject(res);

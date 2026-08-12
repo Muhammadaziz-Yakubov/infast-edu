@@ -29,12 +29,32 @@ export class Attendance extends Document {
 
   @Prop({ type: String, enum: AttendanceStatus, required: true })
   status: AttendanceStatus;
+
+  // GPS & Geofencing metadata
+  @Prop({ type: Number, required: false })
+  latitude?: number;
+
+  @Prop({ type: Number, required: false })
+  longitude?: number;
+
+  @Prop({ type: Number, required: false })
+  distanceFromAcademy?: number;
+
+  @Prop({ type: Boolean, default: false })
+  isGeofenced?: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  isMockedLocation?: boolean;
+
+  @Prop({ type: Date, required: false })
+  checkInTime?: Date;
 }
 
 export type AttendanceDocument = Attendance & Document;
 export const AttendanceSchema = SchemaFactory.createForClass(Attendance);
-// Student can only have one attendance log per lesson
-AttendanceSchema.index({ studentId: 1, lessonId: 1 }, { unique: true });
+
+AttendanceSchema.index({ studentId: 1, lessonId: 1 }, { unique: false });
 AttendanceSchema.index({ studentId: 1, groupId: 1, lessonNumber: 1 });
 AttendanceSchema.index({ groupId: 1, lessonId: 1 });
 AttendanceSchema.index({ groupId: 1, lessonNumber: 1 });
+AttendanceSchema.index({ date: -1 });

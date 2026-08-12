@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString, IsArray, IsOptional, IsNumber, ValidateNested } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, IsArray, IsOptional, IsNumber, IsBoolean, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AttendanceStatus } from '../../../common/enums/status.enum';
 import { ApiProperty } from '@nestjs/swagger';
@@ -66,4 +66,38 @@ export class BatchAttendanceDto {
   @ValidateNested({ each: true })
   @Type(() => AttendanceRecordDto)
   records: AttendanceRecordDto[];
+}
+
+export class GeofencedCheckInDto {
+  @ApiProperty({ example: 41.311081 })
+  @IsNumber()
+  @IsNotEmpty()
+  latitude: number;
+
+  @ApiProperty({ example: 69.240562 })
+  @IsNumber()
+  @IsNotEmpty()
+  longitude: number;
+
+  @ApiProperty({ example: false, required: false })
+  @IsBoolean()
+  @IsOptional()
+  isMocked?: boolean;
+}
+
+export class UpdateAcademyConfigDto {
+  @ApiProperty({ example: 41.311081 })
+  @IsNumber()
+  @IsNotEmpty()
+  latitude: number;
+
+  @ApiProperty({ example: 69.240562 })
+  @IsNumber()
+  @IsNotEmpty()
+  longitude: number;
+
+  @ApiProperty({ example: 200 })
+  @IsNumber()
+  @IsNotEmpty()
+  radiusMeters: number;
 }

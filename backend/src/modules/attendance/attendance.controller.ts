@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
-import { MarkAttendanceDto, BatchAttendanceDto } from './dto/mark-attendance.dto';
+import { MarkAttendanceDto, BatchAttendanceDto, GeofencedCheckInDto, UpdateAcademyConfigDto } from './dto/mark-attendance.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -14,6 +14,35 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagg
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
+
+  @Post('check-in')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'GPS Geofenced student self check-in' })
+  @ApiResponse({ status: 200, description: 'Check-in recorded, XP/Coins awarded.' })
+  checkInGeofenced(@CurrentUser() user: any, @Body() dto: GeofencedCheckInDto) {
+    return this.attendanceService.checkInGeofenced(user.userId, dto);
+  }
+
+  @Get('config')
+  @Roles(Role.STUDENT, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get Academy GPS location & radius configuration' })
+  getAcademyConfig() {
+    return this.attendanceService.getAcademyConfig();
+  }
+
+  @Post('config')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update Academy GPS location & radius configuration (Admin only)' })
+  updateAcademyConfig(@Body() dto: UpdateAcademyConfigDto) {
+    return this.attendanceService.updateAcademyConfig(dto);
+  }
+
+  @Get('admin/all-logs')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get all student attendance logs with GPS metadata (Admin only)' })
+  getAllLogs() {
+    return this.attendanceService.getAllAttendanceLogs();
+  }
 
   @Post()
   @Roles(Role.SUPER_ADMIN)
@@ -42,7 +71,7 @@ export class AttendanceController {
   @Get('groups/:groupId/lessons/:lessonId')
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get student attendance list for a specific group and lesson (Admin only)' })
-  @ApiResponse({ status: 200, description: ' Roster list.' })
+  @ApiResponse({ status: 200, description: 'Roster list.' })
   findGroupAttendance(
     @Param('groupId') groupId: string,
     @Param('lessonId') lessonId: string

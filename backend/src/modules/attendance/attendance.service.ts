@@ -1,14 +1,36 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Attendance, AttendanceDocument } from './schemas/attendance.schema';
 import { StudentProfile, StudentProfileDocument } from '../students/schemas/student-profile.schema';
 import { StudentsService } from '../students/students.service';
-import { MarkAttendanceDto, BatchAttendanceDto } from './dto/mark-attendance.dto';
+import { MarkAttendanceDto, BatchAttendanceDto, GeofencedCheckInDto, UpdateAcademyConfigDto } from './dto/mark-attendance.dto';
 import { AttendanceStatus } from '../../common/enums/status.enum';
+
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3; // Earth radius in meters
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return Math.round(R * c);
+}
 
 @Injectable()
 export class AttendanceService {
+  // Configurable Academy GPS settings (default: Tashkent InFast Academy coordinates)
+  private academyConfig = {
+    latitude: 41.311081,
+    longitude: 69.240562,
+    radiusMeters: 200,
+  };
+
   constructor(
     @InjectModel(Attendance.name)
     private readonly attendanceModel: Model<AttendanceDocument>,
@@ -17,12 +39,105 @@ export class AttendanceService {
     private readonly studentsService: StudentsService
   ) {}
 
+  getAcademyConfig() {
+    return this.academyConfig;
+  }
+
+  updateAcademyConfig(dto: UpdateAcademyConfigDto) {
+    this.academyConfig = {
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      radiusMeters: dto.radiusMeters,
+    };
+    return this.academyConfig;
+  }
+
+  async checkInGeofenced(userId: string, dto: GeofencedCheckInDto) {
+    // 1. Anti-spoofing check
+    if (dto.isMocked) {
+      throw new BadRequestException('GPS soxtalashtirish (Mock Location) aniqlandi! Haqiqiy GPS joylashuvingizdan foydalaning.');
+    }
+
+    const studentIdObj = new Types.ObjectId(userId);
+
+    // 2. Fetch student profile
+    const profile = await this.studentProfileModel.findOne({
+      $or: [{ userId: studentIdObj }, { _id: studentIdObj }],
+    }).exec();
+
+    if (!profile) {
+      throw new NotFoundException("Talaba profili topilmadi.");
+    }
+
+    if (!profile.groupId) {
+      throw new BadRequestException("Siz birorta o'quv guruhiga biriktirilmagansiz.");
+    }
+
+    // 3. Radius & Distance check
+    const distance = calculateDistanceMeters(
+      dto.latitude,
+      dto.longitude,
+      this.academyConfig.latitude,
+      this.academyConfig.longitude
+    );
+
+    if (distance > this.academyConfig.radiusMeters) {
+      throw new BadRequestException(
+        `Siz akademiyadan ${distance} metr uzoqdasiz. Davomat qilish uchun ${this.academyConfig.radiusMeters} metr radius ichida bo'lishingiz kerak!`
+      );
+    }
+
+    // 4. Check if checked in today
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existingToday = await this.attendanceModel.findOne({
+      studentId: profile.userId,
+      date: { $gte: startOfDay, $lte: endOfDay },
+    }).exec();
+
+    if (existingToday) {
+      throw new BadRequestException("Siz bugun allaqachon davomat qilgansiz!");
+    }
+
+    // 5. Record attendance
+    const attendanceLog = new this.attendanceModel({
+      studentId: profile.userId,
+      groupId: profile.groupId,
+      lessonNumber: profile.currentLessonOrder || 1,
+      status: AttendanceStatus.PRESENT,
+      date: new Date(),
+      checkInTime: new Date(),
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      distanceFromAcademy: distance,
+      isGeofenced: true,
+      isMockedLocation: false,
+    });
+
+    await attendanceLog.save();
+
+    // 6. Reward student with +150 XP and +30 Coins for self check-in
+    await this.studentsService.addXpAndCoins(profile.userId.toString(), 150, 30);
+    await this.recalculateAttendancePercentage(profile.userId.toString());
+
+    return {
+      success: true,
+      message: "Davomat muvaffaqiyatli topshirildi! 🎉",
+      distance,
+      xpGained: 150,
+      coinGained: 30,
+      attendance: attendanceLog,
+    };
+  }
+
   async markAttendance(dto: MarkAttendanceDto): Promise<AttendanceDocument> {
     const rawStudentId = new Types.ObjectId(dto.studentId);
     const groupIdObj = new Types.ObjectId(dto.groupId);
     const lessonIdObj = dto.lessonId ? new Types.ObjectId(dto.lessonId) : undefined;
 
-    // 1. Check if student profile exists (by userId OR _id)
     const profile = await this.studentProfileModel.findOne({
       $or: [{ userId: rawStudentId }, { _id: rawStudentId }],
     }).exec();
@@ -33,7 +148,6 @@ export class AttendanceService {
 
     const studentIdObj = profile.userId;
 
-    // 2. Check if attendance was already recorded (by lessonId or by today's date)
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date();
@@ -52,7 +166,6 @@ export class AttendanceService {
     let coinDelta = 0;
 
     if (existing) {
-      // Re-marking attendance
       if (existing.status !== dto.status) {
         if (dto.status === AttendanceStatus.PRESENT) {
           xpDelta = 300;
@@ -69,7 +182,6 @@ export class AttendanceService {
         await existing.save();
       }
     } else {
-      // First time marking
       if (dto.status === AttendanceStatus.PRESENT) {
         xpDelta = 100;
         coinDelta = 20;
@@ -89,12 +201,10 @@ export class AttendanceService {
       await newAttendance.save();
     }
 
-    // 3. Apply XP and Coin changes
     if (xpDelta !== 0 || coinDelta !== 0) {
       await this.studentsService.addXpAndCoins(studentIdObj.toString(), xpDelta, coinDelta);
     }
 
-    // 4. Recalculate attendance percentage
     await this.recalculateAttendancePercentage(studentIdObj.toString());
 
     return (existing || await this.attendanceModel.findOne(queryFilter).exec()) as any;
@@ -112,7 +222,6 @@ export class AttendanceService {
       });
       results.push(res);
 
-      // Auto-advance currentLessonOrder for PRESENT students (+1 to unlock next lesson)
       if (record.status === AttendanceStatus.PRESENT) {
         const rawId = new Types.ObjectId(record.studentId);
         const profile = await this.studentProfileModel.findOne({
@@ -135,6 +244,16 @@ export class AttendanceService {
       .populate('lessonId', 'title')
       .populate('groupId', 'name')
       .sort({ date: -1 })
+      .exec();
+  }
+
+  async getAllAttendanceLogs(): Promise<AttendanceDocument[]> {
+    return this.attendanceModel
+      .find()
+      .populate('studentId', 'fullName email phone studentPhone')
+      .populate('groupId', 'name')
+      .sort({ date: -1 })
+      .limit(200)
       .exec();
   }
 

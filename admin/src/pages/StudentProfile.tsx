@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getStudentProfile, getStudentContract, generateStudentContract, getStudentLearningProgress } from '../api/students';
 import { getStudentPayments, getStudentPaymentSummary } from '../api/payments';
 import type { Payment } from '../utils/mockDb';
+import { getAvatarUrl } from '../utils/avatar';
 import {
   ArrowLeft,
   Phone,
@@ -225,9 +226,9 @@ export const StudentProfile: React.FC = () => {
             <div className="bg-card border rounded-xl p-6 space-y-4 shadow-sm">
               <div className="text-center pb-4 border-b">
                 <img
-                  src={profile.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile.fullName}`}
+                  src={getAvatarUrl(profile.avatar, profile.fullName)}
                   alt=""
-                  className="w-24 h-24 rounded-full bg-secondary mx-auto border"
+                  className="w-24 h-24 rounded-full bg-secondary mx-auto border object-cover"
                 />
                 <h3 className="font-bold text-lg mt-3">{profile.fullName}</h3>
                 <p className="text-xs text-muted-foreground">O'quvchi</p>

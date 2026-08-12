@@ -13,6 +13,7 @@ import { getCourses } from '../api/courses';
 import { getGroups } from '../api/groups';
 import { checkPaymentStatuses } from '../api/payments';
 import type { Student, Course, Group } from '../utils/mockDb';
+import { getAvatarUrl } from '../utils/avatar';
 import {
   Plus,
   Search,
@@ -546,9 +547,9 @@ export const Students: React.FC = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img
-                            src={student.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${student.fullName}`}
+                            src={getAvatarUrl(student.avatar, student.fullName)}
                             alt=""
-                            className="w-10 h-10 rounded-full bg-secondary"
+                            className="w-10 h-10 rounded-full bg-secondary object-cover"
                           />
                           <div>
                             <span className="font-semibold flex items-center gap-1.5 text-primary hover:underline cursor-pointer" onClick={() => navigate(`/students/${student._id}`)}>

@@ -8,12 +8,20 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/roles.enum';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+
 @ApiTags('users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Post('push-token')
+  @ApiOperation({ summary: 'Register/Update Expo Push Token for mobile notifications' })
+  updatePushToken(@CurrentUser() user: any, @Body('pushToken') pushToken: string) {
+    return this.usersService.updatePushToken(user.userId, pushToken);
+  }
 
   @Post()
   @Roles(Role.SUPER_ADMIN)

@@ -128,6 +128,11 @@ export class UsersService implements OnApplicationBootstrap {
     await this.userModel.findByIdAndUpdate(id, { refreshToken: hashedToken }).exec();
   }
 
+  async updatePushToken(userId: string, pushToken: string): Promise<any> {
+    await this.userModel.findByIdAndUpdate(userId, { expoPushToken: pushToken }).exec();
+    return { success: true, message: 'Push token updated successfully' };
+  }
+
   async remove(id: string): Promise<UserDocument> {
     const deletedUser = await this.userModel.findByIdAndDelete(id).exec();
     if (!deletedUser) {

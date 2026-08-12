@@ -4,6 +4,7 @@ import { ExtraLessonSlot, ExtraLessonSlotSchema } from './schemas/extra-lesson-s
 import { ExtraLessonsService } from './extra-lessons.service';
 import { ExtraLessonsController } from './extra-lessons.controller';
 import { StudentsModule } from '../students/students.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { StudentsModule } from '../students/students.module';
       { name: ExtraLessonSlot.name, schema: ExtraLessonSlotSchema },
     ]),
     StudentsModule,
+    NotificationsModule,
   ],
   controllers: [ExtraLessonsController],
   providers: [ExtraLessonsService],

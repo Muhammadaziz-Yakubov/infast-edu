@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Event, EventDocument } from './schemas/event.schema';
 import { StudentsService } from '../students/students.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class EventsService {
@@ -10,6 +11,7 @@ export class EventsService {
     @InjectModel(Event.name)
     private readonly eventModel: Model<EventDocument>,
     private readonly studentsService: StudentsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: any): Promise<EventDocument> {
@@ -22,7 +24,16 @@ export class EventsService {
       participants: [],
       attendance: [],
     });
-    return newEvent.save();
+    const saved = await newEvent.save();
+
+    // Broadcast push notification to all students
+    await this.notificationsService.broadcast(
+      "🥳 Yangi Event e'lon qilindi!",
+      `"${dto.title}" tadbiri e'lon qilindi. Qatnashish uchun mobil ilovada ro'yxatdan o'ting!`,
+      { type: 'EVENT', eventId: saved._id }
+    ).catch(() => {});
+
+    return saved;
   }
 
   async findAll(userId?: string): Promise<any[]> {

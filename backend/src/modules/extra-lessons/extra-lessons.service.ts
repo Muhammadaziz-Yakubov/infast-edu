@@ -6,6 +6,8 @@ import { CreateSlotDto } from './dto/create-slot.dto';
 import { BookSlotDto } from './dto/book-slot.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { StudentsService } from '../students/students.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../../common/enums/status.enum';
 
 @Injectable()
 export class ExtraLessonsService {
@@ -13,6 +15,7 @@ export class ExtraLessonsService {
     @InjectModel(ExtraLessonSlot.name)
     private readonly slotModel: Model<ExtraLessonSlotDocument>,
     private readonly studentsService: StudentsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async createSlot(dto: CreateSlotDto, adminId?: string): Promise<ExtraLessonSlotDocument> {
@@ -73,7 +76,18 @@ export class ExtraLessonsService {
     slot.bookedAt = new Date();
     slot.attendanceStatus = ExtraLessonAttendanceStatus.PENDING;
 
-    return slot.save();
+    const saved = await slot.save();
+
+    // Trigger Push Notification to Student
+    await this.notificationsService.create(
+      studentId,
+      "📅 Qo'shimcha dars band qilindi!",
+      `Siz ${slot.date} soat ${slot.startTime} darsiga muvaffaqiyatli yozildingiz. O'z vaqtida kelishingizni so'raymiz!`,
+      NotificationType.ANNOUNCEMENT,
+      { type: 'EXTRA_LESSON', slotId: slot._id }
+    ).catch(() => {});
+
+    return saved;
   }
 
   async getStudentBookings(studentId: string): Promise<any[]> {
@@ -105,24 +119,39 @@ export class ExtraLessonsService {
     // Handle coin and XP logic based on transitions
     if (newStatus === ExtraLessonAttendanceStatus.ATTENDED) {
       if (oldStatus === ExtraLessonAttendanceStatus.PENDING) {
-        // First time marking Attended: +100 Coins, +50 XP
         await this.studentsService.addXpAndCoins(slot.bookedBy, 50, 100);
       } else if (oldStatus === ExtraLessonAttendanceStatus.ABSENT) {
-        // Switched from Absent to Attended: Revert -200 coin penalty (+200) AND add +100 coins +50 XP -> Total: +300 coins, +50 XP
         await this.studentsService.addXpAndCoins(slot.bookedBy, 50, 300);
       }
       slot.attendanceStatus = ExtraLessonAttendanceStatus.ATTENDED;
       slot.status = ExtraLessonSlotStatus.COMPLETED;
+
+      // Push notification
+      await this.notificationsService.create(
+        slot.bookedBy.toString(),
+        "🎉 Darsga kelganingiz tasdiqlandi!",
+        "Qo'shimcha darsda qatnashganingiz uchun +100 Coin 🪙 va +50 XP ⚡ hisobingizga qo'shildi!",
+        NotificationType.BONUS,
+        { type: 'EXTRA_LESSON_ATTENDED' }
+      ).catch(() => {});
+
     } else if (newStatus === ExtraLessonAttendanceStatus.ABSENT) {
       if (oldStatus === ExtraLessonAttendanceStatus.PENDING) {
-        // First time marking Absent: -200 Coins
         await this.studentsService.addXpAndCoins(slot.bookedBy, 0, -200);
       } else if (oldStatus === ExtraLessonAttendanceStatus.ATTENDED) {
-        // Switched from Attended to Absent: Revert +100 coins & +50 XP (-100 coins, -50 XP) AND apply -200 coins penalty -> Total: -300 coins, -50 XP
         await this.studentsService.addXpAndCoins(slot.bookedBy, -50, -300);
       }
       slot.attendanceStatus = ExtraLessonAttendanceStatus.ABSENT;
       slot.status = ExtraLessonSlotStatus.COMPLETED;
+
+      // Push notification
+      await this.notificationsService.create(
+        slot.bookedBy.toString(),
+        "⚠️ Qo'shimcha darsga kelmadingiz",
+        "Belgilangan darsga kelmaganingiz sababli -200 Coin 🪙 jarima ayrildi.",
+        NotificationType.SYSTEM,
+        { type: 'EXTRA_LESSON_ABSENT' }
+      ).catch(() => {});
     }
 
     return slot.save();

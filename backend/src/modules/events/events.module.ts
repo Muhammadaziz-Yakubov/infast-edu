@@ -4,6 +4,7 @@ import { EventsService } from './events.service';
 import { EventsController } from './events.controller';
 import { Event, EventSchema } from './schemas/event.schema';
 import { StudentsModule } from '../students/students.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { StudentsModule } from '../students/students.module';
       { name: Event.name, schema: EventSchema },
     ]),
     StudentsModule,
+    NotificationsModule,
   ],
   controllers: [EventsController],
   providers: [EventsService],

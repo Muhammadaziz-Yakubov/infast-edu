@@ -54,6 +54,9 @@ export class User extends Document {
   @Prop({ unique: true, sparse: true })
   telegramId?: string;
 
+  @Prop()
+  expoPushToken?: string;
+
   @Prop({ type: Types.ObjectId, ref: 'Branch' })
   branchId?: Types.ObjectId;
 

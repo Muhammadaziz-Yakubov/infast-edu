@@ -6,6 +6,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/roles.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { NotificationType } from '../../common/enums/status.enum';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
@@ -15,11 +16,27 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Post('broadcast')
-  @Roles(Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Broadcast a notification to all students (Admin only)' })
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Broadcast a push notification to all students (Admin)' })
   @ApiResponse({ status: 201, description: 'Notification broadcasted successfully.' })
-  broadcast(@Body() body: { title: string; message: string }) {
-    return this.notificationsService.broadcast(body.title, body.message);
+  broadcast(@Body() body: { title: string; message: string; data?: any }) {
+    return this.notificationsService.broadcast(body.title, body.message, body.data);
+  }
+
+  @Post('send-push')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Send push notification to specific student or broadcast (Admin)' })
+  sendPushNotification(@Body() body: { title: string; message: string; studentId?: string; data?: any }) {
+    if (body.studentId) {
+      return this.notificationsService.sendPushToSpecificUser(
+        body.studentId,
+        body.title,
+        body.message,
+        NotificationType.ANNOUNCEMENT,
+        body.data
+      );
+    }
+    return this.notificationsService.broadcast(body.title, body.message, body.data);
   }
 
   @Get()

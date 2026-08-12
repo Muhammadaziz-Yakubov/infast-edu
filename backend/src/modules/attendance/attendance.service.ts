@@ -99,6 +99,38 @@ export class AttendanceService {
         status: record.status,
       });
       results.push(res);
+
+      // Auto-advance currentLessonOrder for PRESENT students
+      if (record.status === AttendanceStatus.PRESENT) {
+        let lessonOrder = dto.lessonNumber;
+        if (lessonOrder === undefined && dto.lessonId) {
+          try {
+            const schedModel = this.attendanceModel.db.model('GroupLessonSchedule');
+            const sched = await schedModel.findOne({
+              groupId: new Types.ObjectId(dto.groupId),
+              lessonId: new Types.ObjectId(dto.lessonId),
+            }).exec();
+            if (sched && sched.order) {
+              lessonOrder = sched.order;
+            }
+          } catch (e) {}
+        }
+
+        if (lessonOrder !== undefined && lessonOrder > 0) {
+          const profile = await this.studentProfileModel.findOne({
+            userId: new Types.ObjectId(record.studentId),
+          }).exec();
+          if (profile) {
+            const currentOrder = profile.currentLessonOrder || 1;
+            if (lessonOrder >= currentOrder) {
+              await this.studentProfileModel.findOneAndUpdate(
+                { userId: new Types.ObjectId(record.studentId) },
+                { currentLessonOrder: lessonOrder + 1 }
+              ).exec();
+            }
+          }
+        }
+      }
     }
     return results;
   }

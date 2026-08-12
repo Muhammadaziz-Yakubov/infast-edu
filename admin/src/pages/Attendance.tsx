@@ -19,8 +19,6 @@ export const Attendance: React.FC = () => {
 
   // Selector choices
   const [selectedGroupId, setSelectedGroupId] = useState('');
-  const [selectedLessonId, setSelectedLessonId] = useState('');
-  const [schedule, setSchedule] = useState<any[]>([]);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Attendance Checklist state
@@ -52,20 +50,10 @@ export const Attendance: React.FC = () => {
     }
   };
 
-  // When selectedGroupId changes, load the schedule dates
+  // Populate default checklist values (all PRESENT by default) when selectedGroupId changes
   useEffect(() => {
     if (!selectedGroupId) return;
-    getGroupSchedule(selectedGroupId).then((dates) => {
-      setSchedule(dates);
-      if (dates.length > 0) {
-        // lessonId is now a plain string from the backend
-        setSelectedLessonId(String(dates[0].lessonId));
-      } else {
-        setSelectedLessonId('');
-      }
-    }).catch(console.error);
 
-    // Populate default checklist values (all PRESENT by default)
     const group = groups.find((g) => g._id === selectedGroupId);
     if (group) {
       const initial: Record<string, 'PRESENT' | 'ABSENT'> = {};
@@ -85,8 +73,8 @@ export const Attendance: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!selectedGroupId || !selectedLessonId) {
-      alert('Iltimos, guruh va darsni tanlang');
+    if (!selectedGroupId) {
+      alert('Iltimos, guruhni tanlang');
       return;
     }
 
@@ -97,17 +85,13 @@ export const Attendance: React.FC = () => {
         status,
       }));
 
-      const selectedSch = schedule.find((sch) => String(sch.lessonId) === String(selectedLessonId));
-
       await submitAttendance({
         groupId: selectedGroupId,
-        lessonId: selectedLessonId,
-        lessonNumber: selectedSch?.order,
         date: attendanceDate,
         records,
       });
 
-      alert('Davomat muvaffaqiyatli saqlandi va talabalarning XP/Koinlari yangilandi!');
+      alert('Davomat muvaffaqiyatli saqlandi! Qatnashgan o\'quvchilarning keyingi darsi avtomatik ochildi.');
       
       // Reload students data to reflect updated XP/Coins
       const sList = await getStudents();
@@ -131,11 +115,11 @@ export const Attendance: React.FC = () => {
       {/* Title */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-1">Davomat Tizimi</h1>
-        <p className="text-muted-foreground">Darslarga qatnashganlik hisobotlarini kiritish va o'quvchilarni rag'batlantirish.</p>
+        <p className="text-muted-foreground">Darslarga qatnashganlik hisobotlarini kiritish va o'quvchilarning keyingi darslarini avtomatik ochish.</p>
       </div>
 
       {/* Selectors Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-card border rounded-xl shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-card border rounded-xl shadow-sm">
         
         {/* Select Group */}
         <div className="space-y-1">
@@ -150,26 +134,6 @@ export const Attendance: React.FC = () => {
           >
             {groups.map((g) => (
               <option key={g._id} value={g._id}>{g.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Select Lesson */}
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-            <BookOpen className="w-3.5 h-3.5" />
-            Dars mavzusi
-          </label>
-          <select
-            value={selectedLessonId}
-            onChange={(e) => setSelectedLessonId(e.target.value)}
-            className="w-full text-sm rounded-lg border bg-background px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none"
-          >
-            {schedule.map((sch) => (
-              <option key={sch._id || sch.lessonId} value={sch.lessonId}>
-                Dars #{sch.order}: {sch.lessonTitle}
-                {sch.scheduledDate ? ` — ${new Date(sch.scheduledDate).toLocaleDateString('uz-UZ')}` : ''}
-              </option>
             ))}
           </select>
         </div>

@@ -20,7 +20,7 @@ export class AttendanceService {
   async markAttendance(dto: MarkAttendanceDto): Promise<AttendanceDocument> {
     const studentIdObj = new Types.ObjectId(dto.studentId);
     const groupIdObj = new Types.ObjectId(dto.groupId);
-    const lessonIdObj = new Types.ObjectId(dto.lessonId);
+    const lessonIdObj = dto.lessonId ? new Types.ObjectId(dto.lessonId) : undefined;
 
     // 1. Check if student profile exists
     const profile = await this.studentProfileModel.findOne({ userId: studentIdObj }).exec();
@@ -28,11 +28,20 @@ export class AttendanceService {
       throw new NotFoundException('Student profile not found');
     }
 
-    // 2. Check if attendance was already recorded
-    const existing = await this.attendanceModel.findOne({
-      studentId: studentIdObj,
-      lessonId: lessonIdObj,
-    }).exec();
+    // 2. Check if attendance was already recorded (by lessonId or by today's date)
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const queryFilter: any = { studentId: studentIdObj, groupId: groupIdObj };
+    if (lessonIdObj) {
+      queryFilter.lessonId = lessonIdObj;
+    } else {
+      queryFilter.date = { $gte: startOfDay, $lte: endOfDay };
+    }
+
+    const existing = await this.attendanceModel.findOne(queryFilter).exec();
 
     let xpDelta = 0;
     let coinDelta = 0;
@@ -41,11 +50,9 @@ export class AttendanceService {
       // Re-marking attendance
       if (existing.status !== dto.status) {
         if (dto.status === AttendanceStatus.PRESENT) {
-          // Changed from ABSENT to PRESENT: reverse penalty (-200 XP, -50 coins) and apply reward (+100 XP, +20 coins)
           xpDelta = 300;
           coinDelta = 70;
         } else {
-          // Changed from PRESENT to ABSENT: reverse reward (+100 XP, +20 coins) and apply penalty (-200 XP, -50 coins)
           xpDelta = -300;
           coinDelta = -70;
         }
@@ -70,7 +77,7 @@ export class AttendanceService {
         studentId: studentIdObj,
         groupId: groupIdObj,
         lessonId: lessonIdObj,
-        lessonNumber: dto.lessonNumber,
+        lessonNumber: dto.lessonNumber || profile.currentLessonOrder || 1,
         status: dto.status,
         date: new Date(),
       });
@@ -85,7 +92,7 @@ export class AttendanceService {
     // 4. Recalculate attendance percentage
     await this.recalculateAttendancePercentage(dto.studentId);
 
-    return this.attendanceModel.findOne({ studentId: studentIdObj, lessonId: lessonIdObj }).exec() as any;
+    return (existing || await this.attendanceModel.findOne(queryFilter).exec()) as any;
   }
 
   async markAttendanceBatch(dto: BatchAttendanceDto): Promise<any[]> {
@@ -100,35 +107,17 @@ export class AttendanceService {
       });
       results.push(res);
 
-      // Auto-advance currentLessonOrder for PRESENT students
+      // Auto-advance currentLessonOrder for PRESENT students (+1 to unlock next lesson)
       if (record.status === AttendanceStatus.PRESENT) {
-        let lessonOrder = dto.lessonNumber;
-        if (lessonOrder === undefined && dto.lessonId) {
-          try {
-            const schedModel = this.attendanceModel.db.model('GroupLessonSchedule');
-            const sched = await schedModel.findOne({
-              groupId: new Types.ObjectId(dto.groupId),
-              lessonId: new Types.ObjectId(dto.lessonId),
-            }).exec();
-            if (sched && sched.order) {
-              lessonOrder = sched.order;
-            }
-          } catch (e) {}
-        }
-
-        if (lessonOrder !== undefined && lessonOrder > 0) {
-          const profile = await this.studentProfileModel.findOne({
-            userId: new Types.ObjectId(record.studentId),
-          }).exec();
-          if (profile) {
-            const currentOrder = profile.currentLessonOrder || 1;
-            if (lessonOrder >= currentOrder) {
-              await this.studentProfileModel.findOneAndUpdate(
-                { userId: new Types.ObjectId(record.studentId) },
-                { currentLessonOrder: lessonOrder + 1 }
-              ).exec();
-            }
-          }
+        const profile = await this.studentProfileModel.findOne({
+          userId: new Types.ObjectId(record.studentId),
+        }).exec();
+        if (profile) {
+          const currentOrder = profile.currentLessonOrder || 1;
+          await this.studentProfileModel.findOneAndUpdate(
+            { userId: new Types.ObjectId(record.studentId) },
+            { currentLessonOrder: currentOrder + 1 }
+          ).exec();
         }
       }
     }

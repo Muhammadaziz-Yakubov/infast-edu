@@ -18,8 +18,8 @@ export class Attendance extends Document {
   @Prop({ type: Types.ObjectId, ref: 'Group', required: true })
   groupId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Lesson', required: true })
-  lessonId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Lesson', required: false })
+  lessonId?: Types.ObjectId;
 
   @Prop({ type: Number })
   lessonNumber?: number;

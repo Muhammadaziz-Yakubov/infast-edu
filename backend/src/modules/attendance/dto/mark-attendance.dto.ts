@@ -14,10 +14,10 @@ export class MarkAttendanceDto {
   @IsNotEmpty()
   groupId: string;
 
-  @ApiProperty({ example: '65f1a2b3c4d5e6f7a8b9c0d6' })
+  @ApiProperty({ example: '65f1a2b3c4d5e6f7a8b9c0d6', required: false })
   @IsString()
-  @IsNotEmpty()
-  lessonId: string;
+  @IsOptional()
+  lessonId?: string;
 
   @ApiProperty({ example: 1, required: false })
   @IsNumber()
@@ -46,10 +46,10 @@ export class BatchAttendanceDto {
   @IsNotEmpty()
   groupId: string;
 
-  @ApiProperty({ example: '65f1a2b3c4d5e6f7a8b9c0d6' })
+  @ApiProperty({ example: '65f1a2b3c4d5e6f7a8b9c0d6', required: false })
   @IsString()
-  @IsNotEmpty()
-  lessonId: string;
+  @IsOptional()
+  lessonId?: string;
 
   @ApiProperty({ example: 1, required: false })
   @IsNumber()

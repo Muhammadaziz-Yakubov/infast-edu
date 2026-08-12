@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getCourses, createModule, createLesson, updateCourseModules, importCourse, updateLesson, duplicateLesson, deleteLesson } from '../api/courses';
+import { getCourses, createModule, createLesson, updateCourseModules, importCourse, updateLesson, duplicateLesson, deleteLesson, updateModule, deleteModule } from '../api/courses';
 import { getGroups, getGroupModules, cloneCourseLmsToGroup } from '../api/groups';
 import type { Course } from '../utils/mockDb';
 import {
@@ -15,6 +15,9 @@ import {
   Edit2,
   Copy,
   Trash2,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react';
 
 export const LmsBuilder: React.FC = () => {
@@ -43,6 +46,10 @@ export const LmsBuilder: React.FC = () => {
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [activeLesson, setActiveLesson] = useState<any | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Module rename state
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const [editingModuleTitle, setEditingModuleTitle] = useState('');
 
   // Drag and Drop reordering state
   const [draggedModuleId, setDraggedModuleId] = useState<string | null>(null);
@@ -370,8 +377,39 @@ export const LmsBuilder: React.FC = () => {
     }
   };
 
-  const activeModules = builderMode === 'COURSE' 
-    ? (selectedCourse?.modules || []) 
+  const handleDeleteModule = async (moduleId: string, moduleTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const confirmed = window.confirm(`"${moduleTitle}" modulini va unga tegishli barcha darslarni o'chirishni tasdiqlaysizmi?\n\nBu amalni ortga qaytarib bo'lmaydi.`);
+    if (!confirmed) return;
+    setLoading(true);
+    try {
+      await deleteModule(moduleId);
+      if (activeModuleId === moduleId) {
+        setActiveModuleId(null);
+        setActiveLesson(null);
+      }
+      await refreshBuilderData();
+    } catch (err: any) {
+      alert("Modulni o'chirishda xatolik: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRenameModule = async (moduleId: string) => {
+    if (!editingModuleTitle.trim()) return;
+    try {
+      await updateModule(moduleId, { title: editingModuleTitle.trim() });
+      setEditingModuleId(null);
+      setEditingModuleTitle('');
+      await refreshBuilderData();
+    } catch (err: any) {
+      alert("Modul nomini o'zgartirishda xatolik: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const activeModules = builderMode === 'COURSE'
+    ? (selectedCourse?.modules || [])
     : groupModules;
 
   return (
@@ -527,9 +565,12 @@ export const LmsBuilder: React.FC = () => {
             <div className="space-y-4">
               {activeModules.map((mod) => (
                 <div key={mod._id} className="space-y-2">
+                  {/* Module row */}
                   <div
-                    onClick={() => setActiveModuleId(mod._id)}
-                    draggable
+                    onClick={() => {
+                      if (editingModuleId !== mod._id) setActiveModuleId(mod._id);
+                    }}
+                    draggable={editingModuleId !== mod._id}
                     onDragStart={() => setDraggedModuleId(mod._id)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={async (e) => {
@@ -551,24 +592,82 @@ export const LmsBuilder: React.FC = () => {
                       }
                       setDraggedModuleId(null);
                     }}
-                    className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                    className={`group/mod flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-colors ${
                       activeModuleId === mod._id ? 'border-primary bg-primary/[0.02]' : 'hover:bg-secondary/40'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <GripVertical className="w-3.5 h-3.5 text-muted-foreground shrink-0 cursor-grab active:cursor-grabbing" />
-                      <span className="text-xs font-bold text-foreground line-clamp-1">{mod.title}</span>
-                    </div>
-                    <span title="Dars qo'shish" className="flex items-center shrink-0">
-                      <Plus
-                        className="w-3.5 h-3.5 text-muted-foreground hover:text-primary cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveModuleId(mod._id);
-                          setActiveLesson({ _new: true });
-                        }}
-                      />
-                    </span>
+                    {editingModuleId === mod._id ? (
+                      /* Inline rename input */
+                      <div className="flex items-center gap-1.5 flex-1" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          autoFocus
+                          type="text"
+                          value={editingModuleTitle}
+                          onChange={(e) => setEditingModuleTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleRenameModule(mod._id);
+                            if (e.key === 'Escape') { setEditingModuleId(null); setEditingModuleTitle(''); }
+                          }}
+                          className="flex-1 text-xs font-bold bg-background border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <button
+                          onClick={() => handleRenameModule(mod._id)}
+                          className="p-1 text-green-500 hover:bg-green-500/10 rounded transition-all"
+                          title="Saqlash"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => { setEditingModuleId(null); setEditingModuleTitle(''); }}
+                          className="p-1 text-muted-foreground hover:bg-secondary rounded transition-all"
+                          title="Bekor qilish"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      /* Normal view row */
+                      <>
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <GripVertical className="w-3.5 h-3.5 text-muted-foreground shrink-0 cursor-grab active:cursor-grabbing" />
+                          <span className="text-xs font-bold text-foreground line-clamp-1">{mod.title}</span>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover/mod:opacity-100 transition-opacity">
+                          {/* Rename module */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingModuleId(mod._id);
+                              setEditingModuleTitle(mod.title);
+                            }}
+                            className="p-1 text-muted-foreground hover:text-primary rounded transition-all"
+                            title="Modul nomini o'zgartirish"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          {/* Delete module */}
+                          <button
+                            onClick={(e) => handleDeleteModule(mod._id, mod.title, e)}
+                            className="p-1 text-muted-foreground hover:text-destructive rounded transition-all"
+                            title="Modulni o'chirish"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                          {/* Add lesson */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveModuleId(mod._id);
+                              setActiveLesson({ _new: true });
+                            }}
+                            className="p-1 text-muted-foreground hover:text-primary rounded transition-all"
+                            title="Dars qo'shish"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="pl-3 space-y-1">

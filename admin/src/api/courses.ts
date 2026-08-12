@@ -62,3 +62,13 @@ export async function duplicateLesson(id: string, targetModuleId: string): Promi
   const res = await apiClient.post(`/lms/lessons/${id}/duplicate`, { targetModuleId });
   return unwrapObject(res);
 }
+
+export async function updateModule(id: string, dto: any): Promise<any> {
+  const res = await apiClient.patch(`/lms/modules/${id}`, dto);
+  return unwrapObject(res);
+}
+
+export async function deleteModule(id: string): Promise<any> {
+  const res = await apiClient.delete(`/lms/modules/${id}`);
+  return unwrapObject(res);
+}

@@ -85,16 +85,60 @@ export const Attendance: React.FC = () => {
 
   useEffect(() => {
     if (!selectedGroupId) return;
-    const group = groups.find((g) => g._id === selectedGroupId);
-    if (group) {
-      const initial: Record<string, 'PRESENT' | 'ABSENT'> = {};
-      (group.students || []).forEach((sid: any) => {
-        const idStr = typeof sid === 'string' ? sid : sid?._id?.toString() || sid?.id?.toString() || String(sid);
-        initial[idStr] = 'PRESENT';
-      });
-      setChecklist(initial);
-    }
-  }, [selectedGroupId, groups]);
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const logs = await getAllAttendanceLogs();
+        if (!isMounted) return;
+
+        const targetDateStr = new Date(attendanceDate).toDateString();
+        const presentStudentIds = new Set<string>();
+
+        (logs || []).forEach((log: any) => {
+          if (!log.date) return;
+          const logDateStr = new Date(log.date).toDateString();
+          const logGroupId = typeof log.groupId === 'object' ? log.groupId?._id : log.groupId;
+
+          if (
+            (logGroupId === selectedGroupId || String(logGroupId) === String(selectedGroupId)) &&
+            logDateStr === targetDateStr &&
+            log.status === 'PRESENT'
+          ) {
+            const sid = typeof log.studentId === 'object' ? log.studentId?._id : log.studentId;
+            if (sid) presentStudentIds.add(String(sid));
+            const suid = typeof log.studentId === 'object' ? log.studentId?.userId : null;
+            if (suid) presentStudentIds.add(String(suid));
+          }
+        });
+
+        const initial: Record<string, 'PRESENT' | 'ABSENT'> = {};
+        activeStudents.forEach((s) => {
+          const sIdStr = String(s._id);
+          const uIdStr = s.userId ? String(s.userId) : null;
+
+          if (presentStudentIds.has(sIdStr) || (uIdStr && presentStudentIds.has(uIdStr))) {
+            initial[s._id] = 'PRESENT';
+          } else {
+            initial[s._id] = 'ABSENT';
+          }
+        });
+
+        setChecklist(initial);
+      } catch (err) {
+        if (!isMounted) return;
+        const initial: Record<string, 'PRESENT' | 'ABSENT'> = {};
+        activeStudents.forEach((s) => {
+          initial[s._id] = 'ABSENT';
+        });
+        setChecklist(initial);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedGroupId, attendanceDate, groups, students]);
 
   const toggleStatus = (studentId: string) => {
     setChecklist((prev) => ({

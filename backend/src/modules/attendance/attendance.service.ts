@@ -45,9 +45,9 @@ export class AttendanceService {
 
   updateAcademyConfig(dto: UpdateAcademyConfigDto) {
     this.academyConfig = {
-      latitude: dto.latitude,
-      longitude: dto.longitude,
-      radiusMeters: dto.radiusMeters,
+      latitude: Number(dto.latitude) || 41.311081,
+      longitude: Number(dto.longitude) || 69.240562,
+      radiusMeters: Number(dto.radiusMeters) || 200,
     };
     return this.academyConfig;
   }
@@ -58,11 +58,12 @@ export class AttendanceService {
       throw new BadRequestException('GPS soxtalashtirish (Mock Location) aniqlandi! Haqiqiy GPS joylashuvingizdan foydalaning.');
     }
 
-    const studentIdObj = new Types.ObjectId(userId);
+    const isValidId = Types.ObjectId.isValid(userId);
+    const idObj = isValidId ? new Types.ObjectId(userId) : userId;
 
-    // 2. Fetch student profile
+    // 2. Fetch student profile (flexible query by userId or _id)
     const profile = await this.studentProfileModel.findOne({
-      $or: [{ userId: studentIdObj }, { _id: studentIdObj }],
+      $or: [{ userId: idObj }, { _id: idObj }, { userId: userId }, { _id: userId }],
     }).exec();
 
     if (!profile) {
@@ -134,19 +135,17 @@ export class AttendanceService {
   }
 
   async markAttendance(dto: MarkAttendanceDto): Promise<AttendanceDocument> {
-    const rawStudentId = new Types.ObjectId(dto.studentId);
-    const groupIdObj = new Types.ObjectId(dto.groupId);
-    const lessonIdObj = dto.lessonId ? new Types.ObjectId(dto.lessonId) : undefined;
+    const rawStudentId = dto.studentId;
+    const isValidId = Types.ObjectId.isValid(rawStudentId);
+    const idObj = isValidId ? new Types.ObjectId(rawStudentId) : rawStudentId;
+    const groupIdObj = Types.ObjectId.isValid(dto.groupId) ? new Types.ObjectId(dto.groupId) : dto.groupId;
+    const lessonIdObj = dto.lessonId && Types.ObjectId.isValid(dto.lessonId) ? new Types.ObjectId(dto.lessonId) : undefined;
 
     const profile = await this.studentProfileModel.findOne({
-      $or: [{ userId: rawStudentId }, { _id: rawStudentId }],
+      $or: [{ userId: idObj }, { _id: idObj }, { userId: rawStudentId }, { _id: rawStudentId }],
     }).exec();
 
-    if (!profile) {
-      throw new NotFoundException('Student profile not found');
-    }
-
-    const studentIdObj = profile.userId;
+    const studentIdObj = profile ? profile.userId : idObj;
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -194,7 +193,7 @@ export class AttendanceService {
         studentId: studentIdObj,
         groupId: groupIdObj,
         lessonId: lessonIdObj,
-        lessonNumber: dto.lessonNumber || profile.currentLessonOrder || 1,
+        lessonNumber: dto.lessonNumber || (profile ? profile.currentLessonOrder : 1) || 1,
         status: dto.status,
         date: new Date(),
       });
@@ -202,7 +201,11 @@ export class AttendanceService {
     }
 
     if (xpDelta !== 0 || coinDelta !== 0) {
-      await this.studentsService.addXpAndCoins(studentIdObj.toString(), xpDelta, coinDelta);
+      try {
+        await this.studentsService.addXpAndCoins(studentIdObj.toString(), xpDelta, coinDelta);
+      } catch (err) {
+        // Ignore if user rewards update fails
+      }
     }
 
     await this.recalculateAttendancePercentage(studentIdObj.toString());
@@ -213,34 +216,45 @@ export class AttendanceService {
   async markAttendanceBatch(dto: BatchAttendanceDto): Promise<any[]> {
     const results = [];
     for (const record of dto.records) {
-      const res = await this.markAttendance({
-        studentId: record.studentId,
-        groupId: dto.groupId,
-        lessonId: dto.lessonId,
-        lessonNumber: dto.lessonNumber,
-        status: record.status,
-      });
-      results.push(res);
+      try {
+        const res = await this.markAttendance({
+          studentId: record.studentId,
+          groupId: dto.groupId,
+          lessonId: dto.lessonId,
+          lessonNumber: dto.lessonNumber,
+          status: record.status,
+        });
+        results.push(res);
 
-      if (record.status === AttendanceStatus.PRESENT) {
-        const rawId = new Types.ObjectId(record.studentId);
-        const profile = await this.studentProfileModel.findOne({
-          $or: [{ userId: rawId }, { _id: rawId }],
-        }).exec();
-        if (profile) {
-          const currentOrder = profile.currentLessonOrder || 1;
-          await this.studentProfileModel.findByIdAndUpdate(profile._id, {
-            currentLessonOrder: currentOrder + 1,
+        if (record.status === AttendanceStatus.PRESENT) {
+          const rawId = record.studentId;
+          const isValidId = Types.ObjectId.isValid(rawId);
+          const idObj = isValidId ? new Types.ObjectId(rawId) : rawId;
+
+          const profile = await this.studentProfileModel.findOne({
+            $or: [{ userId: idObj }, { _id: idObj }, { userId: rawId }, { _id: rawId }],
           }).exec();
+
+          if (profile) {
+            const currentOrder = profile.currentLessonOrder || 1;
+            await this.studentProfileModel.findByIdAndUpdate(profile._id, {
+              currentLessonOrder: currentOrder + 1,
+            }).exec();
+          }
         }
+      } catch (e) {
+        // Continue loop if single record fails
       }
     }
     return results;
   }
 
   async getStudentAttendance(studentId: string): Promise<AttendanceDocument[]> {
+    const isValidId = Types.ObjectId.isValid(studentId);
+    const idObj = isValidId ? new Types.ObjectId(studentId) : studentId;
+
     return this.attendanceModel
-      .find({ studentId: new Types.ObjectId(studentId) })
+      .find({ $or: [{ studentId: idObj }, { studentId: studentId }] })
       .populate('lessonId', 'title')
       .populate('groupId', 'name')
       .sort({ date: -1 })
@@ -268,30 +282,42 @@ export class AttendanceService {
   }
 
   async getGroupAttendanceForLesson(groupId: string, lessonId: string): Promise<AttendanceDocument[]> {
+    const isValidGroupId = Types.ObjectId.isValid(groupId);
+    const gId = isValidGroupId ? new Types.ObjectId(groupId) : groupId;
+    const isValidLessonId = Types.ObjectId.isValid(lessonId);
+    const lId = isValidLessonId ? new Types.ObjectId(lessonId) : lessonId;
+
     return this.attendanceModel
-      .find({
-        groupId: new Types.ObjectId(groupId),
-        lessonId: new Types.ObjectId(lessonId),
-      })
+      .find({ groupId: gId, lessonId: lId })
       .populate('studentId', 'fullName email phone')
       .exec();
   }
 
   private async recalculateAttendancePercentage(studentId: string): Promise<void> {
-    const studentIdObj = new Types.ObjectId(studentId);
+    const isValidId = Types.ObjectId.isValid(studentId);
+    const studentIdObj = isValidId ? new Types.ObjectId(studentId) : studentId;
 
-    const totalLogs = await this.attendanceModel.countDocuments({ studentId: studentIdObj }).exec();
-    if (totalLogs === 0) return;
+    const totalLogs = await this.attendanceModel.countDocuments({
+      $or: [{ studentId: studentIdObj }, { studentId }],
+    }).exec();
+
+    if (totalLogs === 0) {
+      await this.studentProfileModel.findOneAndUpdate(
+        { $or: [{ userId: studentIdObj }, { _id: studentIdObj }, { userId: studentId }, { _id: studentId }] },
+        { attendancePercentage: 100 }
+      ).exec();
+      return;
+    }
 
     const presentLogs = await this.attendanceModel.countDocuments({
-      studentId: studentIdObj,
+      $or: [{ studentId: studentIdObj }, { studentId }],
       status: AttendanceStatus.PRESENT,
     }).exec();
 
     const attendancePercentage = Math.round((presentLogs / totalLogs) * 100);
 
     await this.studentProfileModel.findOneAndUpdate(
-      { userId: studentIdObj },
+      { $or: [{ userId: studentIdObj }, { _id: studentIdObj }, { userId: studentId }, { _id: studentId }] },
       { attendancePercentage }
     ).exec();
   }

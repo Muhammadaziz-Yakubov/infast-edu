@@ -8,7 +8,6 @@ import {
   resetAllStudentsXp,
   resetAllStudentsProgress,
   resetStudentXp,
-  resetStudentProgress,
 } from '../api/students';
 import { getCourses } from '../api/courses';
 import { getGroups } from '../api/groups';

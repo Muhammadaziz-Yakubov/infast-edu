@@ -368,6 +368,24 @@ export class LmsService implements OnModuleInit {
       throw new BadRequestException('Bu dars uchun amaliy topshiriq mavjud emas');
     }
 
+    // ── Determine if this is a "past" lesson (admin already unlocked it → no reward) ──
+    const studentProfile = await this.studentsService.getStudentProfileForAuth(studentId);
+    const adminLessonLimit: number = (studentProfile as any)?.currentLessonOrder ?? 1;
+    const moduleId = lesson.moduleId?.toString?.() || lesson.moduleId;
+    const lessonsInModule = await this.lessonModel.find({ moduleId: new Types.ObjectId(moduleId) }).sort({ order: 1 }).exec();
+    const lessonOrderInModule = lessonsInModule.findIndex((l) => l._id.toString() === lessonId) + 1;
+    const moduleDoc = await this.moduleModel.findById(moduleId).exec();
+    let globalLessonOrder = lessonOrderInModule;
+    if (moduleDoc) {
+      const filter: any = moduleDoc.groupId ? { groupId: moduleDoc.groupId } : { courseId: moduleDoc.courseId };
+      const precedingModules = await this.moduleModel.find({ ...filter, order: { $lt: moduleDoc.order } }).exec();
+      for (const pm of precedingModules) {
+        const count = await this.lessonModel.countDocuments({ moduleId: pm._id }).exec();
+        globalLessonOrder += count;
+      }
+    }
+    const isPastLesson = globalLessonOrder < adminLessonLimit;
+
     const practiceTask = lesson.practice;
     const rules = practiceTask.validationRules || [];
     let isValid = true;
@@ -415,10 +433,12 @@ export class LmsService implements OnModuleInit {
         
         await progress.save();
 
-        xpEarned = practiceTask.xpReward ?? 50;
-        coinsEarned = practiceTask.coinReward ?? 10;
-
-        await this.studentsService.addXpAndCoins(studentId, xpEarned, coinsEarned);
+        // Only reward if NOT a past lesson
+        if (!isPastLesson) {
+          xpEarned = practiceTask.xpReward ?? 50;
+          coinsEarned = practiceTask.coinReward ?? 10;
+          await this.studentsService.addXpAndCoins(studentId, xpEarned, coinsEarned);
+        }
       }
 
       return {
@@ -439,6 +459,30 @@ export class LmsService implements OnModuleInit {
   // Submit quiz answers; gates entry on practiceCompleted; marks testCompleted on pass
   async completeLesson(studentId: string, lessonId: string, quizAnswers?: number[], completedRounds?: number): Promise<any> {
     const lesson = await this.findOneLesson(lessonId);
+
+    // ── Determine if this is a "past" lesson the admin already unlocked (no reward) ──
+    const studentProfile = await this.studentsService.getStudentProfileForAuth(studentId);
+    const adminLessonLimit: number = (studentProfile as any)?.currentLessonOrder ?? 1;
+
+    // Get lesson's global order within its module (1-based)
+    const moduleId = lesson.moduleId?.toString?.() || lesson.moduleId;
+    const lessonsInModule = await this.lessonModel.find({ moduleId: new Types.ObjectId(moduleId) }).sort({ order: 1 }).exec();
+    const lessonOrderInModule = lessonsInModule.findIndex((l) => l._id.toString() === lessonId) + 1;
+
+    // Get module's order to compute global lesson index across all modules
+    const moduleDoc = await this.moduleModel.findById(moduleId).exec();
+    let globalLessonOrder = lessonOrderInModule;
+    if (moduleDoc) {
+      const filter: any = moduleDoc.groupId
+        ? { groupId: moduleDoc.groupId }
+        : { courseId: moduleDoc.courseId };
+      const precedingModules = await this.moduleModel.find({ ...filter, order: { $lt: moduleDoc.order } }).exec();
+      for (const pm of precedingModules) {
+        const count = await this.lessonModel.countDocuments({ moduleId: pm._id }).exec();
+        globalLessonOrder += count;
+      }
+    }
+    const isPastLesson = globalLessonOrder < adminLessonLimit;
 
     // Find or create progress
     let progress = await this.progressModel.findOne({
@@ -532,7 +576,7 @@ export class LmsService implements OnModuleInit {
     let xpEarned = 0;
     let coinsEarned = 0;
 
-    if (isFirstTimeCompletion && isFullyCompleted) {
+    if (isFirstTimeCompletion && isFullyCompleted && !isPastLesson) {
       if (!hasQuiz) {
         xpEarned = 50;
         coinsEarned = 10;

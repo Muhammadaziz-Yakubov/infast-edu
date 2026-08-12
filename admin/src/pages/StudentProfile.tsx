@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getStudentProfile, getStudentContract, generateStudentContract } from '../api/students';
+import { getStudentProfile, getStudentContract, generateStudentContract, getStudentLearningProgress } from '../api/students';
 import { getStudentPayments, getStudentPaymentSummary } from '../api/payments';
 import type { Payment } from '../utils/mockDb';
 import {
@@ -21,15 +21,28 @@ import {
   Download,
   Eye,
   RefreshCw,
+  Code2,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Zap,
+  HelpCircle
 } from 'lucide-react';
+
 export const StudentProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
+  const [learningProgress, setLearningProgress] = useState<any>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
   const [contract, setContract] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Active Tab: 'OVERVIEW' | 'LMS_DETAILS' | 'PAYMENTS' | 'CONTRACT'
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'LMS_DETAILS' | 'HISTORY'>('OVERVIEW');
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
   // Modal & Form States
   const [showModal, setShowModal] = useState(false);
@@ -48,11 +61,13 @@ export const StudentProfile: React.FC = () => {
       getStudentPayments(id),
       getStudentPaymentSummary(id),
       getStudentContract(id).catch(() => null),
-    ]).then(([profileRes, paymentsRes, summaryRes, contractRes]) => {
+      getStudentLearningProgress(id).catch(() => null),
+    ]).then(([profileRes, paymentsRes, summaryRes, contractRes, learningRes]) => {
       setProfile(profileRes);
       setPayments(paymentsRes || []);
       setPaymentSummary(summaryRes);
       setContract(contractRes);
+      setLearningProgress(learningRes);
       setLoading(false);
     }).catch((err) => {
       alert(err.message || 'Xatolik yuz berdi');
@@ -137,317 +152,587 @@ export const StudentProfile: React.FC = () => {
     );
   }
 
+  const currentLessonNumber = learningProgress?.currentLessonOrder || profile?.currentLessonOrder || 1;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       
       {/* Back button & Name */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate('/students')}
-          className="p-2 border rounded-lg hover:bg-secondary transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div>
-          <div className="flex items-center gap-3">
-            {profile.label && (
-              <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded-md">
-                {profile.label}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/students')}
+            className="p-2 border rounded-lg hover:bg-secondary transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <div className="flex items-center gap-3">
+              {profile.label && (
+                <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded-md">
+                  {profile.label}
+                </span>
+              )}
+              <h1 className="text-2xl font-bold tracking-tight">{profile.fullName}</h1>
+              <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                profile.status === 'ACTIVE' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
+              }`}>
+                {profile.status === 'ACTIVE' ? 'Faol' : 'Bloklangan'}
               </span>
-            )}
-            <h1 className="text-2xl font-bold tracking-tight">{profile.fullName}</h1>
-            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-              profile.status === 'ACTIVE' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
-            }`}>
-              {profile.status === 'ACTIVE' ? 'Faol' : 'Bloklangan'}
-            </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              ID: {profile._id} • Hozirgi darsi: <span className="font-bold text-primary">{currentLessonNumber}-dars</span>
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">ID: {profile._id}</p>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex items-center p-1 bg-secondary/50 border rounded-xl space-x-1">
+          <button
+            onClick={() => setActiveTab('OVERVIEW')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+              activeTab === 'OVERVIEW' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Umumiy Profil
+          </button>
+          <button
+            onClick={() => setActiveTab('LMS_DETAILS')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+              activeTab === 'LMS_DETAILS' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            Darslar & Test/Practice
+          </button>
+          <button
+            onClick={() => setActiveTab('HISTORY')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+              activeTab === 'HISTORY' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            XP & Coin Tarixi
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column: Personal info & Gamification */}
-        <div className="space-y-6 lg:col-span-1">
+      {activeTab === 'OVERVIEW' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Personal Info Card */}
-          <div className="bg-card border rounded-xl p-6 space-y-4 shadow-sm">
-            <div className="text-center pb-4 border-b">
-              <img
-                src={profile.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile.fullName}`}
-                alt=""
-                className="w-24 h-24 rounded-full bg-secondary mx-auto border"
-              />
-              <h3 className="font-bold text-lg mt-3">{profile.fullName}</h3>
-              <p className="text-xs text-muted-foreground">O'quvchi</p>
-            </div>
+          {/* Left Column: Personal info & Gamification */}
+          <div className="space-y-6 lg:col-span-1">
             
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <Phone className="w-4 h-4 shrink-0" />
-                <span className="text-foreground">{profile.studentPhone} (Talaba)</span>
+            {/* Personal Info Card */}
+            <div className="bg-card border rounded-xl p-6 space-y-4 shadow-sm">
+              <div className="text-center pb-4 border-b">
+                <img
+                  src={profile.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile.fullName}`}
+                  alt=""
+                  className="w-24 h-24 rounded-full bg-secondary mx-auto border"
+                />
+                <h3 className="font-bold text-lg mt-3">{profile.fullName}</h3>
+                <p className="text-xs text-muted-foreground">O'quvchi</p>
               </div>
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <Phone className="w-4 h-4 shrink-0" />
-                <span className="text-foreground">{profile.parentPhone} (Valiy)</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <Mail className="w-4 h-4 shrink-0" />
-                <span className="text-foreground truncate">{profile.email || 'Kiritilmagan'}</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <Calendar className="w-4 h-4 shrink-0" />
-                <span className="text-foreground">Tug'ilgan kuni: {profile.dateOfBirth}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Gamification Stats */}
-          <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-base border-b pb-2 flex items-center gap-2">
-              <Award className="w-4 h-4 text-primary" />
-              Gamifikatsiya reytingi
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-secondary rounded-lg text-center">
-                <span className="text-xs text-muted-foreground">Daraja (Level)</span>
-                <p className="text-xl font-bold text-primary mt-1">{profile.level}</p>
-              </div>
-              <div className="p-3 bg-secondary rounded-lg text-center">
-                <span className="text-xs text-muted-foreground">Reyting o'rni</span>
-                <p className="text-xl font-bold text-green-500 mt-1">#{profile.rankingPosition || 3}</p>
-              </div>
-              <div className="p-3 bg-secondary rounded-lg text-center">
-                <span className="text-xs text-muted-foreground">Jami XP</span>
-                <p className="text-xl font-bold text-amber-500 mt-1 flex items-center justify-center gap-1">
-                  <TrendingUp className="w-4 h-4" />
-                  {profile.xp}
-                </p>
-              </div>
-              <div className="p-3 bg-secondary rounded-lg text-center">
-                <span className="text-xs text-muted-foreground">Koinlar balansi</span>
-                <p className="text-xl font-bold text-yellow-600 mt-1 flex items-center justify-center gap-1">
-                  <CircleDollarSign className="w-4 h-4" />
-                  {profile.coins}
-                </p>
+              
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center gap-2.5 text-muted-foreground">
+                  <Phone className="w-4 h-4 shrink-0" />
+                  <span className="text-foreground">{profile.studentPhone} (Talaba)</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-muted-foreground">
+                  <Phone className="w-4 h-4 shrink-0" />
+                  <span className="text-foreground">{profile.parentPhone} (Valiy)</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-muted-foreground">
+                  <Mail className="w-4 h-4 shrink-0" />
+                  <span className="text-foreground truncate">{profile.email || 'Kiritilmagan'}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-muted-foreground">
+                  <Calendar className="w-4 h-4 shrink-0" />
+                  <span className="text-foreground">Tug'ilgan kuni: {profile.dateOfBirth}</span>
+                </div>
               </div>
             </div>
-          </div>
 
-        </div>
-
-        {/* Right Column: Learning, Attendance, Payments */}
-        <div className="lg:col-span-2 space-y-6">
-          
-          {/* Learning Progress Card */}
-          <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-base border-b pb-2 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-primary" />
-              O'quv ko'rsatkichlari
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs text-muted-foreground">Kurs:</span>
-                <span className="font-semibold block text-sm mt-0.5">{profile.courseId?.title || 'Hech qanday kursga biriktirilmagan'}</span>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground">Guruh:</span>
-                <span className="font-semibold block text-sm mt-0.5">{profile.groupId?.name || 'Guruhsiz'}</span>
-              </div>
-            </div>
-            
-            <div className="h-[1px] bg-border my-2" />
-            
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <CheckCircle className="w-5 h-5 text-green-500 mx-auto mb-1" />
-                <span className="text-xs text-muted-foreground">Tugallangan darslar</span>
-                <p className="font-bold text-sm mt-0.5">
-                  {profile.completedLessonsCount || 0} / {profile.totalLessonsCount || 0}
-                </p>
-              </div>
-              <div>
-                <FileText className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-                <span className="text-xs text-muted-foreground">Uy vazifalari reytingi</span>
-                <p className="font-bold text-sm mt-0.5">{profile.homeworkProgress || 0}%</p>
-              </div>
-              <div>
-                <Bookmark className="w-5 h-5 text-purple-500 mx-auto mb-1" />
-                <span className="text-xs text-muted-foreground">O'rtacha test bali</span>
-                <p className="font-bold text-sm mt-0.5">{profile.averageQuizScore || 0}%</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Attendance Stats Card */}
-          <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-base border-b pb-2 flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-primary" />
-              Davomat hisoboti
-            </h3>
-            <div className="flex items-center justify-around gap-4 text-center">
-              <div>
-                <span className="text-xs text-muted-foreground">Qatnashish darajasi</span>
-                <p className="text-2xl font-bold text-primary mt-1">{profile.attendancePercentage ?? 0}%</p>
-              </div>
-              <div className="w-[1px] h-10 bg-border" />
-              <div>
-                <span className="text-xs text-muted-foreground">Darsda bo'lgan kunlar</span>
-                <p className="text-2xl font-bold text-green-500 mt-1">{profile.presentCount ?? 0} kun</p>
-              </div>
-              <div className="w-[1px] h-10 bg-border" />
-              <div>
-                <span className="text-xs text-muted-foreground">Qoldirilgan darslar</span>
-                <p className="text-2xl font-bold text-red-500 mt-1">{profile.absentCount ?? 0} kun</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Payments & Subscription Ledger */}
-          <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-bold text-base flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-primary" />
-                To'lovlar & Billing
+            {/* Gamification Stats */}
+            <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
+              <h3 className="font-bold text-base border-b pb-2 flex items-center gap-2">
+                <Award className="w-4 h-4 text-primary" />
+                Gamifikatsiya reytingi
               </h3>
-              <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'PAID'
-                  ? 'bg-green-500/10 text-green-500'
-                  : (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'UPCOMING'
-                  ? 'bg-amber-500/10 text-amber-500'
-                  : (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'UNPAID'
-                  ? 'bg-gray-500/10 text-gray-400'
-                  : 'bg-red-500/10 text-red-500'
-              }`}>
-                {(paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'PAID' ? "To'langan" :
-                 (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'UPCOMING' ? "Yaqinlashmoqda" :
-                 (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'UNPAID' ? "To'lov qilinmagan" :
-                 "Muddati o'tgan"}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between text-sm py-1">
-              <span className="text-muted-foreground">Keyingi to'lov sanasi:</span>
-              <span className="font-bold text-foreground">
-                {paymentSummary?.nextPaymentDateFormatted ?? (payments.length > 0 ? payments[0].nextPaymentDate : "To'lov qilinmagan")}
-              </span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-secondary rounded-lg text-center">
+                  <span className="text-xs text-muted-foreground">Daraja (Level)</span>
+                  <p className="text-xl font-bold text-primary mt-1">{profile.level}</p>
+                </div>
+                <div className="p-3 bg-secondary rounded-lg text-center">
+                  <span className="text-xs text-muted-foreground">Reyting o'rni</span>
+                  <p className="text-xl font-bold text-green-500 mt-1">#{profile.rankingPosition || 3}</p>
+                </div>
+                <div className="p-3 bg-secondary rounded-lg text-center">
+                  <span className="text-xs text-muted-foreground">Jami XP</span>
+                  <p className="text-xl font-bold text-amber-500 mt-1 flex items-center justify-center gap-1">
+                    <TrendingUp className="w-4 h-4" />
+                    {profile.xp}
+                  </p>
+                </div>
+                <div className="p-3 bg-secondary rounded-lg text-center">
+                  <span className="text-xs text-muted-foreground">Koinlar balansi</span>
+                  <p className="text-xl font-bold text-yellow-600 mt-1 flex items-center justify-center gap-1">
+                    <CircleDollarSign className="w-4 h-4" />
+                    {profile.coins}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <span className="text-xs text-muted-foreground font-semibold block uppercase">To'lovlar tarixi</span>
-              {payments.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Hech qanday to'lov mavjud emas.</p>
-              ) : (
-                <div className="divide-y border rounded-lg bg-secondary/30">
-                  {payments.map((p) => (
-                    <div key={p._id} className="flex justify-between items-center p-3 text-sm">
-                      <div>
-                        <p className="font-semibold">{p.amount.toLocaleString()} so'm</p>
-                        <span className="text-xs text-muted-foreground">{p.paymentDate}</span>
+          </div>
+
+          {/* Right Column: Learning, Attendance, Payments */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Learning Progress Card */}
+            <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  O'quv ko'rsatkichlari & Joriy Dars
+                </h3>
+                <button
+                  onClick={() => setActiveTab('LMS_DETAILS')}
+                  className="text-xs font-bold text-primary hover:underline"
+                >
+                  Barcha darslarni ko'rish →
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <span className="text-xs text-muted-foreground">Kurs:</span>
+                  <span className="font-semibold block text-sm mt-0.5">{profile.courseId?.title || 'Kiritilmagan'}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Guruh:</span>
+                  <span className="font-semibold block text-sm mt-0.5">{profile.groupId?.name || 'Guruhsiz'}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Joriy faol dars:</span>
+                  <span className="font-bold block text-sm mt-0.5 text-primary">
+                    {currentLessonNumber}-dars
+                  </span>
+                </div>
+              </div>
+              
+              <div className="h-[1px] bg-border my-2" />
+              
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <CheckCircle className="w-5 h-5 text-green-500 mx-auto mb-1" />
+                  <span className="text-xs text-muted-foreground">Tugallangan darslar</span>
+                  <p className="font-bold text-sm mt-0.5">
+                    {profile.completedLessonsCount || 0} / {profile.totalLessonsCount || 0}
+                  </p>
+                </div>
+                <div>
+                  <FileText className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                  <span className="text-xs text-muted-foreground">Uy vazifalari</span>
+                  <p className="font-bold text-sm mt-0.5">{profile.homeworkProgress || 0}%</p>
+                </div>
+                <div>
+                  <Bookmark className="w-5 h-5 text-purple-500 mx-auto mb-1" />
+                  <span className="text-xs text-muted-foreground">O'rtacha test bali</span>
+                  <p className="font-bold text-sm mt-0.5">{profile.averageQuizScore || 0}%</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Attendance Stats Card */}
+            <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
+              <h3 className="font-bold text-base border-b pb-2 flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-primary" />
+                Davomat hisoboti
+              </h3>
+              <div className="flex items-center justify-around gap-4 text-center">
+                <div>
+                  <span className="text-xs text-muted-foreground">Qatnashish darajasi</span>
+                  <p className="text-2xl font-bold text-primary mt-1">{profile.attendancePercentage ?? 0}%</p>
+                </div>
+                <div className="w-[1px] h-10 bg-border" />
+                <div>
+                  <span className="text-xs text-muted-foreground">Darsda bo'lgan kunlar</span>
+                  <p className="text-2xl font-bold text-green-500 mt-1">{profile.presentCount ?? 0} kun</p>
+                </div>
+                <div className="w-[1px] h-10 bg-border" />
+                <div>
+                  <span className="text-xs text-muted-foreground">Qoldirilgan darslar</span>
+                  <p className="text-2xl font-bold text-red-500 mt-1">{profile.absentCount ?? 0} kun</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payments & Subscription Ledger */}
+            <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-primary" />
+                  To'lovlar & Billing
+                </h3>
+                <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                  (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'PAID'
+                    ? 'bg-green-500/10 text-green-500'
+                    : (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'UPCOMING'
+                    ? 'bg-amber-500/10 text-amber-500'
+                    : (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'UNPAID'
+                    ? 'bg-gray-500/10 text-gray-400'
+                    : 'bg-red-500/10 text-red-500'
+                }`}>
+                  {(paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'PAID' ? "To'langan" :
+                   (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'UPCOMING' ? "Yaqinlashmoqda" :
+                   (paymentSummary?.paymentStatus ?? profile.paymentStatus) === 'UNPAID' ? "To'lov qilinmagan" :
+                   "Muddati o'tgan"}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between text-sm py-1">
+                <span className="text-muted-foreground">Keyingi to'lov sanasi:</span>
+                <span className="font-bold text-foreground">
+                  {paymentSummary?.nextPaymentDateFormatted ?? (payments.length > 0 ? payments[0].nextPaymentDate : "To'lov qilinmagan")}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-xs text-muted-foreground font-semibold block uppercase">To'lovlar tarixi</span>
+                {payments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Hech qanday to'lov mavjud emas.</p>
+                ) : (
+                  <div className="divide-y border rounded-lg bg-secondary/30">
+                    {payments.map((p) => (
+                      <div key={p._id} className="flex justify-between items-center p-3 text-sm">
+                        <div>
+                          <p className="font-semibold">{p.amount.toLocaleString()} so'm</p>
+                          <span className="text-xs text-muted-foreground">{p.paymentDate}</span>
+                        </div>
+                        <span className="text-xs text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full font-semibold">
+                          {p.status}
+                        </span>
                       </div>
-                      <span className="text-xs text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full font-semibold">
-                        {p.status}
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Contract Management Card */}
+            <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
+              <h3 className="font-bold text-base border-b pb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                Shartnoma (Contract)
+              </h3>
+              
+              {!contract ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-secondary/20 border border-dashed rounded-lg">
+                  <div>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase block">Holat:</span>
+                    <span className="text-sm font-bold text-yellow-600 dark:text-yellow-500">Generatsiya qilinmagan</span>
+                  </div>
+                  <button
+                    onClick={openGenerateModal}
+                    className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Shartnoma yaratish
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-green-500/5 border border-green-500/10 rounded-lg">
+                    <div>
+                      <span className="text-xs font-semibold text-muted-foreground uppercase block">Holat:</span>
+                      <span className="text-sm font-bold text-green-500 flex items-center gap-1.5 mt-0.5">
+                        <CheckCircle className="w-4 h-4" />
+                        Yaratilgan
                       </span>
                     </div>
-                  ))}
+                    <div>
+                      <span className="text-xs font-semibold text-muted-foreground uppercase block">Shartnoma raqami:</span>
+                      <span className="text-sm font-mono font-bold text-foreground mt-0.5 block">
+                        {contract.contractNumber}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => window.open(getFileUrl(contract.pdfUrl), '_blank')}
+                      className="px-4 py-2 border hover:bg-secondary text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Ko'rish
+                    </button>
+                    
+                    <a
+                      href={getFileUrl(contract.pdfUrl)}
+                      download={`${contract.contractNumber}.pdf`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2 border hover:bg-secondary text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Yuklab olish
+                    </a>
+
+                    <button
+                      onClick={openGenerateModal}
+                      className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Qayta yaratish
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Contract Management Card */}
-          <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-base border-b pb-2 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary" />
-              Shartnoma (Contract)
-            </h3>
-            
-            {!contract ? (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-secondary/20 border border-dashed rounded-lg">
-                <div>
-                  <span className="text-xs font-semibold text-muted-foreground uppercase block">Holat:</span>
-                  <span className="text-sm font-bold text-yellow-600 dark:text-yellow-500">Generatsiya qilinmagan</span>
-                </div>
-                <button
-                  onClick={openGenerateModal}
-                  className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 shadow-sm"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Shartnoma yaratish
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-green-500/5 border border-green-500/10 rounded-lg">
-                  <div>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase block">Holat:</span>
-                    <span className="text-sm font-bold text-green-500 flex items-center gap-1.5 mt-0.5">
-                      <CheckCircle className="w-4 h-4" />
-                      Yaratilgan
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase block">Shartnoma raqami:</span>
-                    <span className="text-sm font-mono font-bold text-foreground mt-0.5 block">
-                      {contract.contractNumber}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase block">Yaratilgan sana:</span>
-                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
-                      {new Date(contract.generatedDate).toLocaleDateString('uz-UZ', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase block">Kurs / Guruh:</span>
-                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
-                      {contract.courseName} / {contract.groupName}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={() => window.open(getFileUrl(contract.pdfUrl), '_blank')}
-                    className="px-4 py-2 border hover:bg-secondary text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Ko'rish
-                  </button>
-                  
-                  <a
-                    href={getFileUrl(contract.pdfUrl)}
-                    download={`${contract.contractNumber}.pdf`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 border hover:bg-secondary text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Yuklab olish
-                  </a>
-
-                  <button
-                    onClick={openGenerateModal}
-                    className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Qayta yaratish (Regenerate)
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
         </div>
+      )}
 
-      </div>
+      {/* TAB 2: DETAILED LMS MODULES & PRACTICE / QUIZ MISTAKES */}
+      {activeTab === 'LMS_DETAILS' && (
+        <div className="space-y-6">
+          <div className="bg-card border rounded-xl p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+              <div>
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                  Darslar va O'zlashtirish Tahlili
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Talabaning har bir dars bo'yicha topshirgan kodi, testdagi xatolari va amaliyot natijalari
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 bg-primary/10 text-primary border border-primary/20 text-xs font-bold rounded-lg">
+                  Hozirgi faol dars: {currentLessonNumber}-dars
+                </span>
+              </div>
+            </div>
+
+            {!learningProgress?.modules || learningProgress.modules.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                Darslar yoki modullar topilmadi.
+              </div>
+            ) : (
+              <div className="space-y-6 mt-6">
+                {learningProgress.modules.map((mod: any, mIdx: number) => (
+                  <div key={mod._id || mIdx} className="border rounded-xl overflow-hidden bg-background">
+                    {/* Module Header */}
+                    <div className="bg-secondary/50 p-4 border-b flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="w-7 h-7 rounded-lg bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center">
+                          {mIdx + 1}
+                        </span>
+                        <div>
+                          <h3 className="font-bold text-sm text-foreground">{mod.title}</h3>
+                          <span className="text-xs text-muted-foreground">
+                            {mod.completedCount} / {mod.totalCount} dars bajarilgan
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="w-32 bg-secondary border rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-primary h-full transition-all"
+                          style={{
+                            width: `${mod.totalCount > 0 ? (mod.completedCount / mod.totalCount) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Lessons list inside Module */}
+                    <div className="divide-y">
+                      {mod.lessons.map((les: any, lIdx: number) => {
+                        const isCurrent = les.order === currentLessonNumber;
+                        const isExpanded = expandedLessonId === les._id;
+
+                        return (
+                          <div key={les._id || lIdx} className={`p-4 transition-colors ${isCurrent ? 'bg-primary/5' : ''}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
+                                  les.completed
+                                    ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+                                    : isCurrent
+                                    ? 'bg-primary text-primary-foreground font-extrabold shadow-sm animate-pulse'
+                                    : 'bg-secondary text-muted-foreground'
+                                }`}>
+                                  {les.order}
+                                </span>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-semibold text-sm">{les.title}</h4>
+                                    {isCurrent && (
+                                      <span className="px-2 py-0.5 bg-primary/20 text-primary text-[10px] font-extrabold rounded-md">
+                                        HOZIRGI DARS
+                                      </span>
+                                    )}
+                                    {les.completed && (
+                                      <span className="px-2 py-0.5 bg-green-500/10 text-green-500 text-[10px] font-bold rounded-md flex items-center gap-1">
+                                        <CheckCircle className="w-3 h-3" /> Bajargan
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground line-clamp-1">{les.description}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                {les.score !== null && (
+                                  <span className="text-xs font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/40 px-2 py-1 rounded-md border border-purple-200 dark:border-purple-800">
+                                    Test: {les.score}%
+                                  </span>
+                                )}
+                                {les.practiceCompleted && (
+                                  <span className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-2 py-1 rounded-md border border-blue-200 dark:border-blue-800 flex items-center gap-1">
+                                    <Code2 className="w-3.5 h-3.5" /> Kod topshirilgan
+                                  </span>
+                                )}
+
+                                <button
+                                  onClick={() => setExpandedLessonId(isExpanded ? null : les._id)}
+                                  className="p-1.5 border rounded-lg hover:bg-secondary text-muted-foreground transition-colors"
+                                >
+                                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Expanded Details: Practice Code & Quiz Mistakes */}
+                            {isExpanded && (
+                              <div className="mt-4 pt-4 border-t space-y-4 animate-in fade-in duration-150">
+                                
+                                {/* Practice Code Section */}
+                                <div>
+                                  <h5 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5 mb-2">
+                                    <Code2 className="w-4 h-4 text-blue-500" />
+                                    Amaliyot kodi (Practice Code)
+                                  </h5>
+                                  {les.practiceCode ? (
+                                    <pre className="p-3 bg-slate-900 text-slate-100 rounded-lg text-xs font-mono overflow-x-auto border border-slate-800">
+                                      <code>{les.practiceCode}</code>
+                                    </pre>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground italic">
+                                      Ushbu dars uchun amaliyot kodi topshirilmagan yoki yo'q.
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Quiz Mistakes Section */}
+                                <div>
+                                  <h5 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5 mb-2">
+                                    <HelpCircle className="w-4 h-4 text-amber-500" />
+                                    Testdagi xatolar va to'g'ri javoblar ({les.quizMistakes?.length || 0} ta xato)
+                                  </h5>
+                                  {!les.quizMistakes || les.quizMistakes.length === 0 ? (
+                                    <p className="text-xs text-green-600 font-medium">
+                                      ✅ Barcha test savollariga to'g'ri javob berilgan!
+                                    </p>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      {les.quizMistakes.map((m: any, qIdx: number) => (
+                                        <div key={qIdx} className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg text-xs space-y-1.5">
+                                          <p className="font-bold text-foreground">
+                                            {qIdx + 1}. {m.question}
+                                          </p>
+                                          <div className="flex flex-col sm:flex-row gap-2">
+                                            <div className="px-2 py-1 bg-red-500/10 text-red-600 rounded border border-red-500/20 font-medium">
+                                              ❌ O'quvchi javobi: {m.studentAnswer}
+                                            </div>
+                                            <div className="px-2 py-1 bg-green-500/10 text-green-600 rounded border border-green-500/20 font-bold">
+                                              ✅ To'g'ri javob: {m.correctAnswer}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                              </div>
+                            )}
+
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: XP & COIN HISTORY */}
+      {activeTab === 'HISTORY' && (
+        <div className="space-y-6">
+          <div className="bg-card border rounded-xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold flex items-center gap-2 border-b pb-3 mb-4">
+              <Zap className="w-5 h-5 text-amber-500" />
+              XP va Coin Ishlanishi Tarixi
+            </h2>
+
+            {!learningProgress?.xpHistory || learningProgress.xpHistory.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Hali hech qanday XP olingan darslar yo'q.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b bg-secondary/50 text-xs font-semibold text-muted-foreground uppercase">
+                      <th className="p-3">Sana</th>
+                      <th className="p-3">Dars nomi</th>
+                      <th className="p-3">Test Bali</th>
+                      <th className="p-3">Olingan XP</th>
+                      <th className="p-3">Olingan Coin</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {learningProgress.xpHistory.map((h: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-secondary/30 transition-colors">
+                        <td className="p-3 text-xs text-muted-foreground">
+                          {new Date(h.date).toLocaleDateString('uz-UZ', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="p-3 font-semibold text-foreground">
+                          {h.lessonOrder > 0 ? `${h.lessonOrder}-dars: ` : ''}{h.lessonTitle}
+                        </td>
+                        <td className="p-3 font-bold text-purple-600">
+                          {h.score}%
+                        </td>
+                        <td className="p-3 font-bold text-amber-500">
+                          +{h.xpEarned} XP
+                        </td>
+                        <td className="p-3 font-bold text-yellow-600">
+                          +{h.coinsEarned} Coin
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Generate Contract Modal */}
       {showModal && (

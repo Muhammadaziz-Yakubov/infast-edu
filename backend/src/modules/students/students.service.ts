@@ -467,6 +467,116 @@ export class StudentsService implements OnModuleInit {
     return { user: deletedUser, profile };
   }
 
+  async getStudentLearningProgress(userId: string): Promise<any> {
+    const studentProfile = await this.studentProfileModel
+      .findOne({ userId: new Types.ObjectId(userId) })
+      .populate('groupId')
+      .populate('courseId')
+      .exec();
+
+    if (!studentProfile) throw new NotFoundException('Student profile not found');
+
+    const profileObj = studentProfile.toObject() as any;
+    const courseId = profileObj.courseId?._id || profileObj.courseId;
+    const groupId = profileObj.groupId?._id || profileObj.groupId;
+
+    const moduleModel = this.studentProfileModel.db.model('CourseModule');
+    const lessonModel = this.studentProfileModel.db.model('Lesson');
+    const progressModel = this.studentProfileModel.db.model('LessonProgress');
+
+    // Resolve modules: prefer group-specific, fallback to course
+    let modules: any[] = [];
+    if (groupId) {
+      modules = await moduleModel.find({ groupId: new Types.ObjectId(groupId) }).sort({ order: 1 }).exec();
+      if (modules.length === 0 && courseId) {
+        modules = await moduleModel.find({ courseId: new Types.ObjectId(courseId), $or: [{ groupId: { $exists: false } }, { groupId: null }] }).sort({ order: 1 }).exec();
+      }
+    } else if (courseId) {
+      modules = await moduleModel.find({ courseId: new Types.ObjectId(courseId), $or: [{ groupId: { $exists: false } }, { groupId: null }] }).sort({ order: 1 }).exec();
+    }
+
+    // Build rich module/lesson data with progress
+    const modulesWithProgress = await Promise.all(modules.map(async (mod) => {
+      const lessons = await lessonModel.find({ moduleId: mod._id }).sort({ order: 1 }).exec();
+
+      const lessonsWithProgress = await Promise.all(lessons.map(async (les: any) => {
+        const prog = await progressModel.findOne({
+          studentId: new Types.ObjectId(userId),
+          lessonId: les._id,
+        }).exec() as any;
+
+        // Compute quiz mistakes: compare student answers vs correct answers
+        const quizMistakes: any[] = [];
+        if (prog?.quizAnswers?.length && les.quiz?.length) {
+          les.quiz.forEach((q: any, idx: number) => {
+            const studentAnswer = prog.quizAnswers[idx];
+            if (studentAnswer !== undefined && studentAnswer !== q.correctAnswerIndex) {
+              quizMistakes.push({
+                question: q.question,
+                options: q.options,
+                studentAnswerIndex: studentAnswer,
+                correctAnswerIndex: q.correctAnswerIndex,
+                studentAnswer: q.options[studentAnswer] ?? 'Noma\'lum',
+                correctAnswer: q.options[q.correctAnswerIndex] ?? 'Noma\'lum',
+              });
+            }
+          });
+        }
+
+        return {
+          _id: les._id,
+          title: les.title,
+          order: les.order,
+          description: les.description,
+          completed: prog?.completed ?? false,
+          score: prog?.score ?? null,
+          practiceCompleted: prog?.practiceCompleted ?? false,
+          practiceCode: prog?.practiceCode ?? null,
+          quizAnswers: prog?.quizAnswers ?? [],
+          quizMistakes,
+          xpEarned: prog?.xpEarned ?? 0,
+          coinsEarned: prog?.coinsEarned ?? 0,
+          completedAt: prog?.updatedAt ?? null,
+        };
+      }));
+
+      return {
+        _id: mod._id,
+        title: mod.title,
+        order: mod.order,
+        lessons: lessonsWithProgress,
+        completedCount: lessonsWithProgress.filter((l) => l.completed).length,
+        totalCount: lessonsWithProgress.length,
+      };
+    }));
+
+    // XP history: all completed lesson progress records ordered by date
+    const allProgress = await progressModel
+      .find({ studentId: new Types.ObjectId(userId), completed: true })
+      .populate('lessonId', 'title order')
+      .sort({ updatedAt: -1 })
+      .limit(50)
+      .exec() as any[];
+
+    const xpHistory = allProgress.map((p: any) => ({
+      lessonTitle: (p.lessonId as any)?.title ?? 'Noma\'lum dars',
+      lessonOrder: (p.lessonId as any)?.order ?? 0,
+      xpEarned: p.xpEarned ?? 0,
+      coinsEarned: p.coinsEarned ?? 0,
+      score: p.score ?? 0,
+      date: p.updatedAt,
+    }));
+
+    return {
+      currentLessonOrder: profileObj.currentLessonOrder ?? 1,
+      xp: profileObj.xp ?? 0,
+      coins: profileObj.coins ?? 0,
+      level: profileObj.level ?? 1,
+      modules: modulesWithProgress,
+      xpHistory,
+    };
+  }
+
   async getProfile(userId: string, requestingUser?: any): Promise<any> {
     const profile = await this.studentProfileModel
       .findOne({ userId: new Types.ObjectId(userId) })

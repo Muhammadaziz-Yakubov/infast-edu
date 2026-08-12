@@ -58,3 +58,8 @@ export async function resetStudentXp(id: string): Promise<any> {
   const res = await apiClient.post(`/students/${id}/reset-xp`);
   return unwrapObject(res);
 }
+
+export async function getStudentLearningProgress(id: string): Promise<any> {
+  const res = await apiClient.get(`/students/${id}/learning-progress`);
+  return unwrapObject(res);
+}

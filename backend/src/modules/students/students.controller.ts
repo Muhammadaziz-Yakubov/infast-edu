@@ -124,6 +124,14 @@ export class StudentsController {
     return this.studentsService.getProfile(id, user);
   }
 
+  @Get(':id/learning-progress')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Get detailed LMS learning progress for a student (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Student LMS progress with quiz mistakes, practice code, XP history.' })
+  getStudentLearningProgress(@Param('id') id: string) {
+    return this.studentsService.getStudentLearningProgress(id);
+  }
+
   @Get(':id/contract')
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Get student contract details' })

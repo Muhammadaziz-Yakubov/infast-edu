@@ -71,6 +71,7 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
       { name: 'Students', path: '/students', icon: Users },
       { name: 'Groups', path: '/groups', icon: FolderKanban },
       { name: 'Attendance', path: '/attendance', icon: CheckSquare },
+      { name: 'Qo\'shimcha darslar', path: '/extra-lessons', icon: Calendar },
       { name: 'Xarita (Live Map)', path: '/live-map', icon: MapPin },
     ],
   },
@@ -166,6 +167,7 @@ const getBreadcrumbs = (pathname: string): string[] => {
   
   // Attendance & Live Map
   if (pathname.startsWith('/attendance')) return ['Academy', 'Attendance'];
+  if (pathname.startsWith('/extra-lessons')) return ['Academy', 'Qo\'shimcha darslar'];
   if (pathname.startsWith('/live-map')) return ['Academy', 'Xarita (Live Map)'];
   
   // Courses

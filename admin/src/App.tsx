@@ -32,6 +32,7 @@ import { TelegramAi } from './pages/TelegramAi';
 import { AiLessonCreator } from './pages/AiLessonCreator';
 import { Library } from './pages/Library';
 import { Coins } from './pages/Coins';
+import { ExtraLessons } from './pages/ExtraLessons';
 
 // Marketing CRM Pages
 import { MarketingDashboard } from './pages/marketing/MarketingDashboard';
@@ -94,6 +95,7 @@ export const App: React.FC = () => {
             <Route path="/payments" element={<Payments />} />
             <Route path="/coins" element={<Coins />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/extra-lessons" element={<ExtraLessons />} />
             <Route path="/live-map" element={<LiveMap />} />
             <Route path="/library" element={<Library />} />
             

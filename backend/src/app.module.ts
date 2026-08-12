@@ -43,6 +43,7 @@ import { TelegramAiModule } from './modules/telegram-ai/telegram-ai.module';
 import { AiModule } from './modules/ai/ai.module';
 import { TypingBattleModule } from './modules/typing/typing-battle.module';
 import { LibraryModule } from './modules/library/library.module';
+import { ExtraLessonsModule } from './modules/extra-lessons/extra-lessons.module';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { LibraryModule } from './modules/library/library.module';
     AiModule,
     TypingBattleModule,
     LibraryModule,
+    ExtraLessonsModule,
   ],
   controllers: [AppController],
   providers: [

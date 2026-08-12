@@ -4,9 +4,46 @@ import { Model, Types } from 'mongoose';
 import { Attendance, AttendanceDocument } from './schemas/attendance.schema';
 import { AcademyConfig, AcademyConfigDocument } from './schemas/academy-config.schema';
 import { StudentProfile, StudentProfileDocument } from '../students/schemas/student-profile.schema';
+import { Group, GroupDocument } from '../groups/schemas/group.schema';
 import { StudentsService } from '../students/students.service';
 import { MarkAttendanceDto, BatchAttendanceDto, GeofencedCheckInDto, UpdateAcademyConfigDto } from './dto/mark-attendance.dto';
 import { AttendanceStatus } from '../../common/enums/status.enum';
+
+// Map JS getDay() (0=Sun) to English day names stored in Group.schedule.days
+const JS_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Also accept Uzbek/Russian day names as aliases
+const DAY_ALIASES: Record<string, number> = {
+  // English
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+  // Uzbek
+  yakshanba: 0, dushanba: 1, seshanba: 2, chorshanba: 3, payshanba: 4, juma: 5, shanba: 6,
+  // Short Uzbek
+  dush: 1, sesh: 2, chor: 3, pay: 4, ju: 5, jum: 5, sh: 6, yak: 0,
+  // Russian
+  vosk: 0, pon: 1, vt: 2, sr: 3, cht: 4, pt: 5, sb: 6,
+};
+
+function getDayIndex(dayStr: string): number {
+  const normalized = dayStr.toLowerCase().trim();
+  // Try alias map first
+  if (DAY_ALIASES[normalized] !== undefined) return DAY_ALIASES[normalized];
+  // Try starts-with match
+  const found = Object.keys(DAY_ALIASES).find((k) => normalized.startsWith(k) || k.startsWith(normalized));
+  return found !== undefined ? DAY_ALIASES[found] : -1;
+}
+
+/**
+ * Parse schedule time string "HH:MM - HH:MM" into minutes from midnight.
+ * Returns [startMinutes, endMinutes] or null if parse fails.
+ */
+function parseScheduleTime(timeStr: string): [number, number] | null {
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const startMin = parseInt(match[1]) * 60 + parseInt(match[2]);
+  const endMin   = parseInt(match[3]) * 60 + parseInt(match[4]);
+  return [startMin, endMin];
+}
 
 function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3; // Earth radius in meters
@@ -32,6 +69,8 @@ export class AttendanceService {
     private readonly academyConfigModel: Model<AcademyConfigDocument>,
     @InjectModel(StudentProfile.name)
     private readonly studentProfileModel: Model<StudentProfileDocument>,
+    @InjectModel(Group.name)
+    private readonly groupModel: Model<GroupDocument>,
     private readonly studentsService: StudentsService
   ) {}
 
@@ -86,7 +125,50 @@ export class AttendanceService {
       throw new BadRequestException("Siz birorta o'quv guruhiga biriktirilmagansiz.");
     }
 
-    // 3. Radius & Distance check — load config from DB
+    // 3. Schedule validation — must be a class day & within class time (±30 min buffer)
+    const group = await this.groupModel.findById(profile.groupId).exec();
+    if (group?.schedule) {
+      const now = new Date();
+      // Use Tashkent timezone offset (+5h) for reliable day/time matching
+      const tzOffset = 5 * 60; // UTC+5 minutes
+      const localNow = new Date(now.getTime() + tzOffset * 60 * 1000);
+      const todayJsDay = localNow.getUTCDay(); // 0=Sun in local TZ
+      const todayMinutes = localNow.getUTCHours() * 60 + localNow.getUTCMinutes();
+
+      // Check class day
+      const scheduledDayIndexes = (group.schedule.days || []).map(getDayIndex).filter((d) => d >= 0);
+      const isTodayClassDay = scheduledDayIndexes.includes(todayJsDay);
+
+      if (!isTodayClassDay) {
+        const dayNames = (group.schedule.days || []).join(', ');
+        throw new BadRequestException(
+          `Bugun dars kuni emas! Dars kunlari: ${dayNames}. Faqat dars kunlari davomat qilish mumkin.`
+        );
+      }
+
+      // Check class time window with ±30 min buffer
+      const BUFFER_MINUTES = 30;
+      const parsedTime = parseScheduleTime(group.schedule.time || '');
+      if (parsedTime) {
+        const [classStart, classEnd] = parsedTime;
+        const windowStart = classStart - BUFFER_MINUTES;
+        const windowEnd   = classEnd   + BUFFER_MINUTES;
+
+        if (todayMinutes < windowStart || todayMinutes > windowEnd) {
+          const startH = Math.floor(classStart / 60).toString().padStart(2, '0');
+          const startM = (classStart % 60).toString().padStart(2, '0');
+          const endH   = Math.floor(classEnd / 60).toString().padStart(2, '0');
+          const endM   = (classEnd % 60).toString().padStart(2, '0');
+          const bufStartH = Math.floor(windowStart / 60).toString().padStart(2, '0');
+          const bufStartM = (windowStart % 60).toString().padStart(2, '0');
+          throw new BadRequestException(
+            `Davomat vaqti hali kelmadi! Dars ${startH}:${startM} - ${endH}:${endM}. Davomat ${bufStartH}:${bufStartM} dan boshlab qabul qilinadi.`
+          );
+        }
+      }
+    }
+
+    // 4. Radius & Distance check — load config from DB
     const academyConfig = await this.getAcademyConfig();
     const distance = calculateDistanceMeters(
       dto.latitude,
@@ -101,7 +183,7 @@ export class AttendanceService {
       );
     }
 
-    // 4. Check if checked in today
+    // 5. Check if checked in today
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date();

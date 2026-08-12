@@ -4,6 +4,7 @@ import { AttendanceService } from './attendance.service';
 import { AttendanceController } from './attendance.controller';
 import { Attendance, AttendanceSchema } from './schemas/attendance.schema';
 import { AcademyConfig, AcademyConfigSchema } from './schemas/academy-config.schema';
+import { Group, GroupSchema } from '../groups/schemas/group.schema';
 import { StudentsModule } from '../students/students.module';
 
 @Module({
@@ -11,6 +12,7 @@ import { StudentsModule } from '../students/students.module';
     MongooseModule.forFeature([
       { name: Attendance.name, schema: AttendanceSchema },
       { name: AcademyConfig.name, schema: AcademyConfigSchema },
+      { name: Group.name, schema: GroupSchema },
     ]),
     StudentsModule,
   ],
@@ -19,3 +21,4 @@ import { StudentsModule } from '../students/students.module';
   exports: [AttendanceService],
 })
 export class AttendanceModule {}
+

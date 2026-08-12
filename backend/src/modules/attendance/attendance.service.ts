@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Attendance, AttendanceDocument } from './schemas/attendance.schema';
+import { AcademyConfig, AcademyConfigDocument } from './schemas/academy-config.schema';
 import { StudentProfile, StudentProfileDocument } from '../students/schemas/student-profile.schema';
 import { StudentsService } from '../students/students.service';
 import { MarkAttendanceDto, BatchAttendanceDto, GeofencedCheckInDto, UpdateAcademyConfigDto } from './dto/mark-attendance.dto';
@@ -24,32 +25,43 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
 
 @Injectable()
 export class AttendanceService {
-  // Configurable Academy GPS settings (default: Tashkent InFast Academy coordinates)
-  private academyConfig = {
-    latitude: 41.311081,
-    longitude: 69.240562,
-    radiusMeters: 200,
-  };
-
   constructor(
     @InjectModel(Attendance.name)
     private readonly attendanceModel: Model<AttendanceDocument>,
+    @InjectModel(AcademyConfig.name)
+    private readonly academyConfigModel: Model<AcademyConfigDocument>,
     @InjectModel(StudentProfile.name)
     private readonly studentProfileModel: Model<StudentProfileDocument>,
     private readonly studentsService: StudentsService
   ) {}
 
-  getAcademyConfig() {
-    return this.academyConfig;
+  async getAcademyConfig() {
+    let config = await this.academyConfigModel.findOne({ key: 'main' }).exec();
+    if (!config) {
+      config = await this.academyConfigModel.create({ key: 'main' });
+    }
+    return {
+      latitude: config.latitude,
+      longitude: config.longitude,
+      radiusMeters: config.radiusMeters,
+    };
   }
 
-  updateAcademyConfig(dto: UpdateAcademyConfigDto) {
-    this.academyConfig = {
-      latitude: Number(dto.latitude) || 41.311081,
-      longitude: Number(dto.longitude) || 69.240562,
-      radiusMeters: Number(dto.radiusMeters) || 200,
+  async updateAcademyConfig(dto: UpdateAcademyConfigDto) {
+    const config = await this.academyConfigModel.findOneAndUpdate(
+      { key: 'main' },
+      {
+        latitude: Number(dto.latitude),
+        longitude: Number(dto.longitude),
+        radiusMeters: Number(dto.radiusMeters),
+      },
+      { upsert: true, new: true }
+    ).exec();
+    return {
+      latitude: config.latitude,
+      longitude: config.longitude,
+      radiusMeters: config.radiusMeters,
     };
-    return this.academyConfig;
   }
 
   async checkInGeofenced(userId: string, dto: GeofencedCheckInDto) {
@@ -74,17 +86,18 @@ export class AttendanceService {
       throw new BadRequestException("Siz birorta o'quv guruhiga biriktirilmagansiz.");
     }
 
-    // 3. Radius & Distance check
+    // 3. Radius & Distance check — load config from DB
+    const academyConfig = await this.getAcademyConfig();
     const distance = calculateDistanceMeters(
       dto.latitude,
       dto.longitude,
-      this.academyConfig.latitude,
-      this.academyConfig.longitude
+      academyConfig.latitude,
+      academyConfig.longitude
     );
 
-    if (distance > this.academyConfig.radiusMeters) {
+    if (distance > academyConfig.radiusMeters) {
       throw new BadRequestException(
-        `Siz akademiyadan ${distance} metr uzoqdasiz. Davomat qilish uchun ${this.academyConfig.radiusMeters} metr radius ichida bo'lishingiz kerak!`
+        `Siz akademiyadan ${distance} metr uzoqdasiz. Davomat qilish uchun ${academyConfig.radiusMeters} metr radius ichida bo'lishingiz kerak!`
       );
     }
 

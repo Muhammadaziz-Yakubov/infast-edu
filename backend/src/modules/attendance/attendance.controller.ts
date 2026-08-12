@@ -26,14 +26,14 @@ export class AttendanceController {
   @Get('config')
   @Roles(Role.STUDENT, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get Academy GPS location & radius configuration' })
-  getAcademyConfig() {
+  async getAcademyConfig() {
     return this.attendanceService.getAcademyConfig();
   }
 
   @Post('config')
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update Academy GPS location & radius configuration (Admin only)' })
-  updateAcademyConfig(@Body() dto: UpdateAcademyConfigDto) {
+  async updateAcademyConfig(@Body() dto: UpdateAcademyConfigDto) {
     return this.attendanceService.updateAcademyConfig(dto);
   }
 

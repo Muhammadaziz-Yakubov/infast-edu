@@ -44,6 +44,13 @@ export class AttendanceController {
     return this.attendanceService.getAllAttendanceLogs();
   }
 
+  @Post('admin/reset-all')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete all historical attendance records for all students (Admin only)' })
+  resetAll() {
+    return this.attendanceService.resetAllAttendance();
+  }
+
   @Post()
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Mark or update student attendance (Admin only)' })

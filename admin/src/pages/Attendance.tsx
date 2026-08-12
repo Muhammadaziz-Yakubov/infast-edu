@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getGroups } from '../api/groups';
 import { getStudents } from '../api/students';
-import { submitAttendance, getAllAttendanceLogs, getAcademyConfig, updateAcademyConfig } from '../api/attendance';
+import { submitAttendance, getAllAttendanceLogs, getAcademyConfig, updateAcademyConfig, resetAllAttendance } from '../api/attendance';
 import type { Group, Student } from '../utils/mockDb';
 import {
   Users,
@@ -15,6 +15,7 @@ import {
   Navigation,
   ShieldAlert,
   Clock,
+  RotateCcw,
 } from 'lucide-react';
 
 export const Attendance: React.FC = () => {
@@ -45,14 +46,16 @@ export const Attendance: React.FC = () => {
     setLoading(true);
     try {
       const [gList, sList, cfg] = await Promise.all([
-        getGroups(),
-        getStudents(),
+        getGroups().catch(() => []),
+        getStudents().catch(() => []),
         getAcademyConfig().catch(() => ({ latitude: 41.311081, longitude: 69.240562, radiusMeters: 200 })),
       ]);
-      setGroups(gList);
-      setStudents(sList);
-      setConfig(cfg);
-      if (gList.length > 0) {
+      setGroups(gList || []);
+      setStudents(sList || []);
+      if (cfg && cfg.latitude !== undefined) {
+        setConfig(cfg);
+      }
+      if (gList && gList.length > 0) {
         setSelectedGroupId(gList[0]._id);
       }
     } catch (e) {
@@ -66,7 +69,7 @@ export const Attendance: React.FC = () => {
     setLogsLoading(true);
     try {
       const logs = await getAllAttendanceLogs();
-      setGpsLogs(logs);
+      setGpsLogs(logs || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -86,7 +89,7 @@ export const Attendance: React.FC = () => {
     if (group) {
       const initial: Record<string, 'PRESENT' | 'ABSENT'> = {};
       (group.students || []).forEach((sid: any) => {
-        const idStr = typeof sid === 'string' ? sid : sid?._id?.toString() || String(sid);
+        const idStr = typeof sid === 'string' ? sid : sid?._id?.toString() || sid?.id?.toString() || String(sid);
         initial[idStr] = 'PRESENT';
       });
       setChecklist(initial);
@@ -139,10 +142,38 @@ export const Attendance: React.FC = () => {
     }
   };
 
+  const handleResetAll = async () => {
+    const confirmText = prompt(
+      "OGOHLANTIRISH ⚠️!\nBarcha o'quvchilarning butun umrlik davomat tarixi to'liq o'chib ketadi va qayta tiklab bo'lmaydi.\n\nTasdiqlash uchun 'RESET' so'zini yozing:"
+    );
+    if (confirmText !== 'RESET') {
+      if (confirmText !== null) alert("Tasdiqlash kodi noto'g'ri kiritildi. Amal bekor qilindi.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await resetAllAttendance();
+      alert(res?.message || "Barcha davomatlar nollantirildi!");
+      loadData();
+      if (activeTab === 'GPS_LOGS') loadGpsLogs();
+    } catch (e: any) {
+      alert("Xatolik: " + (e?.message || ''));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const selectedGroup = groups.find((g) => g._id === selectedGroupId);
-  const activeStudents = students.filter(
-    (s) => (selectedGroup?.students || []).includes(s._id) || s.groupId === selectedGroupId
-  );
+
+  const activeStudents = students.filter((s) => {
+    if (!selectedGroupId) return false;
+    if (s.groupId === selectedGroupId) return true;
+    const groupStudentIds = (selectedGroup?.students || []).map((st: any) =>
+      typeof st === 'string' ? st : st?._id?.toString() || st?.id?.toString() || String(st)
+    );
+    return groupStudentIds.includes(s._id) || groupStudentIds.includes(s.userId);
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -155,36 +186,48 @@ export const Attendance: React.FC = () => {
           </p>
         </div>
 
-        {/* Tab Buttons */}
-        <div className="flex items-center gap-2 p-1 bg-secondary/20 rounded-lg border">
-          <button
-            onClick={() => setActiveTab('MANUAL')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-              activeTab === 'MANUAL' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <ListFilter className="w-3.5 h-3.5" />
-            Qo'lda davomat
-          </button>
+        {/* Tab Buttons & Reset Action */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 p-1 bg-secondary/20 rounded-lg border">
+            <button
+              onClick={() => setActiveTab('MANUAL')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                activeTab === 'MANUAL' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <ListFilter className="w-3.5 h-3.5" />
+              Qo'lda davomat
+            </button>
+
+            <button
+              onClick={() => setActiveTab('GPS_LOGS')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                activeTab === 'GPS_LOGS' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              GPS Jurnali
+            </button>
+
+            <button
+              onClick={() => setActiveTab('GPS_CONFIG')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                activeTab === 'GPS_CONFIG' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Settings className="w-3.5 h-3.5" />
+              GPS Sozlamalari
+            </button>
+          </div>
 
           <button
-            onClick={() => setActiveTab('GPS_LOGS')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-              activeTab === 'GPS_LOGS' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
+            onClick={handleResetAll}
+            disabled={submitting}
+            className="px-3 py-1.5 text-xs font-bold bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+            title="Barcha o'quvchilarning davomat tarixini nolga tushirish"
           >
-            <MapPin className="w-3.5 h-3.5" />
-            GPS Jurnali
-          </button>
-
-          <button
-            onClick={() => setActiveTab('GPS_CONFIG')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-              activeTab === 'GPS_CONFIG' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Settings className="w-3.5 h-3.5" />
-            GPS Sozlamalari
+            <RotateCcw className="w-3.5 h-3.5" />
+            Davomat 0 (Reset)
           </button>
         </div>
       </div>
@@ -248,7 +291,11 @@ export const Attendance: React.FC = () => {
                         className="flex justify-between items-center p-4 bg-secondary/10 hover:bg-secondary/20 transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <img src={s.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb'} alt="" className="w-10 h-10 rounded-full bg-secondary object-cover" />
+                          <img
+                            src={s.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb'}
+                            alt=""
+                            className="w-10 h-10 rounded-full bg-secondary object-cover"
+                          />
                           <div>
                             <span className="font-semibold flex items-center gap-1 text-sm">
                               {s.label && (

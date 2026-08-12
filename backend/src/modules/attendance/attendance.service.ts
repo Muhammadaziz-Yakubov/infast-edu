@@ -257,6 +257,16 @@ export class AttendanceService {
       .exec();
   }
 
+  async resetAllAttendance(): Promise<{ success: boolean; message: string; deletedCount: number }> {
+    const res = await this.attendanceModel.deleteMany({}).exec();
+    await this.studentProfileModel.updateMany({}, { attendancePercentage: 100 }).exec();
+    return {
+      success: true,
+      message: "Barcha o'quvchilarning davomat tarixi to'liq o'chirildi va qayta tiklandi!",
+      deletedCount: res.deletedCount || 0,
+    };
+  }
+
   async getGroupAttendanceForLesson(groupId: string, lessonId: string): Promise<AttendanceDocument[]> {
     return this.attendanceModel
       .find({

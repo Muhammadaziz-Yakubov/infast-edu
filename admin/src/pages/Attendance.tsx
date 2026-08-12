@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { getGroups } from '../api/groups';
 import { getStudents } from '../api/students';
-import { submitAttendance, getAllAttendanceLogs, getAcademyConfig, updateAcademyConfig, resetAllAttendance } from '../api/attendance';
+import { submitAttendance, getAllAttendanceLogs, getAcademyConfig, updateAcademyConfig, resetAllAttendance, getGroupAttendanceByDate } from '../api/attendance';
 import type { Group, Student } from '../utils/mockDb';
 import {
   Users,
@@ -105,35 +105,23 @@ export const Attendance: React.FC = () => {
 
     (async () => {
       try {
-        const logs = await getAllAttendanceLogs();
+        // Use dedicated endpoint: returns logs for this group+date with userId exposed
+        const logs = await getGroupAttendanceByDate(selectedGroupId, attendanceDate);
         if (!isMounted) return;
 
-        const targetDateStr = new Date(attendanceDate).toDateString();
-        const presentStudentIds = new Set<string>();
-
+        // Build a set of userIds that have PRESENT status today via GPS
+        const presentUserIds = new Set<string>();
         (logs || []).forEach((log: any) => {
-          if (!log.date) return;
-          const logDateStr = new Date(log.date).toDateString();
-          const logGroupId = typeof log.groupId === 'object' ? log.groupId?._id : log.groupId;
-
-          if (
-            (logGroupId === selectedGroupId || String(logGroupId) === String(selectedGroupId)) &&
-            logDateStr === targetDateStr &&
-            log.status === 'PRESENT'
-          ) {
-            const sid = typeof log.studentId === 'object' ? log.studentId?._id : log.studentId;
-            if (sid) presentStudentIds.add(String(sid));
-            const suid = typeof log.studentId === 'object' ? log.studentId?.userId : null;
-            if (suid) presentStudentIds.add(String(suid));
+          if (log.status === 'PRESENT' && log.userId) {
+            presentUserIds.add(String(log.userId));
           }
         });
 
         const initial: Record<string, 'PRESENT' | 'ABSENT'> = {};
         activeStudents.forEach((s) => {
-          const sIdStr = String(s._id);
+          // s.userId is the User._id — matches log.userId from backend
           const uIdStr = s.userId ? String(s.userId) : null;
-
-          if (presentStudentIds.has(sIdStr) || (uIdStr && presentStudentIds.has(uIdStr))) {
+          if (uIdStr && presentUserIds.has(uIdStr)) {
             initial[s._id] = 'PRESENT';
           } else {
             initial[s._id] = 'ABSENT';
@@ -143,6 +131,7 @@ export const Attendance: React.FC = () => {
         setChecklist(initial);
       } catch (err) {
         if (!isMounted) return;
+        // Fallback: all ABSENT
         const initial: Record<string, 'PRESENT' | 'ABSENT'> = {};
         activeStudents.forEach((s) => {
           initial[s._id] = 'ABSENT';

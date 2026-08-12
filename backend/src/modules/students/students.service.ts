@@ -174,6 +174,7 @@ export class StudentsService implements OnModuleInit {
           avatar: user?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user?.fullName || 'student'}`,
           courseId: pObj.courseId?._id?.toString() || pObj.courseId?.toString() || '',
           groupId: pObj.groupId?._id?.toString() || pObj.groupId?.toString() || '',
+          currentLessonOrder: pObj.currentLessonOrder || 1,
           xp: pObj.xp || 0,
           coins: pObj.coins || 0,
           level: pObj.level || 1,

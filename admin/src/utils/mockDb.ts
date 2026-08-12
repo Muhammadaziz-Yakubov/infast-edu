@@ -19,6 +19,7 @@ export interface Student {
   attendancePercentage?: number;
   homeworkProgress?: number;
   label?: string;
+  currentLessonOrder?: number;
 }
 
 export interface Group {

@@ -54,6 +54,16 @@ export async function resetAllStudentsXp(): Promise<any> {
   return unwrapObject(res);
 }
 
+export async function resetAllStudentsProgress(): Promise<any> {
+  const res = await apiClient.post('/students/reset-all-progress');
+  return unwrapObject(res);
+}
+
+export async function resetStudentProgress(id: string): Promise<any> {
+  const res = await apiClient.post(`/students/${id}/reset-progress`);
+  return unwrapObject(res);
+}
+
 export async function resetStudentXp(id: string): Promise<any> {
   const res = await apiClient.post(`/students/${id}/reset-xp`);
   return unwrapObject(res);

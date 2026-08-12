@@ -6,7 +6,9 @@ import {
   deleteStudent,
   updateStudent,
   resetAllStudentsXp,
+  resetAllStudentsProgress,
   resetStudentXp,
+  resetStudentProgress,
 } from '../api/students';
 import { getCourses } from '../api/courses';
 import { getGroups } from '../api/groups';
@@ -41,6 +43,23 @@ export const Students: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [checkingPayments, setCheckingPayments] = useState(false);
   const [checkSuccess, setCheckSuccess] = useState(false);
+  const [resettingProgress, setResettingProgress] = useState(false);
+
+  const handleResetAllProgress = async () => {
+    if (!window.confirm("⚠️ DIQQAT! Barcha o'quvchilarning dars progressini (1-darsga) va yechgan barcha test hamda amaliyot vazifalarini TO'LIQ 0 GA TUSHIRISHNI xohlaysizmi?\n\nUshbu amal barcha talabalar progressini va yechgan testlarini qayta boshidan 0 qiladi!")) {
+      return;
+    }
+    setResettingProgress(true);
+    try {
+      const res = await resetAllStudentsProgress();
+      alert(res.message || "Barcha o'quvchilar progressi 1-darsga tushirildi va natijalar 0 ga tushdi!");
+      await loadData();
+    } catch (err: any) {
+      alert("Xatolik yuz berdi: " + (err.response?.data?.message || err.message));
+    } finally {
+      setResettingProgress(false);
+    }
+  };
 
   // Search & Filter state
   const [search, setSearch] = useState('');
@@ -356,6 +375,16 @@ export const Students: React.FC = () => {
               <ShieldCheck className="w-4 h-4" />
             )}
             {checkingPayments ? 'Tekshirilmoqda...' : checkSuccess ? 'Yangilandi!' : "To'lovlarni tekshirish"}
+          </button>
+
+          <button
+            onClick={handleResetAllProgress}
+            disabled={resettingProgress}
+            title="Hamma o'quvchilarning progressini 1-darsga va yechgan vazifalarini 0 ga tushirish"
+            className="flex items-center gap-2 px-3.5 py-2 text-sm font-semibold rounded-lg bg-red-500/10 text-red-600 border border-red-500/20 hover:bg-red-500/20 transition-all shadow-sm disabled:opacity-50"
+          >
+            <RotateCcw className={`w-4 h-4 ${resettingProgress ? 'animate-spin' : ''}`} />
+            {resettingProgress ? 'Nollashtirilmoqda...' : 'Progress Reset'}
           </button>
 
           <button

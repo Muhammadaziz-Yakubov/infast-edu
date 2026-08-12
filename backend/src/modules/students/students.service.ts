@@ -735,6 +735,43 @@ export class StudentsService implements OnModuleInit {
     };
   }
 
+  async resetAllProgress(requestingUser?: any): Promise<any> {
+    await this.studentProfileModel.updateMany(
+      {},
+      { $set: { currentLessonOrder: 1, xp: 0, coins: 0, level: 1 } }
+    ).exec();
+
+    const progressModel = this.studentProfileModel.db.model('LessonProgress');
+    await progressModel.deleteMany({}).exec();
+
+    return {
+      success: true,
+      message: "Barcha o'quvchilarning dars progressi 1-darsga tushirildi va barcha yechilgan test/amaliyot natijalari qayta 0 ga tushirildi.",
+    };
+  }
+
+  async resetStudentProgress(studentId: string, requestingUser?: any): Promise<any> {
+    const profile = await this.studentProfileModel.findOne({ userId: new Types.ObjectId(studentId) }).exec();
+    if (!profile) {
+      throw new NotFoundException('Student profile not found');
+    }
+
+    profile.currentLessonOrder = 1;
+    profile.xp = 0;
+    profile.coins = 0;
+    profile.level = 1;
+    await profile.save();
+
+    const progressModel = this.studentProfileModel.db.model('LessonProgress');
+    await progressModel.deleteMany({ studentId: new Types.ObjectId(studentId) }).exec();
+
+    return {
+      success: true,
+      message: "O'quvchining dars progressi 1-darsga tushirildi va barcha topshirgan vazifalari nollashtirildi.",
+      profile,
+    };
+  }
+
   async resetStudentXp(studentId: string, requestingUser?: any): Promise<any> {
     const profile = await this.studentProfileModel.findOne({ userId: new Types.ObjectId(studentId) }).exec();
     if (!profile) {

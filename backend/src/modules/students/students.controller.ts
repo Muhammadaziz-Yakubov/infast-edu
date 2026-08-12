@@ -149,6 +149,20 @@ export class StudentsController {
     return this.studentsService.generateContract(id, generateContractDto);
   }
 
+  @Post('reset-all-progress')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Reset progress to Lesson 1 and wipe completed tasks for ALL students (Admin only)' })
+  resetAllProgress(@CurrentUser() user: any) {
+    return this.studentsService.resetAllProgress(user);
+  }
+
+  @Post(':id/reset-progress')
+  @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
+  @ApiOperation({ summary: 'Reset progress to Lesson 1 and wipe completed tasks for a specific student (Admin only)' })
+  resetStudentProgress(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.studentsService.resetStudentProgress(id, user);
+  }
+
   @Post('reset-all-xp')
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   @ApiOperation({ summary: 'Reset XP, Level and Coins for ALL students to 0 (Admin only)' })

@@ -18,15 +18,20 @@ export class AttendanceService {
   ) {}
 
   async markAttendance(dto: MarkAttendanceDto): Promise<AttendanceDocument> {
-    const studentIdObj = new Types.ObjectId(dto.studentId);
+    const rawStudentId = new Types.ObjectId(dto.studentId);
     const groupIdObj = new Types.ObjectId(dto.groupId);
     const lessonIdObj = dto.lessonId ? new Types.ObjectId(dto.lessonId) : undefined;
 
-    // 1. Check if student profile exists
-    const profile = await this.studentProfileModel.findOne({ userId: studentIdObj }).exec();
+    // 1. Check if student profile exists (by userId OR _id)
+    const profile = await this.studentProfileModel.findOne({
+      $or: [{ userId: rawStudentId }, { _id: rawStudentId }],
+    }).exec();
+
     if (!profile) {
       throw new NotFoundException('Student profile not found');
     }
+
+    const studentIdObj = profile.userId;
 
     // 2. Check if attendance was already recorded (by lessonId or by today's date)
     const startOfDay = new Date();
@@ -86,11 +91,11 @@ export class AttendanceService {
 
     // 3. Apply XP and Coin changes
     if (xpDelta !== 0 || coinDelta !== 0) {
-      await this.studentsService.addXpAndCoins(dto.studentId, xpDelta, coinDelta);
+      await this.studentsService.addXpAndCoins(studentIdObj.toString(), xpDelta, coinDelta);
     }
 
     // 4. Recalculate attendance percentage
-    await this.recalculateAttendancePercentage(dto.studentId);
+    await this.recalculateAttendancePercentage(studentIdObj.toString());
 
     return (existing || await this.attendanceModel.findOne(queryFilter).exec()) as any;
   }
@@ -109,15 +114,15 @@ export class AttendanceService {
 
       // Auto-advance currentLessonOrder for PRESENT students (+1 to unlock next lesson)
       if (record.status === AttendanceStatus.PRESENT) {
+        const rawId = new Types.ObjectId(record.studentId);
         const profile = await this.studentProfileModel.findOne({
-          userId: new Types.ObjectId(record.studentId),
+          $or: [{ userId: rawId }, { _id: rawId }],
         }).exec();
         if (profile) {
           const currentOrder = profile.currentLessonOrder || 1;
-          await this.studentProfileModel.findOneAndUpdate(
-            { userId: new Types.ObjectId(record.studentId) },
-            { currentLessonOrder: currentOrder + 1 }
-          ).exec();
+          await this.studentProfileModel.findByIdAndUpdate(profile._id, {
+            currentLessonOrder: currentOrder + 1,
+          }).exec();
         }
       }
     }

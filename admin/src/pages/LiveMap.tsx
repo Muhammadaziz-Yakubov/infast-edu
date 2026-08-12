@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { getLiveLocations } from '../api/students';
 import { getAcademyConfig } from '../api/attendance';
 import { getGroups } from '../api/groups';
+import { getAvatarUrl } from '../utils/avatar';
 import {
   RefreshCw,
   Users,
@@ -64,7 +65,8 @@ export const LiveMap: React.FC = () => {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const studentMarkersMapRef = useRef<Map<string, any>>(new Map());
+  const academyMarkerRef = useRef<any>(null);
   const circleRef = useRef<any>(null);
 
   // Load Data
@@ -77,9 +79,27 @@ export const LiveMap: React.FC = () => {
         getGroups(),
       ]);
       setLocations(locs || []);
+
       if (config?.latitude && config?.longitude) {
-        setAcademyConfig(config);
+        setAcademyConfig({
+          latitude: config.latitude,
+          longitude: config.longitude,
+          radiusMeters: config.radiusMeters || 200,
+        });
+
+        // Pan map center to real academy coordinates if configured
+        if (mapInstanceRef.current) {
+          const map = mapInstanceRef.current;
+          if (academyMarkerRef.current) {
+            academyMarkerRef.current.setLatLng([config.latitude, config.longitude]);
+          }
+          if (circleRef.current) {
+            circleRef.current.setLatLng([config.latitude, config.longitude]);
+            circleRef.current.setRadius(config.radiusMeters || 200);
+          }
+        }
       }
+
       setGroups(grps || []);
     } catch (err) {
       console.error("Xarita ma'lumotlarini yuklashda xatolik:", err);
@@ -93,12 +113,12 @@ export const LiveMap: React.FC = () => {
     loadData();
   }, []);
 
-  // Auto Refresh Interval (every 10s)
+  // Auto Refresh Interval (every 5 seconds for smooth live movement)
   useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
       loadData();
-    }, 10000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
@@ -148,7 +168,7 @@ export const LiveMap: React.FC = () => {
         16
       );
 
-      // Dark theme OpenStreetMap tiles
+      // CartoDB Voyager tiles
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
         subdomains: 'abcd',
@@ -160,56 +180,69 @@ export const LiveMap: React.FC = () => {
 
     const map = mapInstanceRef.current;
 
-    // Clear existing markers & circle
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-    if (circleRef.current) circleRef.current.remove();
+    // Academy Pin (Create or Update)
+    if (!academyMarkerRef.current) {
+      const academyIcon = L.divIcon({
+        className: 'custom-academy-pin',
+        html: `
+          <div style="
+            background: #4f46e5;
+            color: white;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid white;
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.5);
+            font-size: 22px;
+          ">
+            🏫
+          </div>
+        `,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+      });
 
-    // Academy Pin
-    const academyIcon = L.divIcon({
-      className: 'custom-academy-pin',
-      html: `
-        <div style="
-          background: #4f46e5;
-          color: white;
-          width: 42px;
-          height: 42px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 3px solid white;
-          box-shadow: 0 10px 25px rgba(79, 70, 229, 0.5);
-          font-size: 20px;
-        ">
-          🏫
+      academyMarkerRef.current = L.marker([academyConfig.latitude, academyConfig.longitude], {
+        icon: academyIcon,
+      }).addTo(map);
+
+      academyMarkerRef.current.bindPopup(`
+        <div style="font-family: sans-serif; padding: 4px;">
+          <h4 style="margin: 0 0 4px 0; font-weight: bold; color: #4f46e5;">InFast Academy</h4>
+          <p style="margin: 0; font-size: 12px; color: #6b7280;">Geofence Radiusi: <b>${academyConfig.radiusMeters}m</b></p>
         </div>
-      `,
-      iconSize: [42, 42],
-      iconAnchor: [21, 21],
+      `);
+    } else {
+      academyMarkerRef.current.setLatLng([academyConfig.latitude, academyConfig.longitude]);
+    }
+
+    // Geofence Radius Circle (Create or Update)
+    if (!circleRef.current) {
+      circleRef.current = L.circle([academyConfig.latitude, academyConfig.longitude], {
+        color: '#4f46e5',
+        fillColor: '#818cf8',
+        fillOpacity: 0.15,
+        radius: academyConfig.radiusMeters,
+      }).addTo(map);
+    } else {
+      circleRef.current.setLatLng([academyConfig.latitude, academyConfig.longitude]);
+      circleRef.current.setRadius(academyConfig.radiusMeters);
+    }
+
+    // Smooth Student Markers Update / Animation
+    const currentStudentIds = new Set(filteredLocations.map((l) => l._id));
+
+    // Remove markers that are no longer in filtered locations
+    studentMarkersMapRef.current.forEach((marker, id) => {
+      if (!currentStudentIds.has(id)) {
+        marker.remove();
+        studentMarkersMapRef.current.delete(id);
+      }
     });
 
-    const academyMarker = L.marker([academyConfig.latitude, academyConfig.longitude], {
-      icon: academyIcon,
-    }).addTo(map);
-
-    academyMarker.bindPopup(`
-      <div style="font-family: sans-serif; padding: 4px;">
-        <h4 style="margin: 0 0 4px 0; font-weight: bold; color: #4f46e5;">InFast Academy</h4>
-        <p style="margin: 0; font-size: 12px; color: #6b7280;">Geofence Radiusi: <b>${academyConfig.radiusMeters}m</b></p>
-      </div>
-    `);
-    markersRef.current.push(academyMarker);
-
-    // Geofence Radius Circle
-    circleRef.current = L.circle([academyConfig.latitude, academyConfig.longitude], {
-      color: '#4f46e5',
-      fillColor: '#818cf8',
-      fillOpacity: 0.15,
-      radius: academyConfig.radiusMeters,
-    }).addTo(map);
-
-    // Student Markers
     filteredLocations.forEach((loc) => {
       const distance = getDistanceMeters(
         loc.latitude,
@@ -219,8 +252,7 @@ export const LiveMap: React.FC = () => {
       );
 
       const isInside = distance <= academyConfig.radiusMeters;
-      const avatarUrl =
-        loc.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(loc.fullName)}`;
+      const avatarUrl = getAvatarUrl(loc.avatar, loc.fullName);
 
       const markerHtml = `
         <div style="
@@ -250,16 +282,35 @@ export const LiveMap: React.FC = () => {
         iconAnchor: [22, 22],
       });
 
-      const marker = L.marker([loc.latitude, loc.longitude], { icon: studentIcon }).addTo(map);
-
-      marker.on('click', () => {
-        setSelectedStudent(loc);
-        map.setView([loc.latitude, loc.longitude], 17);
-      });
-
-      markersRef.current.push(marker);
+      if (studentMarkersMapRef.current.has(loc._id)) {
+        // Smooth position update (Live Movement)
+        const marker = studentMarkersMapRef.current.get(loc._id);
+        marker.setLatLng([loc.latitude, loc.longitude]);
+        marker.setIcon(studentIcon);
+      } else {
+        // Create new marker
+        const marker = L.marker([loc.latitude, loc.longitude], { icon: studentIcon }).addTo(map);
+        marker.on('click', () => {
+          setSelectedStudent(loc);
+          map.setView([loc.latitude, loc.longitude], 17);
+        });
+        studentMarkersMapRef.current.set(loc._id, marker);
+      }
     });
+
+    // Keep selectedStudent state fresh if updated
+    if (selectedStudent) {
+      const updatedSel = locations.find((l) => l._id === selectedStudent._id);
+      if (updatedSel) setSelectedStudent(updatedSel);
+    }
   }, [leafletReady, filteredLocations, academyConfig]);
+
+  // Center Map to Academy
+  const handleRecenterAcademy = () => {
+    if (mapInstanceRef.current && academyConfig.latitude && academyConfig.longitude) {
+      mapInstanceRef.current.setView([academyConfig.latitude, academyConfig.longitude], 16);
+    }
+  };
 
   // Statistics
   const totalOnMap = filteredLocations.length;
@@ -282,13 +333,23 @@ export const LiveMap: React.FC = () => {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">O'quvchilar Live Xaritasi</h1>
               <p className="text-sm text-muted-foreground">
-                O'quvchilarning real vaqtdagi GPS joylashuvi va geofencing statusini kuzatib boring.
+                O'quvchilarning real vaqtdagi GPS joylashuvi va jonli harakatini kuzatib boring.
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Recenter Academy Button */}
+          <button
+            onClick={handleRecenterAcademy}
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border bg-secondary hover:bg-secondary/80 transition-all"
+            title="Akademiyani xarita markaziga keltirish"
+          >
+            <Navigation className="w-3.5 h-3.5 text-primary" />
+            <span>Akademiya Markazi</span>
+          </button>
+
           {/* Auto Refresh Toggle */}
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
@@ -299,7 +360,7 @@ export const LiveMap: React.FC = () => {
             }`}
           >
             <Radio className={`w-3.5 h-3.5 ${autoRefresh ? 'animate-pulse text-emerald-500' : ''}`} />
-            <span>{autoRefresh ? 'Live Yangilanish: Yoqilgan' : 'Live Yangilanish: O\'chirilgan'}</span>
+            <span>{autoRefresh ? 'Live Yangilanish (5s): Yoqilgan' : 'Live Yangilanish: O\'chirilgan'}</span>
           </button>
 
           {/* Refresh Button */}
@@ -371,12 +432,7 @@ export const LiveMap: React.FC = () => {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <img
-                    src={
-                      selectedStudent.avatar ||
-                      `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(
-                        selectedStudent.fullName
-                      )}`
-                    }
+                    src={getAvatarUrl(selectedStudent.avatar, selectedStudent.fullName)}
                     alt={selectedStudent.fullName}
                     className="w-12 h-12 rounded-full object-cover border-2 border-primary bg-secondary"
                   />
@@ -503,6 +559,7 @@ export const LiveMap: React.FC = () => {
                 );
                 const isInside = distance <= academyConfig.radiusMeters;
                 const isSelected = selectedStudent?._id === loc._id;
+                const avatarUrl = getAvatarUrl(loc.avatar, loc.fullName);
 
                 return (
                   <div
@@ -522,12 +579,7 @@ export const LiveMap: React.FC = () => {
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="relative shrink-0">
                         <img
-                          src={
-                            loc.avatar ||
-                            `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(
-                              loc.fullName
-                            )}`
-                          }
+                          src={avatarUrl}
                           alt={loc.fullName}
                           className="w-9 h-9 rounded-full object-cover bg-secondary border"
                         />

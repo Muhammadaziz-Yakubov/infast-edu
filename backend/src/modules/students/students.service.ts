@@ -1240,21 +1240,5 @@ export class StudentsService implements OnModuleInit {
     });
   }
 
-  async updateOwnAvatar(userId: string, avatarUrl: string) {
-    const isValidId = Types.ObjectId.isValid(userId);
-    const idObj = isValidId ? new Types.ObjectId(userId) : userId;
-
-    const user = await this.userModel.findByIdAndUpdate(
-      idObj,
-      { avatar: avatarUrl },
-      { new: true }
-    ).exec();
-
-    if (!user) {
-      throw new NotFoundException('Student user not found');
-    }
-
-    return { success: true, avatar: avatarUrl, user };
-  }
 }
 

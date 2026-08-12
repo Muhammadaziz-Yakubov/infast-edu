@@ -4,7 +4,7 @@ import {
   createExtraLessonSlot,
   deleteExtraLessonSlot,
   updateExtraLessonAttendance,
-  ExtraLessonSlotItem,
+  type ExtraLessonSlotItem,
 } from '../api/extraLessons';
 import {
   Calendar,
@@ -19,7 +19,6 @@ import {
   Filter,
   UserCheck,
   UserX,
-  Coins,
 } from 'lucide-react';
 
 export const ExtraLessons: React.FC = () => {
@@ -281,7 +280,6 @@ export const ExtraLessons: React.FC = () => {
             <div className="space-y-3">
               {filteredSlots.map((slot) => {
                 const isBooked = slot.status === 'BOOKED' || slot.bookedBy;
-                const isCompleted = slot.attendanceStatus !== 'PENDING';
                 const student = slot.bookedBy;
 
                 return (

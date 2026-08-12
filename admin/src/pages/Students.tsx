@@ -63,6 +63,7 @@ export const Students: React.FC = () => {
   const [password, setPassword] = useState('');
   const [nextPaymentDate, setNextPaymentDate] = useState('');
   const [label, setLabel] = useState('');
+  const [currentLessonOrder, setCurrentLessonOrder] = useState<number>(1);
 
   // Generated Credentials output
   const [credentials, setCredentials] = useState<{ phone: string; pass: string } | null>(null);
@@ -195,6 +196,7 @@ export const Students: React.FC = () => {
         groupId: groupId || undefined,
         nextPaymentDate: nextPaymentDate || undefined,
         label: label || undefined,
+        currentLessonOrder: currentLessonOrder || 1,
       };
       if (password && password.trim().length > 0) {
         payload.password = password;
@@ -204,6 +206,7 @@ export const Students: React.FC = () => {
       setNextPaymentDate('');
       setLabel('');
       setPassword('');
+      setCurrentLessonOrder(1);
       await loadData();
     } catch (err: any) {
       const errMsg = err.response?.data?.message
@@ -232,6 +235,7 @@ export const Students: React.FC = () => {
     setLabel(student.label || '');
     setPassword('');
     setNextPaymentDate('');
+    setCurrentLessonOrder((student as any).currentLessonOrder || 1);
   };
 
   const handleCopy = () => {
@@ -441,6 +445,7 @@ export const Students: React.FC = () => {
                       <td className="px-6 py-4 space-y-1">
                         <div className="font-medium max-w-[150px] truncate">{course?.title || 'Kursga biriktirilmagan'}</div>
                         <div className="text-xs text-muted-foreground">{group?.name || 'Guruhsiz'}</div>
+                        <div className="text-xs font-semibold text-primary/80 mt-0.5">📚 Dars #{(student as any).currentLessonOrder || 1}</div>
                       </td>
                       <td className="px-6 py-4 space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-amber-500 font-semibold">
@@ -708,6 +713,28 @@ export const Students: React.FC = () => {
                   />
                   <p className="text-xs text-muted-foreground">Masalan: har oyning 20-sini to'lov kuni sifatida belgilash uchun</p>
                 </div>
+
+                {editStudent && (
+                  <div className="sm:col-span-2 space-y-1 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                    <label className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                      📚 Joriy Dars Raqami
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min={1}
+                        max={999}
+                        value={currentLessonOrder}
+                        onChange={(e) => setCurrentLessonOrder(Number(e.target.value))}
+                        className="w-28 border rounded-lg p-2 text-sm bg-background outline-none focus:ring-1 focus:ring-primary font-bold"
+                      />
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        O'quvchi ilovada <strong>{currentLessonOrder}-dars</strong> gacha kirish huquqiga ega bo'ladi.
+                        (Masalan: Hamidullo → 16-dars, Xojimurod → 12-dars)
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {!editStudent && (

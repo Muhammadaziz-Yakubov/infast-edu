@@ -53,6 +53,9 @@ export class StudentProfile extends Document {
 
   @Prop({ default: 0 })
   homeworkProgress: number; // e.g. 80% (homeworks completed / total homeworks)
+
+  @Prop({ default: 1 })
+  currentLessonOrder: number; // Admin sets this: which lesson# the student is currently on (1-based)
 }
 
 export type StudentProfileDocument = StudentProfile & Document;

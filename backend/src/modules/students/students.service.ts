@@ -390,6 +390,9 @@ export class StudentsService implements OnModuleInit {
     if (updateStudentDto.coins !== undefined) {
       profileUpdates.coins = updateStudentDto.coins;
     }
+    if (updateStudentDto.currentLessonOrder !== undefined) {
+      profileUpdates.currentLessonOrder = Math.max(1, updateStudentDto.currentLessonOrder);
+    }
 
     let updatedProfile = null;
     if (Object.keys(profileUpdates).length > 0) {

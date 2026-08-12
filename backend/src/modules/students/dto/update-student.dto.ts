@@ -102,4 +102,9 @@ export class UpdateStudentDto {
   @IsString()
   @IsOptional()
   branchId?: string;
+
+  @ApiProperty({ example: 12, description: 'Admin sets current lesson number for student (1-based)', required: false })
+  @IsNumber()
+  @IsOptional()
+  currentLessonOrder?: number;
 }

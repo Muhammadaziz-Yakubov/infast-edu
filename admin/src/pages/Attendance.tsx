@@ -112,16 +112,22 @@ export const Attendance: React.FC = () => {
         // Build a set of userIds that have PRESENT status today via GPS
         const presentUserIds = new Set<string>();
         (logs || []).forEach((log: any) => {
-          if (log.status === 'PRESENT' && log.userId) {
-            presentUserIds.add(String(log.userId));
+          if (log.status === 'PRESENT') {
+            const rawId = log.userId || log.studentId;
+            const idStr = typeof rawId === 'object' ? rawId?._id?.toString() : String(rawId || '');
+            if (idStr) presentUserIds.add(idStr);
           }
         });
 
         const initial: Record<string, 'PRESENT' | 'ABSENT'> = {};
         activeStudents.forEach((s) => {
-          // s.userId is the User._id — matches log.userId from backend
-          const uIdStr = s.userId ? String(s.userId) : null;
-          if (uIdStr && presentUserIds.has(uIdStr)) {
+          const profileIdStr = String(s._id || '');
+          const userIdStr = typeof s.userId === 'object' ? String(s.userId?._id || '') : String(s.userId || '');
+
+          if (
+            (profileIdStr && presentUserIds.has(profileIdStr)) ||
+            (userIdStr && presentUserIds.has(userIdStr))
+          ) {
             initial[s._id] = 'PRESENT';
           } else {
             initial[s._id] = 'ABSENT';

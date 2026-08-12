@@ -275,12 +275,18 @@ export class AttendanceService {
     const isValidGroupId = Types.ObjectId.isValid(groupId);
     const gId = isValidGroupId ? new Types.ObjectId(groupId) : groupId;
 
-    // Parse the date string and get start/end of that day in UTC
-    const targetDate = new Date(date);
-    const startOfDay = new Date(targetDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    let startOfDay: Date;
+    let endOfDay: Date;
+
+    if (date && date.includes('-')) {
+      const parts = date.split('-').map(Number);
+      startOfDay = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+      endOfDay = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+    } else {
+      const d = date ? new Date(date) : new Date();
+      startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    }
 
     const logs = await this.attendanceModel
       .find({
@@ -291,9 +297,9 @@ export class AttendanceService {
       .sort({ date: -1 })
       .exec();
 
-    // Return logs with userId exposed for frontend matching
     return logs.map((log: any) => {
       const studentDoc = log.studentId as any;
+      const studentUserId = studentDoc?._id ? studentDoc._id.toString() : (log.studentId ? log.studentId.toString() : '');
       return {
         _id: log._id,
         status: log.status,
@@ -302,8 +308,8 @@ export class AttendanceService {
         distanceFromAcademy: log.distanceFromAcademy,
         date: log.date,
         lessonNumber: log.lessonNumber,
-        // Expose the raw userId (which is the User._id = StudentProfile.userId)
-        userId: studentDoc?._id?.toString() || log.studentId?.toString(),
+        userId: studentUserId,
+        studentId: studentUserId,
         studentName: studentDoc?.fullName || '',
       };
     });

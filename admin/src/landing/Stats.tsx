@@ -37,7 +37,7 @@ const AnimatedCounter: React.FC<CounterProps> = ({ value, suffix }) => {
   }, [isInView, value]);
 
   return (
-    <span ref={ref} className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight">
+    <span ref={ref} className="text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-tighter">
       {count}
       <span className="text-[#FF6A00]">{suffix}</span>
     </span>
@@ -46,35 +46,32 @@ const AnimatedCounter: React.FC<CounterProps> = ({ value, suffix }) => {
 
 export const Stats: React.FC = () => {
   return (
-    <section className="py-16 md:py-24 bg-zinc-950/80 border-y border-white/5 relative overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute inset-0 bg-radial-gradient opacity-50 pointer-events-none" />
-
+    <section className="py-20 md:py-28 bg-black border-y border-white/[0.08] relative overflow-hidden text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-        <div className="text-center mb-12">
-          <p className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-[#FF6A00] mb-2">
-            Natijalar va ishonch
+        <div className="text-center mb-16">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#FF6A00] mb-3">
+            Raqamlar va Ishonch
           </p>
-          <h3 className="text-xl sm:text-2xl font-bold text-zinc-200">
+          <h3 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
             Biz bilan kelajagini qurayotganlar
           </h3>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {ACADEMY_STATS.map((stat: Statistic, index: number) => (
             <motion.div
               key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="flex flex-col items-center text-center p-6 rounded-2xl bg-zinc-900/40 border border-white/5 backdrop-blur-md hover:border-[#FF6A00]/30 transition-colors"
+              transition={{ duration: 0.6, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="flex flex-col items-center text-center p-8 rounded-[32px] bg-zinc-950/80 border border-white/[0.12] backdrop-blur-3xl hover:border-[#FF6A00]/40 transition-all duration-500 shadow-2xl"
             >
               <AnimatedCounter value={stat.value} suffix={stat.suffix} />
-              <span className="mt-3 text-base sm:text-lg font-bold text-zinc-200">
+              <span className="mt-4 text-lg font-extrabold text-white">
                 {stat.label}
               </span>
-              <p className="mt-1 text-xs sm:text-sm text-zinc-400 font-normal leading-relaxed max-w-[200px]">
+              <p className="mt-2 text-xs sm:text-sm text-[#86868B] font-normal leading-relaxed max-w-[220px]">
                 {stat.description}
               </p>
             </motion.div>

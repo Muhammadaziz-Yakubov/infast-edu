@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './store/authStore';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
+import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Branches } from './pages/Branches';
@@ -64,75 +65,76 @@ export const App: React.FC = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/form/:id" element={<PublicLeadForm />} />
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/form/:id" element={<PublicLeadForm />} />
 
-        {/* Protected Dashboard Routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/branches" element={<Branches />} />
-            <Route path="/branches/:id" element={<BranchDetails />} />
-            
-            {/* Student management */}
-            <Route path="/students" element={<Students />} />
-            <Route path="/students/:id" element={<StudentProfile />} />
-            
-            {/* Class Management */}
-            <Route path="/groups" element={<Groups />} />
-            
-            {/* LMS Syllabus */}
-            <Route path="/courses" element={<Courses />} />
-            <Route path="/course-templates" element={<CourseTemplates />} />
-            <Route path="/lms" element={<LmsBuilder />} />
-            <Route path="/lms-check" element={<LmsCheck />} />
-            <Route path="/homework" element={<Homework />} />
-            
-            {/* Operations & Finance */}
-            <Route path="/payments" element={<Payments />} />
-            <Route path="/coins" element={<Coins />} />
-            <Route path="/attendance" element={<Attendance />} />
-            <Route path="/extra-lessons" element={<ExtraLessons />} />
-            <Route path="/live-map" element={<LiveMap />} />
-            <Route path="/library" element={<Library />} />
-            
-            {/* Gamification Market */}
-            <Route path="/market" element={<Market />} />
-            <Route path="/stories" element={<Stories />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/referrals" element={<Referrals />} />
-            
-            {/* Marketing CRM */}
-            <Route path="/marketing" element={<MarketingDashboard />} />
-            <Route path="/marketing/leads" element={<LeadsList />} />
-            <Route path="/marketing/leads/:id" element={<LeadDetails />} />
-            <Route path="/marketing/pipeline" element={<PipelineView />} />
-            <Route path="/marketing/campaigns" element={<Campaigns />} />
-            <Route path="/marketing/sources" element={<LeadSources />} />
-            <Route path="/marketing/forms" element={<LeadForms />} />
-            <Route path="/marketing/managers" element={<ManagersPerformance />} />
-            <Route path="/marketing/analytics" element={<MarketingAnalytics />} />
+          {/* Protected Dashboard Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/branches" element={<Branches />} />
+              <Route path="/branches/:id" element={<BranchDetails />} />
 
-            {/* Reporting & Logs */}
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/ai-advisor" element={<AiAdvisor />} />
-            <Route path="/ai-lesson-creator" element={<AiLessonCreator />} />
-            <Route path="/telegram-ai" element={<TelegramAi />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/chat" element={<Chat />} />
-            
-            {/* Configurations */}
-            <Route path="/settings" element={<Settings />} />
+              {/* Student management */}
+              <Route path="/students" element={<Students />} />
+              <Route path="/students/:id" element={<StudentProfile />} />
+
+              {/* Class Management */}
+              <Route path="/groups" element={<Groups />} />
+
+              {/* LMS Syllabus */}
+              <Route path="/courses" element={<Courses />} />
+              <Route path="/course-templates" element={<CourseTemplates />} />
+              <Route path="/lms" element={<LmsBuilder />} />
+              <Route path="/lms-check" element={<LmsCheck />} />
+              <Route path="/homework" element={<Homework />} />
+
+              {/* Operations & Finance */}
+              <Route path="/payments" element={<Payments />} />
+              <Route path="/coins" element={<Coins />} />
+              <Route path="/attendance" element={<Attendance />} />
+              <Route path="/extra-lessons" element={<ExtraLessons />} />
+              <Route path="/live-map" element={<LiveMap />} />
+              <Route path="/library" element={<Library />} />
+
+              {/* Gamification Market */}
+              <Route path="/market" element={<Market />} />
+              <Route path="/stories" element={<Stories />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/referrals" element={<Referrals />} />
+
+              {/* Marketing CRM */}
+              <Route path="/marketing" element={<MarketingDashboard />} />
+              <Route path="/marketing/leads" element={<LeadsList />} />
+              <Route path="/marketing/leads/:id" element={<LeadDetails />} />
+              <Route path="/marketing/pipeline" element={<PipelineView />} />
+              <Route path="/marketing/campaigns" element={<Campaigns />} />
+              <Route path="/marketing/sources" element={<LeadSources />} />
+              <Route path="/marketing/forms" element={<LeadForms />} />
+              <Route path="/marketing/managers" element={<ManagersPerformance />} />
+              <Route path="/marketing/analytics" element={<MarketingAnalytics />} />
+
+              {/* Reporting & Logs */}
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/ai-advisor" element={<AiAdvisor />} />
+              <Route path="/ai-lesson-creator" element={<AiLessonCreator />} />
+              <Route path="/telegram-ai" element={<TelegramAi />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/chat" element={<Chat />} />
+
+              {/* Configurations */}
+              <Route path="/settings" element={<Settings />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Redirect unknown routes to Dashboard */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Redirect unknown routes to Landing Page */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 };

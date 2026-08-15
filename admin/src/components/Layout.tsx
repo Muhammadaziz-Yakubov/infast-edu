@@ -60,7 +60,7 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
     name: 'Dashboard',
     key: 'dashboard',
     icon: LayoutDashboard,
-    path: '/',
+    path: '/dashboard',
   },
   {
     name: 'Academy',
@@ -146,7 +146,7 @@ const getSidebarSections = (userRole?: string): SidebarSection[] => [
 ];
 
 const getBreadcrumbs = (pathname: string): string[] => {
-  if (pathname === '/') return ['Dashboard'];
+  if (pathname === '/dashboard' || pathname === '/') return ['Dashboard'];
   
   // Settings & direct pages
   if (pathname.startsWith('/settings')) return ['Settings'];

@@ -28,7 +28,7 @@ export const Login: React.FC = () => {
         throw new Error('Ushbu panelga kirish huquqingiz yo\'q');
       }
       setAuth(data.user, data.accessToken, data.refreshToken);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Xatolik yuz berdi. Iltimos login va parolni tekshiring');
     } finally {

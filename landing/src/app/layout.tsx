@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
@@ -11,6 +11,11 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-mono',
   subsets: ['latin'],
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: 'InFast IT-Academy — Zamonaviy IT Kasblari Akademiyasi',
@@ -28,7 +33,6 @@ export const metadata: Metadata = {
     'Uzbekistan IT taʼlim',
   ],
   authors: [{ name: 'InFast IT-Academy' }],
-  viewport: 'width=device-width, initial-scale=1',
   robots: 'index, follow',
   icons: {
     icon: '/logo.png',
@@ -50,7 +54,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="uz" className={`${inter.variable} ${jetbrainsMono.variable} dark scroll-smooth`}>
-      <body className="min-h-screen bg-[#09090b] text-zinc-100 font-sans antialiased selection:bg-[#FF6A00] selection:text-white">
+      <body className="min-h-screen bg-[#09090b] text-zinc-100 font-sans antialiased selection:bg-[#FF6A00] selection:text-[#FFFFFF]">
         {children}
       </body>
     </html>

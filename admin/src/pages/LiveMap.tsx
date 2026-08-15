@@ -89,7 +89,6 @@ export const LiveMap: React.FC = () => {
 
         // Pan map center to real academy coordinates if configured
         if (mapInstanceRef.current) {
-          const map = mapInstanceRef.current;
           if (academyMarkerRef.current) {
             academyMarkerRef.current.setLatLng([config.latitude, config.longitude]);
           }

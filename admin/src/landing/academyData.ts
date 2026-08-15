@@ -394,13 +394,15 @@ export const FAQ_ITEMS: FAQItem[] = [
 ];
 
 export const CONTACT_INFO = {
-  phone: "+998 90 123 45 67",
-  phoneFormatted: "+998 (90) 123-45-67",
+  phone: "+998902710027",
+  phoneFormatted: "+998 (90) 271-00-27",
   telegram: "https://t.me/infast_admin",
   telegramHandle: "@infast_admin",
   instagram: "https://instagram.com/infast.academy",
   instagramHandle: "@infast.academy",
-  address: "Toshkent shahri, Yakkasaroy tumani, Shota Rustaveli ko'chasi, 45-uy",
+  address: "Andijon viloyati, Buloqboshi tumani, Yangi hokimiyat binosi ichida",
   workingHours: "Dush - Shanba: 09:00 - 20:00",
   email: "info@infast.uz",
+  enrollmentFormUrl: "https://www.infastacademy.uz/form/6a804e76a26d225b297e8f34",
+  enrollmentFormPath: "/form/6a804e76a26d225b297e8f34",
 };

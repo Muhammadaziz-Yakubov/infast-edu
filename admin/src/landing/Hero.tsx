@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Code2, Terminal, BookOpen, Sparkles, CheckCircle2, Zap, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Code2, Terminal, BookOpen, CheckCircle2, Zap, ShieldCheck } from 'lucide-react';
 
 interface HeroProps {
   onOpenEnroll: () => void;

@@ -14,23 +14,14 @@ import { StudentStories } from '@/components/StudentStories';
 import { FAQ } from '@/components/FAQ';
 import { FinalCTA } from '@/components/FinalCTA';
 import { Footer } from '@/components/Footer';
-import { EnrollmentModal } from '@/components/EnrollmentModal';
 import { CourseDetailModal } from '@/components/CourseDetailModal';
-import { Course } from '@/data/academyData';
+import { Course, CONTACT_INFO } from '@/data/academyData';
 
 export default function Home() {
-  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
-  const [selectedCourseName, setSelectedCourseName] = useState<string | undefined>(undefined);
   const [detailCourse, setDetailCourse] = useState<Course | null>(null);
 
-  const handleOpenEnroll = (courseName?: string) => {
-    setSelectedCourseName(courseName);
-    setIsEnrollModalOpen(true);
-  };
-
-  const handleCloseEnroll = () => {
-    setIsEnrollModalOpen(false);
-    setSelectedCourseName(undefined);
+  const handleOpenEnroll = (_courseName?: string) => {
+    window.location.href = CONTACT_INFO.enrollmentFormUrl;
   };
 
   const handleSelectCourseDetail = (course: Course) => {
@@ -84,13 +75,6 @@ export default function Home() {
 
       {/* Footer */}
       <Footer />
-
-      {/* Registration Pop-up Modal */}
-      <EnrollmentModal
-        isOpen={isEnrollModalOpen}
-        onClose={handleCloseEnroll}
-        selectedCourseName={selectedCourseName}
-      />
 
       {/* Course Detail Modal */}
       <CourseDetailModal

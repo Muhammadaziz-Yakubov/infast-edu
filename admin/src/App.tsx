@@ -4,8 +4,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './store/authStore';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
+
+// Public Landing & Standalone Subpages
 import { LandingPage } from './pages/LandingPage';
+import { PublicCoursesPage } from './pages/public/PublicCoursesPage';
+import { PublicAcademyPage } from './pages/public/PublicAcademyPage';
+import { PublicResultsPage } from './pages/public/PublicResultsPage';
+import { PublicMentorsPage } from './pages/public/PublicMentorsPage';
+import { PublicFaqPage } from './pages/public/PublicFaqPage';
+
+// Auth & Public Lead Form
 import { Login } from './pages/Login';
+import { PublicLeadForm } from './pages/PublicLeadForm';
+
+// CRM & LMS Admin Pages
 import { Dashboard } from './pages/Dashboard';
 import { Branches } from './pages/Branches';
 import { BranchDetails } from './pages/BranchDetails';
@@ -42,7 +54,6 @@ import { PipelineView } from './pages/marketing/PipelineView';
 import { Campaigns } from './pages/marketing/Campaigns';
 import { LeadSources } from './pages/marketing/LeadSources';
 import { LeadForms } from './pages/marketing/LeadForms';
-import { PublicLeadForm } from './pages/PublicLeadForm';
 import { ManagersPerformance } from './pages/marketing/ManagersPerformance';
 import { MarketingAnalytics } from './pages/marketing/MarketingAnalytics';
 import { LeadDetails } from './pages/marketing/LeadDetails';
@@ -69,6 +80,12 @@ export const App: React.FC = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/courses-info" element={<PublicCoursesPage />} />
+          <Route path="/about-academy" element={<PublicAcademyPage />} />
+          <Route path="/results-info" element={<PublicResultsPage />} />
+          <Route path="/mentor-info" element={<PublicMentorsPage />} />
+          <Route path="/faq-info" element={<PublicFaqPage />} />
+
           <Route path="/login" element={<Login />} />
           <Route path="/form/:id" element={<PublicLeadForm />} />
 

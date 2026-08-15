@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Sparkles } from 'lucide-react';
 
@@ -10,7 +10,8 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onOpenEnroll }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,24 +27,27 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnroll }) => {
   }, []);
 
   const navLinks = [
-    { name: 'Kurslar', href: '#courses' },
-    { name: 'Akademiya', href: '#academy' },
-    { name: 'Natijalar', href: '#results' },
-    { name: 'Ustozlar', href: '#mentors' },
-    { name: 'FAQ', href: '#faq' },
+    { name: 'Kurslar', href: '#courses', route: '/courses-info' },
+    { name: 'Akademiya', href: '#academy', route: '/about-academy' },
+    { name: 'Natijalar', href: '#results', route: '/results-info' },
+    { name: 'Ustozlar', href: '#mentors', route: '/mentor-info' },
+    { name: 'FAQ', href: '#faq', route: '/faq-info' },
   ];
 
-  const handleNavClick = (href: string) => {
+  const handleNavClick = (link: { name: string; href: string; route: string }) => {
     setMobileMenuOpen(false);
-    setActiveSection(href);
-    const element = document.querySelector(href);
-    if (element) {
-      const offsetTop = element.getBoundingClientRect().top + window.pageYOffset - 90;
-      window.scrollTo({
-        top: offsetTop,
-        behavior: 'smooth',
-      });
+    if (location.pathname === '/') {
+      const element = document.querySelector(link.href);
+      if (element) {
+        const offsetTop = element.getBoundingClientRect().top + window.pageYOffset - 90;
+        window.scrollTo({
+          top: offsetTop,
+          behavior: 'smooth',
+        });
+        return;
+      }
     }
+    navigate(link.route);
   };
 
   return (
@@ -52,13 +56,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnroll }) => {
         <nav
           className={`relative flex items-center justify-between px-4 sm:px-6 py-3 rounded-full transition-all duration-300 ${
             scrolled
-              ? 'bg-zinc-950/85 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/50'
-              : 'bg-zinc-950/40 backdrop-blur-md border border-white/5'
+              ? 'bg-zinc-950/90 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60'
+              : 'bg-zinc-950/50 backdrop-blur-xl border border-white/10'
           }`}
         >
           {/* Logo */}
-          <a
-            href="#"
+          <Link
+            to="/"
             className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6A00] rounded-lg"
           >
             <div className="relative w-9 h-9 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 flex items-center justify-center p-1 group-hover:border-[#FF6A00]/50 transition-colors">
@@ -76,24 +80,27 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnroll }) => {
                 IT-Academy
               </span>
             </div>
-          </a>
+          </Link>
 
           {/* Desktop Nav Links */}
           <ul className="hidden md:flex items-center gap-1 lg:gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 backdrop-blur-md">
-            {navLinks.map((link) => (
-              <li key={link.name}>
-                <button
-                  onClick={() => handleNavClick(link.href)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer ${
-                    activeSection === link.href
-                      ? 'bg-[#FF6A00]/15 text-[#FF6A00]'
-                      : 'text-zinc-300 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {link.name}
-                </button>
-              </li>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.route;
+              return (
+                <li key={link.name}>
+                  <button
+                    onClick={() => handleNavClick(link)}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? 'bg-[#FF6A00]/20 text-[#FF6A00] font-bold border border-[#FF6A00]/30'
+                        : 'text-zinc-300 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {link.name}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
 
           {/* Right Action Buttons */}
@@ -138,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnroll }) => {
                 {navLinks.map((link) => (
                   <li key={link.name}>
                     <button
-                      onClick={() => handleNavClick(link.href)}
+                      onClick={() => handleNavClick(link)}
                       className="w-full text-left px-4 py-3 rounded-xl text-base font-medium text-zinc-200 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       {link.name}

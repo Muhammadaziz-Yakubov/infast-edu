@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../landing/Navbar';
 import { Hero } from '../landing/Hero';
 import { Stats } from '../landing/Stats';
@@ -12,23 +13,17 @@ import { StudentStories } from '../landing/StudentStories';
 import { FAQ } from '../landing/FAQ';
 import { FinalCTA } from '../landing/FinalCTA';
 import { Footer } from '../landing/Footer';
-import { EnrollmentModal } from '../landing/EnrollmentModal';
 import { CourseDetailModal } from '../landing/CourseDetailModal';
 import type { Course } from '../landing/academyData';
 
+const FORM_PATH = '/form/6a804e76a26d225b297e8f34';
+
 export const LandingPage: React.FC = () => {
-  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
-  const [selectedCourseName, setSelectedCourseName] = useState<string | undefined>(undefined);
+  const navigate = useNavigate();
   const [detailCourse, setDetailCourse] = useState<Course | null>(null);
 
-  const handleOpenEnroll = (courseName?: string) => {
-    setSelectedCourseName(courseName);
-    setIsEnrollModalOpen(true);
-  };
-
-  const handleCloseEnroll = () => {
-    setIsEnrollModalOpen(false);
-    setSelectedCourseName(undefined);
+  const handleOpenEnroll = (_courseName?: string) => {
+    navigate(FORM_PATH);
   };
 
   const handleSelectCourseDetail = (course: Course) => {
@@ -82,13 +77,6 @@ export const LandingPage: React.FC = () => {
 
       {/* Footer */}
       <Footer />
-
-      {/* Registration Pop-up Modal */}
-      <EnrollmentModal
-        isOpen={isEnrollModalOpen}
-        onClose={handleCloseEnroll}
-        selectedCourseName={selectedCourseName}
-      />
 
       {/* Course Detail Modal */}
       <CourseDetailModal

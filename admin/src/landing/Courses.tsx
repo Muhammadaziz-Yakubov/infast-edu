@@ -42,95 +42,93 @@ const getCourseIcon = (iconName: string) => {
 
 export const Courses: React.FC<CoursesProps> = ({ onSelectCourse, onEnrollCourse }) => {
   return (
-    <section id="courses" className="py-24 relative overflow-hidden">
-      {/* Glow Orbs */}
-      <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-[#FF6A00]/10 blur-[150px] pointer-events-none rounded-full" />
+    <section id="courses" className="py-28 relative overflow-hidden bg-black text-white">
+      {/* Apple Subtle Glow Background */}
+      <div className="absolute top-1/2 right-0 w-[500px] h-[500px] bg-[#FF6A00]/10 blur-[180px] pointer-events-none rounded-full" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         <SectionHeader
-          badge="Akademiya Yo'nalishlari"
-          title="IT olamiga kirish uchun o‘zingga mos yo‘nalishni tanla."
-          description="Har bir kurs bozor talabiga mos holda noldan tajribali mutaxassis darajasigacha ishlab chiqilgan."
+          badge="Akademiya Dasturlari"
+          title="Kelajagingiz uchun mos yo‘nalishni tanlang."
+          description="Barcha yo'nalishlar noldan tajribali mutaxassis darajasigacha 100% amaliyotga asoslangan holda o'rgatiladi."
         />
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="mt-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {COURSES.map((course: Course, index: number) => (
             <motion.div
               key={course.id}
-              initial={{ opacity: 0, y: 25 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.08 }}
-              className="group relative flex flex-col justify-between p-7 rounded-3xl bg-zinc-950/80 border border-white/10 hover:border-[#FF6A00]/40 transition-all duration-300 hover:-translate-y-2 shadow-xl hover:shadow-2xl hover:shadow-[#FF6A00]/10 backdrop-blur-xl"
+              transition={{ duration: 0.6, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              className="group relative flex flex-col justify-between p-8 rounded-[32px] bg-zinc-950/80 border border-white/[0.12] hover:border-[#FF6A00]/50 transition-all duration-500 hover:-translate-y-2 shadow-2xl backdrop-blur-3xl"
             >
-              {/* Card top banner/badge */}
               <div>
-                <div className="flex items-center justify-between gap-2 mb-5">
-                  <div className="p-3 rounded-2xl bg-zinc-900 border border-white/10 group-hover:border-[#FF6A00]/50 group-hover:bg-[#FF6A00]/10 transition-colors">
+                <div className="flex items-center justify-between gap-2 mb-6">
+                  <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.1] group-hover:border-[#FF6A00]/50 group-hover:bg-[#FF6A00]/10 transition-colors">
                     {getCourseIcon(course.iconName)}
                   </div>
-                  {course.popular && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF6A00]/15 text-[#FF6A00] border border-[#FF6A00]/30">
+                  {course.popular ? (
+                    <span className="inline-flex items-center gap-1 px-3.5 py-1 rounded-full text-xs font-bold bg-[#FF6A00]/20 text-[#FF6A00] border border-[#FF6A00]/40">
                       <Sparkles className="w-3 h-3" />
                       {course.tag}
                     </span>
-                  )}
-                  {!course.popular && (
-                    <span className="text-xs font-medium text-zinc-400 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                  ) : (
+                    <span className="text-xs font-semibold text-[#86868B] bg-white/[0.05] border border-white/[0.1] px-3 py-1 rounded-full">
                       {course.tag}
                     </span>
                   )}
                 </div>
 
-                <h3 className="text-xl font-bold text-white group-hover:text-[#FF6A00] transition-colors">
+                <h3 className="text-2xl font-extrabold text-white group-hover:text-[#FF6A00] transition-colors">
                   {course.name}
                 </h3>
 
-                <p className="mt-2.5 text-sm text-zinc-400 leading-relaxed line-clamp-2 font-normal">
+                <p className="mt-3 text-sm text-[#86868B] leading-relaxed line-clamp-2 font-normal">
                   {course.description}
                 </p>
 
                 {/* Topics Pills */}
-                <div className="mt-5 flex flex-wrap gap-1.5">
+                <div className="mt-6 flex flex-wrap gap-2">
                   {course.topics.slice(0, 4).map((topic) => (
                     <span
                       key={topic}
-                      className="text-[11px] font-medium text-zinc-400 bg-zinc-900 border border-white/5 px-2.5 py-1 rounded-lg"
+                      className="text-[11px] font-medium text-zinc-300 bg-white/[0.05] border border-white/[0.08] px-3 py-1 rounded-xl"
                     >
                       {topic}
                     </span>
                   ))}
                   {course.topics.length > 4 && (
-                    <span className="text-[11px] font-medium text-[#FF6A00] bg-[#FF6A00]/10 px-2.5 py-1 rounded-lg">
-                      +{course.topics.length - 4} mavzu
+                    <span className="text-[11px] font-bold text-[#FF6A00] bg-[#FF6A00]/10 px-2.5 py-1 rounded-xl">
+                      +{course.topics.length - 4}
                     </span>
                   )}
                 </div>
               </div>
 
               {/* Card Bottom Meta & CTAs */}
-              <div className="mt-8 pt-5 border-t border-white/10">
-                <div className="flex items-center justify-between text-xs text-zinc-400 mb-5">
-                  <div className="flex items-center gap-1.5">
+              <div className="mt-8 pt-6 border-t border-white/[0.08]">
+                <div className="flex items-center justify-between text-xs text-[#86868B] mb-6">
+                  <div className="flex items-center gap-1.5 font-medium">
                     <Clock className="w-4 h-4 text-zinc-500" />
                     <span>{course.duration}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 font-medium">
                     <BarChart3 className="w-4 h-4 text-zinc-500" />
                     <span>{course.difficulty}</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => onSelectCourse(course)}
-                    className="w-full py-2.5 px-3 text-xs font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-xl transition-colors cursor-pointer"
+                    className="w-full py-3 px-4 text-xs font-bold text-zinc-300 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.12] rounded-full transition-all cursor-pointer"
                   >
                     Batafsil
                   </button>
                   <button
                     onClick={() => onEnrollCourse(course.name)}
-                    className="w-full py-2.5 px-3 text-xs font-semibold text-white bg-[#FF6A00] hover:bg-[#E05D00] rounded-xl transition-all duration-200 shadow-md shadow-[#FF6A00]/20 flex items-center justify-center gap-1.5 group-hover:bg-[#FF6A00] cursor-pointer"
+                    className="w-full py-3 px-4 text-xs font-bold text-white bg-[#FF6A00] hover:bg-[#E05D00] rounded-full transition-all duration-300 shadow-lg shadow-[#FF6A00]/25 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>Yozilish</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />

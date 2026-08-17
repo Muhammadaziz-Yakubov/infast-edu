@@ -24,6 +24,11 @@ export class MarkAttendanceDto {
   @IsOptional()
   lessonNumber?: number;
 
+  @ApiProperty({ example: '2026-08-17', required: false })
+  @IsString()
+  @IsOptional()
+  date?: string;
+
   @ApiProperty({ enum: AttendanceStatus, example: AttendanceStatus.PRESENT })
   @IsEnum(AttendanceStatus)
   status: AttendanceStatus;

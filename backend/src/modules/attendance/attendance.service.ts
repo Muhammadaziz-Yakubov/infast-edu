@@ -220,6 +220,12 @@ export class AttendanceService {
     await this.studentsService.updateLiveLocation(profile.userId.toString(), dto.latitude, dto.longitude, false);
     await this.recalculateAttendancePercentage(profile.userId.toString());
 
+    // Auto-increment currentLessonOrder on GPS check-in so student unlocks next lesson
+    const currentOrder = profile.currentLessonOrder || 1;
+    await this.studentProfileModel.findByIdAndUpdate(profile._id, {
+      currentLessonOrder: currentOrder + 1,
+    }).exec();
+
     return {
       success: true,
       message: "Davomat muvaffaqiyatli topshirildi! 🎉",
@@ -243,9 +249,15 @@ export class AttendanceService {
 
     const studentIdObj = profile ? profile.userId : idObj;
 
-    const startOfDay = new Date();
+    let targetDate = new Date();
+    if (dto.date && dto.date.includes('-')) {
+      const parts = dto.date.split('-').map(Number);
+      targetDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0, 0);
+    }
+
+    const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
+    const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
     const queryFilter: any = { studentId: studentIdObj, groupId: groupIdObj };
@@ -259,27 +271,32 @@ export class AttendanceService {
 
     let xpDelta = 0;
     let coinDelta = 0;
+    let isFirstPresent = false;
+    let isChangedToAbsent = false;
 
     if (existing) {
       if (existing.status !== dto.status) {
         if (dto.status === AttendanceStatus.PRESENT) {
           xpDelta = 300;
           coinDelta = 70;
+          isFirstPresent = true;
         } else {
           xpDelta = -300;
           coinDelta = -70;
+          isChangedToAbsent = true;
         }
         if (dto.lessonNumber !== undefined) {
           existing.lessonNumber = dto.lessonNumber;
         }
         existing.status = dto.status;
-        existing.date = new Date();
+        existing.date = targetDate;
         await existing.save();
       }
     } else {
       if (dto.status === AttendanceStatus.PRESENT) {
         xpDelta = 100;
         coinDelta = 20;
+        isFirstPresent = true;
       } else {
         xpDelta = -200;
         coinDelta = -50;
@@ -291,9 +308,21 @@ export class AttendanceService {
         lessonId: lessonIdObj,
         lessonNumber: dto.lessonNumber || (profile ? profile.currentLessonOrder : 1) || 1,
         status: dto.status,
-        date: new Date(),
+        date: targetDate,
       });
       await newAttendance.save();
+    }
+
+    if (profile && isFirstPresent) {
+      const currentOrder = profile.currentLessonOrder || 1;
+      await this.studentProfileModel.findByIdAndUpdate(profile._id, {
+        currentLessonOrder: currentOrder + 1,
+      }).exec();
+    } else if (profile && isChangedToAbsent) {
+      const currentOrder = profile.currentLessonOrder || 1;
+      await this.studentProfileModel.findByIdAndUpdate(profile._id, {
+        currentLessonOrder: Math.max(1, currentOrder - 1),
+      }).exec();
     }
 
     if (xpDelta !== 0 || coinDelta !== 0) {
@@ -318,26 +347,10 @@ export class AttendanceService {
           groupId: dto.groupId,
           lessonId: dto.lessonId,
           lessonNumber: dto.lessonNumber,
+          date: dto.date,
           status: record.status,
         });
         results.push(res);
-
-        if (record.status === AttendanceStatus.PRESENT) {
-          const rawId = record.studentId;
-          const isValidId = Types.ObjectId.isValid(rawId);
-          const idObj = isValidId ? new Types.ObjectId(rawId) : rawId;
-
-          const profile = await this.studentProfileModel.findOne({
-            $or: [{ userId: idObj }, { _id: idObj }, { userId: rawId }, { _id: rawId }],
-          }).exec();
-
-          if (profile) {
-            const currentOrder = profile.currentLessonOrder || 1;
-            await this.studentProfileModel.findByIdAndUpdate(profile._id, {
-              currentLessonOrder: currentOrder + 1,
-            }).exec();
-          }
-        }
       } catch (e) {
         // Continue loop if single record fails
       }

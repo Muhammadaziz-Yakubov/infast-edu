@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { StudentsService } from '../students/students.service';
 import { RegisterStudentDto } from './dto/register-student.dto';
 import { LoginDto } from './dto/login.dto';
+import { RecoverPasswordDto } from './dto/recover-password.dto';
 import { Role } from '../../common/enums/roles.enum';
 import { UserStatus } from '../../common/enums/status.enum';
 import * as bcrypt from 'bcrypt';
@@ -131,6 +132,32 @@ export class AuthService {
     return {
       success: true,
       message: 'Password successfully changed',
+    };
+  }
+
+  async recoverPassword(dto: RecoverPasswordDto): Promise<any> {
+    const { email, hint } = dto;
+    if (hint !== '5566') {
+      throw new BadRequestException('Maxfiy hint noto\'g\'ri! Hint: 5566 bo\'lishi kerak');
+    }
+
+    let user = await this.usersService.findByEmail(email);
+    if (!user) {
+      user = await this.usersService.findByPhone(email);
+    }
+
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    const defaultPassword = '27272727';
+    await this.usersService.update(user._id.toString(), { password: defaultPassword });
+
+    return {
+      success: true,
+      email: user.email || user.phone,
+      password: defaultPassword,
+      message: `Akkaunt paroli: ${defaultPassword}`,
     };
   }
 

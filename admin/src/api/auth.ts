@@ -14,3 +14,8 @@ export async function changePassword(dto: any) {
   const res = await apiClient.post('/auth/change-password', dto);
   return res.data.data;
 }
+
+export async function recoverPassword(dto: { email: string; hint: string }) {
+  const res = await apiClient.post('/auth/recover-password', dto);
+  return res.data.data;
+}

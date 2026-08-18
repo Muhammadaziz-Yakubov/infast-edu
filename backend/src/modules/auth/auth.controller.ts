@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { RecoverPasswordDto } from './dto/recover-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -36,5 +37,12 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   changePassword(@CurrentUser() user: any, @Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(user.userId, dto.newPassword);
+  }
+
+  @Post('recover-password')
+  @ApiOperation({ summary: 'Recover user password via hint 5566' })
+  @ApiResponse({ status: 200, description: 'Password successfully recovered.' })
+  recoverPassword(@Body() dto: RecoverPasswordDto) {
+    return this.authService.recoverPassword(dto);
   }
 }
